@@ -1,0 +1,174 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage[pdftex]{hyperref}
+\usepackage{xcolor}
+\usepackage{xinttools}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{9}
+\def\fieldHeight{16}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
+
+var fieldWidth = AFMakeNumber(\fieldWidth);
+var fieldHeight = AFMakeNumber(\fieldHeight);
+
+var stone = new Array();
+var shouldEmitStone = true;
+
+var complField = new Array();
+
+function initialise() {
+    for (column = 0; column < fieldHeight; column++) {
+        var tmp = new Array();
+        for (row = 0; row < fieldWidth; row++) {
+            tmp.push(0);
+        }
+        complField.push(tmp);
+    }
+
+    var run = app.setInterval("runAll()", 150);
+    run.count = 0;
+    var timeout = app.setTimeOut( "app.clearInterval(run);", 3*36*150);
+}
+
+function emitStone() {
+    for (pice = 0; pice < stone.length; pice++) {
+        var x = stone[pice][0];
+        var y = stone[pice][1];
+        complField[y][x] = 1;
+    }
+
+    stone = new Array(
+        new Array(1, 0),
+        new Array(2, 0),
+        new Array(3, 0)
+    );
+
+    for (pice = 0; pice < stone.length; pice++) {
+        var x = stone[pice][0];
+        var y = stone[pice][1];
+        complField[y][x] = 1;
+    }
+    shouldEmitStone = false;
+}
+
+function runAll() {
+    updateField();
+    draw();
+    removeStone();
+}
+
+function collidesOrHeight() {
+    for (pice = 0; pice < stone.length; pice++) {
+        var x = stone[pice][0];
+        var y = stone[pice][1];
+        if (y + 1 >= fieldHeight || complField[y + 1][x] != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function updateField() {
+    if (shouldEmitStone) {
+        emitStone();
+    }
+    else {
+        if (!collidesOrHeight()) {
+            for (pice = 0; pice < stone.length; pice++) {
+                var x = stone[pice][0];
+                var y = stone[pice][1];
+                complField[y][x] = 0;
+                complField[y + 1][x] = 1;
+                stone[pice][1]++;
+            }
+        } else {
+            shouldEmitStone = true;
+        }
+    }
+}
+
+function move() {
+    for (pice = 0; pice < stone.length; pice++) {
+        stone[pice][0]++;
+    }
+}
+
+function removeStone() {
+    for (pice = 0; pice < stone.length; pice++) {
+        var x = stone[pice][0];
+        var y = stone[pice][1];
+        complField[y][x] = 0;
+    }
+}
+
+function draw() {
+    for (x = 0; x < fieldWidth; x++) {
+        for (y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            if (complField[y][x] == 1) {
+                field.value = 1.0;
+                field.borderColor = color.black;
+                field.fillColor = color.black;
+            }
+            else {
+                field.value = 0.0;
+                field.borderColor = color.white;
+                field.fillColor = color.white;
+            }
+            field.delay = false;
+        }
+    }
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\xintFor* #2 in {\xintSeq{0}{\fieldHeight}} \do {%
+    \xintFor* #1 in {\xintSeq{0}{\fieldWidth}} \do {%
+        \TextField[width=1cm, height=1cm, name=pos#1#2]{}
+    }
+    \newline
+}
+
+%\TextField[width=2cm, backgroundcolor=gray!20, name=cp1X, onblur={move()}]{}
+
+%\PushButton[width=2cm, backgroundcolor=gray!20, name=cp2X, onkeyup={move()}]{}
+%\Reset[width=2cm, backgroundcolor=gray!20, name=cp3X, onkeyup={move()}]{}
+\PushButton[width=2cm, backgroundcolor=gray!20, name=cp1X, onclick={move()}]{left}
+\PushButton[width=2cm, backgroundcolor=gray!20, name=cp2X, onclick={move()}]{right}
+%\ChoiceMenu[width=2cm, backgroundcolor=gray!20, name=cp3X, onkeyup={move()}]{}{}
+
+\PushButton[width=2cm, backgroundcolor=gray!20, name=cp3X, onblur={move()}]{left}
+\PushButton[width=2cm, backgroundcolor=gray!20, name=cp4X, onblur={move()}]{right}
+
+\PushButton[width=2cm, backgroundcolor=gray!20, name=cp5X, onfocus={move()}]{left}
+\PushButton[width=2cm, backgroundcolor=gray!20, name=cp6X, onfocus={move()}]{right}
+
+\end{document}
