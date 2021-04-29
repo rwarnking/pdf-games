@@ -3,13 +3,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
 \usepackage[latin1]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
-\usepackage[pdftex]{hyperref}
 \usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
 \usepackage{xinttools}
 
+\usepackage{tcolorbox}
 \setlength{\parindent}{0pt}
 
 % Einbindung von Javascript ins PDF
@@ -36,6 +39,11 @@ var shouldEmitStone = true;
 
 var complField = new Array();
 
+var focus = 0;
+
+%%%%%%%%%%%%%%%%%%
+% Initialisation %
+%%%%%%%%%%%%%%%%%%
 function initialise() {
     for (column = 0; column < fieldHeight; column++) {
         var tmp = new Array();
@@ -45,11 +53,117 @@ function initialise() {
         complField.push(tmp);
     }
 
+    initialiseButtons();
+
     var run = app.setInterval("runAll()", 150);
     run.count = 0;
     var timeout = app.setTimeOut( "app.clearInterval(run);", 3*36*150);
 }
 
+function initialiseButtons() {
+    %this.getField("input1").commitOnSelChange="true";
+    this.getField("input1").setFocus();
+    %this.getField("input1").charLimit = 1;
+
+    this.getField("left").setAction("MouseUp", "move('a');");
+    var aRect = this.getField("left").rect;
+    aRect[0] -= 30;
+    aRect[2] += 30;
+    this.getField("left").rect = aRect;
+    %this.getField("left").fillColor=color.green;
+    %this.getField("left").textColor=color.white;
+    this.getField("left").highlight="outline";
+
+    this.getField("right").setAction("MouseUp", "move('d');");
+    this.getField("right").highlight="invert";
+    this.getField("down").setAction("MouseUp", "move('s');");
+    this.getField("down").highlight="push";
+    this.getField("fulldown").setAction("MouseUp", "move(' ');");
+
+    this.getField("turnRight").setAction("MouseUp", "move('q');");
+    this.getField("turnLeft").setAction("MouseUp", "move('e');");
+}
+
+%%%%%%%%
+% Loop %
+%%%%%%%%
+function runAll() {
+    processInput();
+    updateField();
+    draw();
+    removeStone();
+}
+
+%%%%%%%%%%%%
+% Movement %
+%%%%%%%%%%%%
+function processInput() {
+    this.getField("input1").delay = true;
+    this.getField("output1").delay = true;
+
+    var movementString;
+    var SPEED = 2;
+    var div = Math.floor(focus / SPEED);
+    if (focus - div * SPEED == 0) {
+        this.getField("input1").setFocus();
+        this.getField("output1").value += this.getField("input2").value;
+        movementString = this.getField("input2").value;
+        this.getField("input2").value = "";
+    }
+    else if (focus - div * SPEED == SPEED / 2) {
+        this.getField("input2").setFocus();
+        this.getField("output1").value += this.getField("input1").value;
+        movementString = this.getField("input1").value;
+        this.getField("input1").value = "";
+    }
+    focus++;
+
+    for (var i = 0; i < movementString.length; i++) {
+        move(movementString.charAt(i));
+    }
+
+    this.getField("input1").delay = false;
+    this.getField("output1").delay = false;
+}
+
+function move(dir) {
+    switch(dir) {
+        case "s":
+            app.beep(0);
+            for (pice = 0; pice < stone.length; pice++) {
+                stone[pice][1]++;
+            }
+            break;
+        case " ":
+            app.beep(2);
+            for (pice = 0; pice < stone.length; pice++) {
+                stone[pice][1]++;
+            }
+            break;
+        case "a":
+            app.beep(0);
+            for (pice = 0; pice < stone.length; pice++) {
+                stone[pice][0]--;
+            }
+            break;
+        case "d":
+            app.beep(0);
+            for (pice = 0; pice < stone.length; pice++) {
+                stone[pice][0]++;
+            }
+            break;
+        case "q":
+            app.beep(1);
+            break;
+        case "e":
+            app.beep(1);
+            break;
+    }
+}
+
+%%%%%%%%%
+% Logic %
+%%%%%%%%%
 function emitStone() {
     for (pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
@@ -69,12 +183,6 @@ function emitStone() {
         complField[y][x] = 1;
     }
     shouldEmitStone = false;
-}
-
-function runAll() {
-    updateField();
-    draw();
-    removeStone();
 }
 
 function collidesOrHeight() {
@@ -104,12 +212,6 @@ function updateField() {
         } else {
             shouldEmitStone = true;
         }
-    }
-}
-
-function move() {
-    for (pice = 0; pice < stone.length; pice++) {
-        stone[pice][0]++;
     }
 }
 
@@ -150,25 +252,59 @@ function draw() {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-\xintFor* #2 in {\xintSeq{0}{\fieldHeight}} \do {%
-    \xintFor* #1 in {\xintSeq{0}{\fieldWidth}} \do {%
-        \TextField[width=1cm, height=1cm, name=pos#1#2]{}
-    }
-    \newline
-}
+    \begin{Form}
 
-%\TextField[width=2cm, backgroundcolor=gray!20, name=cp1X, onblur={move()}]{}
+        \begin{center}
+            \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                    \TextField[width=1cm, height=1cm, readonly=true, name=pos#1#2]{}
+                }
+                \newline
+            }
+        \end{center}
 
-%\PushButton[width=2cm, backgroundcolor=gray!20, name=cp2X, onkeyup={move()}]{}
-%\Reset[width=2cm, backgroundcolor=gray!20, name=cp3X, onkeyup={move()}]{}
-\PushButton[width=2cm, backgroundcolor=gray!20, name=cp1X, onclick={move()}]{left}
-\PushButton[width=2cm, backgroundcolor=gray!20, name=cp2X, onclick={move()}]{right}
-%\ChoiceMenu[width=2cm, backgroundcolor=gray!20, name=cp3X, onkeyup={move()}]{}{}
+        \begin{center}%
+            \begin{tabular}{| l | l | l |}%
+                \begin{tcolorbox}[width=0.3\linewidth]
+                    \centering
+                    \PushButton[name=turnLeft, bordercolor=black]{\Large turnLeft\strut}
+                \end{tcolorbox} &
+                \TextField[name=output1, width=2in, bordercolor={0.650 .790 .94}]{}
+                &
+                \begin{tcolorbox}[width=0.3\linewidth]
+                    \centering
+                    \PushButton[name=turnRight, bordercolor=black]{\Large turnRight\strut}
+                \end{tcolorbox} \\
+                \begin{tcolorbox}[width=0.3\linewidth]%
+                    \centering%
+                    \PushButton[name=left, bordercolor=black]{\Large left\strut}%
+                \end{tcolorbox}&%
+                \begin{tcolorbox}[width=0.3\linewidth]%
+                    \centering%
+                    \PushButton[name=down, bordercolor=black]{\Large down\strut}%
+                \end{tcolorbox}&
+                \PushButton[name=right, bordercolor=black]{
+                \begin{tcolorbox}[width=0.3\linewidth]
+                    \centering
+                    \Large right\strut
+                \end{tcolorbox}} \\
+                \multicolumn{3}{l}{%
+                \begin{tcolorbox}[width=\linewidth]
+                    \centering
+                    \PushButton[name=fulldown, bordercolor=black]{\Large fulldown}
+                \end{tcolorbox}
+                }
+            \end{tabular}
+        \end{center}
 
-\PushButton[width=2cm, backgroundcolor=gray!20, name=cp3X, onblur={move()}]{left}
-\PushButton[width=2cm, backgroundcolor=gray!20, name=cp4X, onblur={move()}]{right}
+        \begin{tcolorbox}[width=\linewidth]
+            \centering
+            \PushButton[name=fulldown, bordercolor=black]{\Large fulldown}
+        \end{tcolorbox}
 
-\PushButton[width=2cm, backgroundcolor=gray!20, name=cp5X, onfocus={move()}]{left}
-\PushButton[width=2cm, backgroundcolor=gray!20, name=cp6X, onfocus={move()}]{right}
+        \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
+        \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
+
+    \end{Form}
 
 \end{document}
