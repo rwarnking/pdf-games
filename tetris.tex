@@ -10,9 +10,11 @@
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
-\usepackage{xinttools}
 
+\usepackage{xinttools}
+\usepackage{tabularx}
 \usepackage{tcolorbox}
+
 \setlength{\parindent}{0pt}
 
 % Einbindung von Javascript ins PDF
@@ -61,27 +63,27 @@ function initialise() {
 }
 
 function initialiseButtons() {
-    %this.getField("input1").commitOnSelChange="true";
     this.getField("input1").setFocus();
-    %this.getField("input1").charLimit = 1;
 
     this.getField("left").setAction("MouseUp", "move('a');");
-    var aRect = this.getField("left").rect;
-    aRect[0] -= 30;
-    aRect[2] += 30;
-    this.getField("left").rect = aRect;
-    %this.getField("left").fillColor=color.green;
-    %this.getField("left").textColor=color.white;
-    this.getField("left").highlight="outline";
+    this.getField("left").highlight="invert";
 
     this.getField("right").setAction("MouseUp", "move('d');");
     this.getField("right").highlight="invert";
     this.getField("down").setAction("MouseUp", "move('s');");
-    this.getField("down").highlight="push";
+    this.getField("down").highlight="invert";
     this.getField("fulldown").setAction("MouseUp", "move(' ');");
+    this.getField("fulldown").highlight="invert";
 
     this.getField("turnRight").setAction("MouseUp", "move('q');");
+    this.getField("turnRight").highlight="invert";
     this.getField("turnLeft").setAction("MouseUp", "move('e');");
+    this.getField("turnLeft").highlight="invert";
+
+    %var aRect = this.getField("left").rect;
+    %aRect[0] -= 30;
+    %aRect[2] += 30;
+    %this.getField("left").rect = aRect;
 }
 
 %%%%%%%%
@@ -264,43 +266,49 @@ function draw() {
         \end{center}
 
         \begin{center}%
-            \begin{tabular}{| l | l | l |}%
-                \begin{tcolorbox}[width=0.3\linewidth]
-                    \centering
-                    \PushButton[name=turnLeft, bordercolor=black]{\Large turnLeft\strut}
-                \end{tcolorbox} &
-                \TextField[name=output1, width=2in, bordercolor={0.650 .790 .94}]{}
-                &
-                \begin{tcolorbox}[width=0.3\linewidth]
-                    \centering
-                    \PushButton[name=turnRight, bordercolor=black]{\Large turnRight\strut}
-                \end{tcolorbox} \\
-                \begin{tcolorbox}[width=0.3\linewidth]%
-                    \centering%
-                    \PushButton[name=left, bordercolor=black]{\Large left\strut}%
-                \end{tcolorbox}&%
-                \begin{tcolorbox}[width=0.3\linewidth]%
-                    \centering%
-                    \PushButton[name=down, bordercolor=black]{\Large down\strut}%
-                \end{tcolorbox}&
+            \begin{tabularx}{\textwidth}{@{} X X X @{}}%
+                \PushButton[name=turnLeft, bordercolor=black]{
+                    \begin{tcolorbox}
+                        \centering
+                        \Large turnLeft\strut
+                    \end{tcolorbox}
+                } &
+                \centering
+                \TextField[name=output1, width=0.3\textwidth, height=1.5cm, bordercolor={0.650 .790 .94}]{} &
+                \PushButton[name=turnRight, bordercolor=black]{
+                    \begin{tcolorbox}
+                        \centering
+                        \Large turnRight\strut
+                    \end{tcolorbox}
+                } \\
+                \PushButton[name=left, bordercolor=black]{
+                    \begin{tcolorbox}
+                        \centering
+                        \Large left\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=down, bordercolor=black]{
+                    \begin{tcolorbox}
+                        \centering
+                        \Large down\strut
+                    \end{tcolorbox}
+                } &
                 \PushButton[name=right, bordercolor=black]{
-                \begin{tcolorbox}[width=0.3\linewidth]
-                    \centering
-                    \Large right\strut
-                \end{tcolorbox}} \\
-                \multicolumn{3}{l}{%
-                \begin{tcolorbox}[width=\linewidth]
-                    \centering
-                    \PushButton[name=fulldown, bordercolor=black]{\Large fulldown}
-                \end{tcolorbox}
+                    \begin{tcolorbox}
+                        \centering
+                        \Large right\strut
+                    \end{tcolorbox}
+                } \\
+                \multicolumn{3}{@{} l @{}}{%
+                    \PushButton[name=fulldown, bordercolor=black]{
+                        \begin{tcolorbox}
+                            \centering
+                            \Large fulldown\strut
+                        \end{tcolorbox}
+                    }
                 }
-            \end{tabular}
+            \end{tabularx}
         \end{center}
-
-        \begin{tcolorbox}[width=\linewidth]
-            \centering
-            \PushButton[name=fulldown, bordercolor=black]{\Large fulldown}
-        \end{tcolorbox}
 
         \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
