@@ -92,8 +92,10 @@ function initialiseButtons() {
 function runAll() {
     processInput();
     updateField();
-    draw();
-    removeStone();
+    if (!shouldEmitStone) {
+        draw();
+        removeStone();
+    }
 }
 
 %%%%%%%%%%%%
@@ -139,7 +141,7 @@ function move(dir) {
         case " ":
             app.beep(2);
             for (pice = 0; pice < stone.length; pice++) {
-                stone[pice][1]++;
+                stone[pice][1]+=3;
             }
             break;
         case "a":
@@ -166,20 +168,63 @@ function move(dir) {
 %%%%%%%%%
 % Logic %
 %%%%%%%%%
+var stones = new Array(
+    new Array(
+        new Array(1, 0),
+        new Array(2, 0),
+        new Array(3, 0),
+        new Array(4, 0)
+    ),
+    new Array(
+        new Array(1, 0),
+        new Array(1, 1),
+        new Array(2, 0),
+        new Array(2, 1)
+    ),
+    new Array(
+        new Array(1, 0),
+        new Array(2, 0),
+        new Array(2, 1),
+        new Array(3, 0)
+    ),
+    new Array(
+        new Array(1, 0),
+        new Array(2, 0),
+        new Array(2, 1),
+        new Array(3, 1)
+    ),
+    new Array(
+        new Array(1, 0),
+        new Array(2, 0),
+        new Array(3, 0),
+        new Array(3, 1)
+    ),
+    new Array(
+        new Array(1, 1),
+        new Array(1, 0),
+        new Array(2, 0),
+        new Array(3, 0)
+    ),
+    new Array(
+        new Array(1, 1),
+        new Array(2, 1),
+        new Array(2, 0),
+        new Array(3, 0)
+    )
+);
+
 function emitStone() {
-    for (pice = 0; pice < stone.length; pice++) {
+    for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
         complField[y][x] = 1;
     }
 
-    stone = new Array(
-        new Array(1, 0),
-        new Array(2, 0),
-        new Array(3, 0)
-    );
+    var stoneIdx = Math.floor(Math.random() * stones.length);
+    for (var i = 0; i < stones[stoneIdx].length; i++)
+        stone[i] = stones[stoneIdx][i].slice();
 
-    for (pice = 0; pice < stone.length; pice++) {
+    for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
         complField[y][x] = 1;
@@ -188,7 +233,7 @@ function emitStone() {
 }
 
 function collidesOrHeight() {
-    for (pice = 0; pice < stone.length; pice++) {
+    for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
         if (y + 1 >= fieldHeight || complField[y + 1][x] != 0) {
@@ -204,12 +249,16 @@ function updateField() {
     }
     else {
         if (!collidesOrHeight()) {
-            for (pice = 0; pice < stone.length; pice++) {
+            for (var pice = 0; pice < stone.length; pice++) {
                 var x = stone[pice][0];
                 var y = stone[pice][1];
                 complField[y][x] = 0;
-                complField[y + 1][x] = 1;
                 stone[pice][1]++;
+            }
+            for (var pice = 0; pice < stone.length; pice++) {
+                var x = stone[pice][0];
+                var y = stone[pice][1];
+                complField[y][x] = 1;
             }
         } else {
             shouldEmitStone = true;
@@ -218,7 +267,7 @@ function updateField() {
 }
 
 function removeStone() {
-    for (pice = 0; pice < stone.length; pice++) {
+    for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
         complField[y][x] = 0;
@@ -226,8 +275,8 @@ function removeStone() {
 }
 
 function draw() {
-    for (x = 0; x < fieldWidth; x++) {
-        for (y = 0; y < fieldHeight; y++) {
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
             field = this.getField("pos" + x + y);
             field.delay = true;
             if (complField[y][x] == 1) {
@@ -256,10 +305,12 @@ function draw() {
 
     \begin{Form}
 
+        \def\blocksize{0.05\linewidth}
+
         \begin{center}
             \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \TextField[width=1cm, height=1cm, readonly=true, name=pos#1#2]{}
+                    \TextField[width=\blocksize, height=\blocksize, readonly=true, name=pos#1#2]{}
                 }
                 \newline
             }
@@ -267,6 +318,14 @@ function draw() {
 
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} X X X @{}}%
+                \multicolumn{3}{@{} l @{}}{%
+                    \PushButton[name=start, bordercolor=black]{
+                        \begin{tcolorbox}
+                            \centering
+                            \Large start/restart\strut
+                        \end{tcolorbox}
+                    }
+                }\\
                 \PushButton[name=turnLeft, bordercolor=black]{
                     \begin{tcolorbox}
                         \centering
