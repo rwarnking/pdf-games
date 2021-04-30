@@ -26,7 +26,7 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO needs to be atleast 4
-\def\fieldWidth{9}
+\def\fieldWidth{8}
 \def\fieldHeight{16}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -171,12 +171,6 @@ function restart() {
 }
 
 function emitStone() {
-    for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        complField[y][x] = 1;
-    }
-
     var stoneIdx = Math.floor(Math.random() * stones.length);
     for (var i = 0; i < stones[stoneIdx].length; i++)
         stone[i] = stones[stoneIdx][i].slice();
@@ -200,6 +194,55 @@ function collidesOrHeight() {
     return false;
 }
 
+function collidesOrLeft() {
+    for (var pice = 0; pice < stone.length; pice++) {
+        var x = stone[pice][0];
+        var y = stone[pice][1];
+        if (x - 1 < 0 || complField[y][x - 1] != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function collidesOrRight() {
+    for (var pice = 0; pice < stone.length; pice++) {
+        var x = stone[pice][0];
+        var y = stone[pice][1];
+        if (x + 1 >= fieldWidth || complField[y][x + 1] != 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function removeLines() {
+    this.getField("points").value++;
+    for (var y = fieldHeight - 1; y >= 0; y--) {
+        for (var x = 0; x < fieldWidth; x++) {
+            if (complField[y][x] == 0) {
+                x = fieldWidth;
+            } else if (x == fieldWidth - 1 && complField[y][x] == 1) {
+
+                this.getField("points").value+=1000;
+                % Remove the line by shifting all the lines above one down
+                for (var move_y = y; move_y > 0; move_y--) {
+                    complField[move_y] = complField[move_y - 1];
+                }
+                % Override the top line with a new one
+                var tmp = new Array();
+                for (var column = 0; column < fieldWidth; column++) {
+                    tmp.push(0);
+                }
+                complField[0] = tmp;
+                % Adjust y such that the shifted line is also tested
+                y++;
+
+            }
+        }
+    }
+}
+
 function updateField() {
     if (shouldEmitStone) {
         emitStone();
@@ -218,6 +261,13 @@ function updateField() {
                 complField[y][x] = 1;
             }
         } else {
+            % Add the stone to the field array
+            for (var pice = 0; pice < stone.length; pice++) {
+                var x = stone[pice][0];
+                var y = stone[pice][1];
+                complField[y][x] = 1;
+            }
+            removeLines();
             shouldEmitStone = true;
         }
     }
@@ -284,29 +334,35 @@ function processInput() {
 function move(dir) {
     switch(dir) {
         case "s":
-            app.beep(0);
             if (!collidesOrHeight()) {
+                app.beep(0);
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][1]++;
                 }
             }
             break;
         case " ":
-            app.beep(2);
-            for (pice = 0; pice < stone.length; pice++) {
-                stone[pice][1]+=3;
+            while (!collidesOrHeight()) {
+                app.beep(2);
+                for (pice = 0; pice < stone.length; pice++) {
+                    stone[pice][1]++;
+                }
             }
             break;
         case "a":
-            app.beep(0);
-            for (pice = 0; pice < stone.length; pice++) {
-                stone[pice][0]--;
+            if (!collidesOrLeft()) {
+                app.beep(0);
+                for (pice = 0; pice < stone.length; pice++) {
+                    stone[pice][0]--;
+                }
             }
             break;
         case "d":
-            app.beep(0);
-            for (pice = 0; pice < stone.length; pice++) {
-                stone[pice][0]++;
+            if (!collidesOrRight()) {
+                app.beep(0);
+                for (pice = 0; pice < stone.length; pice++) {
+                    stone[pice][0]++;
+                }
             }
             break;
         case "q":
