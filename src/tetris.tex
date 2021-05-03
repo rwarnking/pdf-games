@@ -27,7 +27,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO needs to be atleast 4
 \def\fieldWidth{9}
-\def\fieldHeight{16}
+\def\fieldHeight{20}
+% Higher means slower
+\def\GAMESPEED{5}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -42,6 +44,9 @@ var fieldHeight = AFMakeNumber(\fieldHeight);
 var complField = new Array();
 
 var focus = true;
+var loopTimer = 0;
+var speed = AFMakeNumber(\GAMESPEED);
+var lineCount = 0;
 
 var stone = new Array();
 var stoneColor = color.black;
@@ -156,6 +161,7 @@ function initialiseButtons() {
 % Loop %
 %%%%%%%%
 function runAll() {
+    loopTimer++;
     processInput();
     updateField();
     if (!shouldEmitStone) {
@@ -243,6 +249,11 @@ function removeLines() {
             } else if (x == fieldWidth - 1 && complField[y][x] > 0) {
 
                 this.getField("points").value += 1000;
+                lineCount++;
+                if (lineCount == 5 && speed > 1) {
+                    lineCount = 0;
+                    speed--;
+                }
                 % Remove the line by shifting all the lines above one down
                 for (var move_y = y; move_y > 0; move_y--) {
                     complField[move_y] = complField[move_y - 1];
@@ -267,17 +278,21 @@ function updateField() {
     }
     else {
         if (!collidesOrHeight()) {
-            for (var pice = 0; pice < stone.length; pice++) {
-                var x = stone[pice][0];
-                var y = stone[pice][1];
-                complField[y][x] = 0;
-                stone[pice][1]++;
+            if (loopTimer >= speed) {
                 this.getField("points").value++;
-            }
-            for (var pice = 0; pice < stone.length; pice++) {
-                var x = stone[pice][0];
-                var y = stone[pice][1];
-                complField[y][x] = stoneColor;
+                loopTimer = 0;
+                for (var pice = 0; pice < stone.length; pice++) {
+                    stone[pice][1]++;
+                    var x = stone[pice][0];
+                    var y = stone[pice][1];
+                    complField[y][x] = stoneColor;
+                }
+            } else {
+                for (var pice = 0; pice < stone.length; pice++) {
+                    var x = stone[pice][0];
+                    var y = stone[pice][1];
+                    complField[y][x] = stoneColor;
+                }
             }
         } else {
             % Add the stone to the field array
@@ -306,11 +321,9 @@ function draw() {
             field = this.getField("pos" + x + y);
             field.delay = true;
             if (complField[y][x] > 0) {
-                %field.borderColor = color.black;
                 field.fillColor = colors[complField[y][x] - 1];
             }
             else {
-                %field.borderColor = color.white;
                 field.fillColor = color.white;
             }
             field.delay = false;
@@ -424,6 +437,7 @@ function collidesOrOOB(x, y) {
     if (x < 0 || x >= fieldWidth || y < 0 || y >= fieldHeight) {
         return true;
     }
+    return false;
 }
 
 % https://stackoverflow.com/questions/17410809/how-to-calculate-rotation-in-2d-in-javascript
