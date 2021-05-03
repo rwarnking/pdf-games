@@ -7,5 +7,7 @@
 - https://www.unix-ag.uni-kl.de/_media/latexkurs_2017_interaktive_pdfs.pdf
 - https://entwicklertag.de/karlsruhe/2012/sites/entwicklertag.de.karlsruhe.2012/files/EntwicklertagRogina.pdf
 - Ab seite 50: http://ctan.math.illinois.edu/macros/latex/contrib/acrotex/doc/eformman.pdf
-- https://www.adobe.com/content/dam/acom/en/devnet/acrobat/pdfs/js_api_reference.pdf
 - Colored pushbutton: https://tex.stackexchange.com/questions/470720/change-backgroundcolor-of-pushbutton-hyperref-package
+- https://www.adobe.com/content/dam/acom/en/devnet/acrobat/pdfs/js_api_reference.pdf,
+sadly this link does not work anymore, but you can still access the page if you find it on a page
+like "Wayback Machine"

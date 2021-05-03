@@ -43,6 +43,7 @@ var complField = new Array();
 var focus = 0;
 
 var stone = new Array();
+var stoneColor = color.black;
 var shouldEmitStone = true;
 var stones = new Array(
     new Array(
@@ -89,6 +90,14 @@ var stones = new Array(
     )
 );
 
+var colors = new Array(
+    color.black,
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ],
+    [ "RGB", 0.560, 0.078, 0.533 ]
+);
+
 % For saving the interval
 var run;
 
@@ -124,10 +133,10 @@ function initialiseButtons() {
     this.getField("fulldown").setAction("MouseUp", "move(' ');");
     this.getField("fulldown").highlight="invert";
 
-    this.getField("turnRight").setAction("MouseUp", "move('q');");
-    this.getField("turnRight").highlight="invert";
-    this.getField("turnLeft").setAction("MouseUp", "move('e');");
+    this.getField("turnLeft").setAction("MouseUp", "move('q');");
     this.getField("turnLeft").highlight="invert";
+    this.getField("turnRight").setAction("MouseUp", "move('e');");
+    this.getField("turnRight").highlight="invert";
 
     %var aRect = this.getField("left").rect;
     %aRect[0] -= 30;
@@ -163,6 +172,7 @@ function gameover() {
 }
 
 function restart() {
+    this.getField("points").value = 0;
     for (var row = 0; row < fieldHeight; row++) {
         for (var column = 0; column < fieldWidth; column++) {
             complField[row][column] = 0;
@@ -171,6 +181,8 @@ function restart() {
 }
 
 function emitStone() {
+    stoneColor = Math.floor(Math.random() * colors.length) + 1;
+
     var stoneIdx = Math.floor(Math.random() * stones.length);
     for (var i = 0; i < stones[stoneIdx].length; i++)
         stone[i] = stones[stoneIdx][i].slice();
@@ -178,7 +190,7 @@ function emitStone() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        complField[y][x] = 1;
+        complField[y][x] = stoneColor;
     }
     shouldEmitStone = false;
 }
@@ -222,7 +234,7 @@ function removeLines() {
         for (var x = 0; x < fieldWidth; x++) {
             if (complField[y][x] == 0) {
                 x = fieldWidth;
-            } else if (x == fieldWidth - 1 && complField[y][x] == 1) {
+            } else if (x == fieldWidth - 1 && complField[y][x] > 0) {
 
                 this.getField("points").value+=1000;
                 % Remove the line by shifting all the lines above one down
@@ -258,14 +270,14 @@ function updateField() {
             for (var pice = 0; pice < stone.length; pice++) {
                 var x = stone[pice][0];
                 var y = stone[pice][1];
-                complField[y][x] = 1;
+                complField[y][x] = stoneColor;
             }
         } else {
             % Add the stone to the field array
             for (var pice = 0; pice < stone.length; pice++) {
                 var x = stone[pice][0];
                 var y = stone[pice][1];
-                complField[y][x] = 1;
+                complField[y][x] = stoneColor;
             }
             removeLines();
             shouldEmitStone = true;
@@ -286,9 +298,9 @@ function draw() {
         for (var y = 0; y < fieldHeight; y++) {
             field = this.getField("pos" + x + y);
             field.delay = true;
-            if (complField[y][x] == 1) {
+            if (complField[y][x] > 0) {
                 %field.borderColor = color.black;
-                field.fillColor = color.black;
+                field.fillColor = colors[complField[y][x] - 1];
             }
             else {
                 %field.borderColor = color.white;
