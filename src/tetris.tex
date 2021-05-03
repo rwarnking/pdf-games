@@ -41,7 +41,7 @@ var fieldHeight = AFMakeNumber(\fieldHeight);
 
 var complField = new Array();
 
-var focus = 0;
+var focus = true;
 
 var stone = new Array();
 var stoneColor = color.black;
@@ -156,7 +156,6 @@ function initialiseButtons() {
 % Loop %
 %%%%%%%%
 function runAll() {
-    this.getField("points").value++;
     processInput();
     updateField();
     if (!shouldEmitStone) {
@@ -237,14 +236,13 @@ function collidesOrRight() {
 }
 
 function removeLines() {
-    this.getField("points").value++;
     for (var y = fieldHeight - 1; y >= 0; y--) {
         for (var x = 0; x < fieldWidth; x++) {
             if (complField[y][x] == 0) {
                 x = fieldWidth;
             } else if (x == fieldWidth - 1 && complField[y][x] > 0) {
 
-                this.getField("points").value+=1000;
+                this.getField("points").value += 1000;
                 % Remove the line by shifting all the lines above one down
                 for (var move_y = y; move_y > 0; move_y--) {
                     complField[move_y] = complField[move_y - 1];
@@ -274,6 +272,7 @@ function updateField() {
                 var y = stone[pice][1];
                 complField[y][x] = 0;
                 stone[pice][1]++;
+                this.getField("points").value++;
             }
             for (var pice = 0; pice < stone.length; pice++) {
                 var x = stone[pice][0];
@@ -323,39 +322,46 @@ function draw() {
 % Movement %
 %%%%%%%%%%%%
 function processInput() {
-    this.getField("input1").delay = true;
-    this.getField("output1").delay = true;
+    var iField1 = this.getField("input1");
+    var iField2 = this.getField("input2");
+    var oField = this.getField("output1");
+
+    iField1.delay = true;
+    iField2.delay = true;
+    oField.delay = true;
 
     var movementString;
-    var SPEED = 2;
-    var div = Math.floor(focus / SPEED);
-    if (focus - div * SPEED == 0) {
-        this.getField("input1").setFocus();
-        this.getField("output1").value += this.getField("input2").value;
-        movementString = this.getField("input2").value;
-        this.getField("input2").value = "";
+    if (focus) {
+        iField1.setFocus();
+        movementString = iField2.value;
+        if (oField.value.length >= 10)
+            oField.value = oField.value.slice(movementString.length);
+        oField.value += movementString;
+        iField2.value = "";
     }
-    else if (focus - div * SPEED == SPEED / 2) {
-        this.getField("input2").setFocus();
-        this.getField("output1").value += this.getField("input1").value;
-        movementString = this.getField("input1").value;
-        this.getField("input1").value = "";
+    else {
+        iField2.setFocus();
+        movementString = iField1.value
+        if (oField.value.length >= 10)
+            oField.value = oField.value.slice(movementString.length);
+        oField.value += movementString;
+        iField1.value = "";
     }
-    focus++;
+    focus = !focus;
 
     for (var i = 0; i < movementString.length; i++) {
         move(movementString.charAt(i));
     }
 
-    this.getField("input1").delay = false;
-    this.getField("output1").delay = false;
+    iField1.delay = false;
+    iField2.delay = false;
+    oField.delay = false;
 }
 
 function move(dir) {
     switch(dir) {
         case "s":
             if (!collidesOrHeight()) {
-                app.beep(0);
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][1]++;
                 }
@@ -363,7 +369,6 @@ function move(dir) {
             break;
         case " ":
             while (!collidesOrHeight()) {
-                app.beep(2);
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][1]++;
                 }
@@ -371,7 +376,6 @@ function move(dir) {
             break;
         case "a":
             if (!collidesOrLeft()) {
-                app.beep(0);
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][0]--;
                 }
@@ -379,19 +383,57 @@ function move(dir) {
             break;
         case "d":
             if (!collidesOrRight()) {
-                app.beep(0);
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][0]++;
                 }
             }
             break;
         case "q":
-            app.beep(1);
+            var newPositions = new Array();
+            for (var pice = 0; pice < stone.length; pice++) {
+                var res = rotate(stone[0][0], stone[0][1], stone[pice][0], stone[pice][1], 90.0);
+                if (collidesOrOOB(res[0], res[1]))
+                    return;
+                newPositions.push(res);
+            }
+            for (var pice = 0; pice < stone.length; pice++) {
+                stone[pice][0] = newPositions[pice][0];
+                stone[pice][1] = newPositions[pice][1];
+            }
             break;
         case "e":
-            app.beep(1);
+            var newPositions = new Array();
+            for (var pice = 0; pice < stone.length; pice++) {
+                var res = rotate(stone[0][0], stone[0][1], stone[pice][0], stone[pice][1], -90.0);
+                if (collidesOrOOB(res[0], res[1]))
+                    return;
+                newPositions.push(res);
+            }
+            for (var pice = 0; pice < stone.length; pice++) {
+                stone[pice][0] = newPositions[pice][0];
+                stone[pice][1] = newPositions[pice][1];
+            }
             break;
     }
+}
+
+function collidesOrOOB(x, y) {
+    if (complField[y][x] > 0) {
+         return true;
+    }
+    if (x < 0 || x >= fieldWidth || y < 0 || y >= fieldHeight) {
+        return true;
+    }
+}
+
+% https://stackoverflow.com/questions/17410809/how-to-calculate-rotation-in-2d-in-javascript
+function rotate(cx, cy, x, y, angle) {
+    var radians = (Math.PI / 180) * angle;
+    var cos = Math.cos(radians);
+    var sin = Math.sin(radians);
+    var nx = (cos * (x - cx)) + (sin * (y - cy)) + cx;
+    var ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+    return [Math.round(nx), Math.round(ny)];
 }
 
 \end{insDLJS}
