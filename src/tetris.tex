@@ -26,7 +26,7 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO needs to be atleast 4
-\def\fieldWidth{8}
+\def\fieldWidth{9}
 \def\fieldHeight{16}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -36,6 +36,7 @@
 \begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
 
 var fieldWidth = AFMakeNumber(\fieldWidth);
+var halfFieldWidth = Math.floor(fieldWidth / 2.0);
 var fieldHeight = AFMakeNumber(\fieldHeight);
 
 var complField = new Array();
@@ -46,47 +47,54 @@ var stone = new Array();
 var stoneColor = color.black;
 var shouldEmitStone = true;
 var stones = new Array(
+    % Bar
     new Array(
-        new Array(1, 0),
-        new Array(2, 0),
-        new Array(3, 0),
-        new Array(4, 0)
+        new Array(halfFieldWidth - 2, 0),
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth + 1, 0)
     ),
+    % Cube
     new Array(
-        new Array(1, 0),
-        new Array(1, 1),
-        new Array(2, 0),
-        new Array(2, 1)
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth - 1, 1),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth, 1)
     ),
+    % T
     new Array(
-        new Array(1, 0),
-        new Array(2, 0),
-        new Array(2, 1),
-        new Array(3, 0)
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth, 1),
+        new Array(halfFieldWidth + 1, 0)
     ),
+    % Z
     new Array(
-        new Array(1, 0),
-        new Array(2, 0),
-        new Array(2, 1),
-        new Array(3, 1)
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth, 1),
+        new Array(halfFieldWidth + 1, 1)
     ),
+    % L
     new Array(
-        new Array(1, 0),
-        new Array(2, 0),
-        new Array(3, 0),
-        new Array(3, 1)
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth + 1, 0),
+        new Array(halfFieldWidth + 1, 1)
     ),
+    % J
     new Array(
-        new Array(1, 1),
-        new Array(1, 0),
-        new Array(2, 0),
-        new Array(3, 0)
+        new Array(halfFieldWidth - 1, 1),
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth + 1, 0)
     ),
+    % S
     new Array(
-        new Array(1, 1),
-        new Array(2, 1),
-        new Array(2, 0),
-        new Array(3, 0)
+        new Array(halfFieldWidth - 1, 1),
+        new Array(halfFieldWidth, 1),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth + 1, 0)
     )
 );
 
