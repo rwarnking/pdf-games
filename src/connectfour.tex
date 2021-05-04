@@ -1,0 +1,305 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{8}
+\def\fieldHeight{8}
+% TODO make these selectable in the gui
+\def\playerCount{2}
+\def\winningPieces{4}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
+
+var fieldWidth = AFMakeNumber(\fieldWidth);
+var fieldHeight = AFMakeNumber(\fieldHeight);
+var playerCount = AFMakeNumber(\playerCount);
+var WINNING_PIECES = AFMakeNumber(\winningPieces);
+
+var complField = new Array();
+var activePlayer = 0;
+var gameover = false;
+
+var colors = new Array(
+    color.black,
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ],
+    [ "RGB", 0.560, 0.078, 0.533 ]
+);
+
+highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
+
+%%%%%%%%%%%%%%%%%%
+% Initialisation %
+%%%%%%%%%%%%%%%%%%
+function initialise() {
+    for (var row = 0; row < fieldHeight; row++) {
+        var tmp = new Array();
+        for (var column = 0; column < fieldWidth; column++) {
+            tmp.push(0);
+        }
+        complField.push(tmp);
+    }
+
+    this.getField("winner").fillColor = color.transparent;
+    this.getField("winner").borderColor = color.transparent;
+
+    initialiseButtons();
+
+    draw();
+}
+
+function initialiseButtons() {
+    % for (var x = 0; x < fieldWidth; x++) {
+    %     this.getField("col" + x).setAction("MouseUp", "addToColumn(x);");
+    %     this.getField("col" + x).highlight="invert";
+    % }
+
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    this.getField("col0").setAction("MouseUp", "addToColumn(0);");
+    this.getField("col0").borderColor = color.transparent;
+    this.getField("col0").highlight="none";
+    this.getField("col1").setAction("MouseUp", "addToColumn(1);");
+    this.getField("col1").borderColor = color.transparent;
+    this.getField("col1").highlight="none";
+    this.getField("col2").setAction("MouseUp", "addToColumn(2);");
+    this.getField("col2").borderColor = color.transparent;
+    this.getField("col2").highlight="none";
+    this.getField("col3").setAction("MouseUp", "addToColumn(3);");
+    this.getField("col3").borderColor = color.transparent;
+    this.getField("col3").highlight="none";
+    this.getField("col4").setAction("MouseUp", "addToColumn(4);");
+    this.getField("col4").borderColor = color.transparent;
+    this.getField("col4").highlight="none";
+    this.getField("col5").setAction("MouseUp", "addToColumn(5);");
+    this.getField("col5").borderColor = color.transparent;
+    this.getField("col5").highlight="none";
+    this.getField("col6").setAction("MouseUp", "addToColumn(6);");
+    this.getField("col6").borderColor = color.transparent;
+    this.getField("col6").highlight="none";
+    this.getField("col7").setAction("MouseUp", "addToColumn(7);");
+    this.getField("col7").borderColor = color.transparent;
+    this.getField("col7").highlight="none";
+}
+
+function restart() {
+    % Clear complField and redraw
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            field.borderColor = color.white;
+            field.fillColor = color.white;
+            field.delay = false;
+        }
+    }
+
+    activePlayer = 0;
+    gameover = false;
+    this.getField("winner").value = "";
+}
+
+function draw() {
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            var value = complField[y][x];
+            if (value > 0) {
+                field.fillColor = colors[value - 1];
+            } else {
+                field.fillColor = color.white;
+            }
+            field.delay = false;
+        }
+    }
+}
+
+function addToColumn(x) {
+    if (gameover) {
+        return;
+    }
+
+    var y = getYFromX(x);
+    complField[y][x] = activePlayer + 1;
+
+    checkGameover(x, y);
+
+    activePlayer++;
+    if (activePlayer >= playerCount) {
+        activePlayer -= playerCount;
+    }
+
+    draw();
+}
+
+function getYFromX(x) {
+    for (var y = 0; y < fieldHeight; y++) {
+        if (complField[y][x] != 0) {
+            return y - 1;
+        }
+    }
+    return fieldHeight - 1;
+}
+
+function checkGameover(x, y) {
+    var count = 0;
+    var maxCount = 0;
+    % Define directions
+    var directions = [
+        0, 1,
+        1, 1,
+        1, 0,
+        1, -1
+    ]
+    % Iterate directions
+    for (var dirIdx = 0; dirIdx < directions.length; dirIdx += 2) {
+        count = 0;
+        maxCount = 0;
+        % Count succeeding stones
+        for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
+            var nx = x + directions[dirIdx] * wp;
+            var ny = y + directions[dirIdx + 1] * wp;
+            if (nx < 0 || nx >= fieldWidth || ny < 0 || ny >= fieldHeight || complField[ny][nx] != activePlayer + 1) {
+                count = 0;
+            } else {
+                count++;
+                maxCount = count;
+            }
+        }
+        if (maxCount >= WINNING_PIECES) {
+            gameover = true;
+            colorWinner(x, y, dirIdx);
+            printWinner();
+        }
+    }
+}
+
+% TODO improve this
+function colorWinner(x, y, dirIdx) {
+    var directions = [
+        0, 1,
+        1, 1,
+        1, 0,
+        1, -1
+    ]
+    % Allows for highlighting all left and right stones
+    for (var mul = -1; mul < 2; mul += 2) {
+        for (var wp = 0; wp < WINNING_PIECES; wp++) {
+            var nx = x + directions[dirIdx] * wp * mul;
+            var ny = y + directions[dirIdx + 1] * wp * mul;
+            if (nx < 0 || nx >= fieldWidth || ny < 0 || ny >= fieldHeight || complField[ny][nx] != activePlayer + 1) {
+                wp = WINNING_PIECES;
+            } else {
+                var field = this.getField("pos" + nx + ny);
+                field.delay = true;
+                field.borderColor = highlightcolor;
+                field.delay = false;
+            }
+        }
+    }
+}
+
+function printWinner() {
+    this.getField("winner").value = "The winner is: Player " + (activePlayer + 1);
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \section*{Connectfour}
+
+    \FPeval{\result}{(\fieldWidth * 3 + 3)}
+    \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
+
+    \begin{Form}
+
+        \begin{tcolorbox}
+            \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
+                \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                    \xintifForLast{
+                        \PushButton[name=col#1, bordercolor=black]{
+                            \begin{tcolorbox}
+                                \centering
+                                Col#1
+                            \end{tcolorbox}
+                        }
+                    }
+                    {
+                        \PushButton[name=col#1, bordercolor=black]{
+                            \begin{tcolorbox}
+                                \centering
+                                Col#1
+                            \end{tcolorbox}
+                        } &
+                    }%
+                }%
+            \end{tabularx}%
+            %
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                    }\vspace{3pt}
+                    \newline
+                }
+            \end{flushright}
+        \end{tcolorbox}
+
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=winner, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+    \end{Form}
+
+\end{document}
