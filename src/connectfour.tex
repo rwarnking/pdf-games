@@ -27,6 +27,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \def\fieldWidth{8}
 \def\fieldHeight{8}
+% TODO make these selectable in the gui
 \def\playerCount{2}
 \def\winningPieces{4}
 
@@ -85,20 +86,28 @@ function initialiseButtons() {
     this.getField("restart").highlight="none";
 
     this.getField("col0").setAction("MouseUp", "addToColumn(0);");
+    this.getField("col0").borderColor = color.transparent;
     this.getField("col0").highlight="none";
     this.getField("col1").setAction("MouseUp", "addToColumn(1);");
+    this.getField("col1").borderColor = color.transparent;
     this.getField("col1").highlight="none";
     this.getField("col2").setAction("MouseUp", "addToColumn(2);");
+    this.getField("col2").borderColor = color.transparent;
     this.getField("col2").highlight="none";
     this.getField("col3").setAction("MouseUp", "addToColumn(3);");
+    this.getField("col3").borderColor = color.transparent;
     this.getField("col3").highlight="none";
     this.getField("col4").setAction("MouseUp", "addToColumn(4);");
+    this.getField("col4").borderColor = color.transparent;
     this.getField("col4").highlight="none";
     this.getField("col5").setAction("MouseUp", "addToColumn(5);");
+    this.getField("col5").borderColor = color.transparent;
     this.getField("col5").highlight="none";
     this.getField("col6").setAction("MouseUp", "addToColumn(6);");
+    this.getField("col6").borderColor = color.transparent;
     this.getField("col6").highlight="none";
     this.getField("col7").setAction("MouseUp", "addToColumn(7);");
+    this.getField("col7").borderColor = color.transparent;
     this.getField("col7").highlight="none";
 }
 
@@ -239,21 +248,42 @@ function printWinner() {
 
     \section*{Connectfour}
 
+    \FPeval{\result}{(\fieldWidth * 3 + 3)}
+    \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
+
     \begin{Form}
 
-        \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-            \PushButton[name=col#1, bordercolor=black]{Col#1}
-        }
-
         \begin{tcolorbox}
-            %\centering
-            \begin{flushright}
-            \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+            \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
                 \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \TextField[width=1cm, bordercolor=white, name=pos#1#2, readonly=true]{}%
-                }\vspace{3pt}
-                \newline
-            }
+                    \xintifForLast{
+                        \PushButton[name=col#1, bordercolor=black]{
+                            \begin{tcolorbox}
+                                \centering
+                                Col#1
+                            \end{tcolorbox}
+                        }
+                    }
+                    {
+                        \PushButton[name=col#1, bordercolor=black]{
+                            \begin{tcolorbox}
+                                \centering
+                                Col#1
+                            \end{tcolorbox}
+                        } &
+                    }%
+                }%
+            \end{tabularx}%
+            %
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                    }\vspace{3pt}
+                    \newline
+                }
             \end{flushright}
         \end{tcolorbox}
 
