@@ -16,9 +16,6 @@
 \usepackage{tabularx}
 \usepackage{tcolorbox}
 
-% Chess symbols
-\usepackage{skak}
-
 \setlength{\parindent}{0pt}
 
 % Einbindung von Javascript ins PDF
@@ -70,6 +67,9 @@ function initialise() {
         complField.push(tmp);
     }
 
+    this.getField("winner").fillColor = color.transparent;
+    this.getField("winner").borderColor = color.transparent;
+
     initialiseButtons();
 
     draw();
@@ -81,22 +81,45 @@ function initialiseButtons() {
     %     this.getField("col" + x).highlight="invert";
     % }
 
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
     this.getField("col0").setAction("MouseUp", "addToColumn(0);");
-    this.getField("col0").highlight="invert";
+    this.getField("col0").highlight="none";
     this.getField("col1").setAction("MouseUp", "addToColumn(1);");
-    this.getField("col1").highlight="invert";
+    this.getField("col1").highlight="none";
     this.getField("col2").setAction("MouseUp", "addToColumn(2);");
-    this.getField("col2").highlight="invert";
+    this.getField("col2").highlight="none";
     this.getField("col3").setAction("MouseUp", "addToColumn(3);");
-    this.getField("col3").highlight="invert";
+    this.getField("col3").highlight="none";
     this.getField("col4").setAction("MouseUp", "addToColumn(4);");
-    this.getField("col4").highlight="invert";
+    this.getField("col4").highlight="none";
     this.getField("col5").setAction("MouseUp", "addToColumn(5);");
-    this.getField("col5").highlight="invert";
+    this.getField("col5").highlight="none";
     this.getField("col6").setAction("MouseUp", "addToColumn(6);");
-    this.getField("col6").highlight="invert";
+    this.getField("col6").highlight="none";
     this.getField("col7").setAction("MouseUp", "addToColumn(7);");
-    this.getField("col7").highlight="invert";
+    this.getField("col7").highlight="none";
+}
+
+function restart() {
+    % Clear complField and redraw
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            field.borderColor = color.white;
+            field.fillColor = color.white;
+            field.delay = false;
+        }
+    }
+
+    activePlayer = 0;
+    gameover = false;
+    this.getField("winner").value = "";
 }
 
 function draw() {
@@ -117,8 +140,9 @@ function draw() {
 }
 
 function addToColumn(x) {
-    if (gameover)
+    if (gameover) {
         return;
+    }
 
     var y = getYFromX(x);
     complField[y][x] = activePlayer + 1;
@@ -170,6 +194,7 @@ function checkGameover(x, y) {
         if (maxCount >= WINNING_PIECES) {
             gameover = true;
             colorWinner(x, y, dirIdx);
+            printWinner();
         }
     }
 }
@@ -199,6 +224,10 @@ function colorWinner(x, y, dirIdx) {
     }
 }
 
+function printWinner() {
+    this.getField("winner").value = "The winner is: Player " + (activePlayer + 1);
+}
+
 \end{insDLJS}
 
 \OpenAction{/S /JavaScript /JS (initialise();)}
@@ -207,6 +236,8 @@ function colorWinner(x, y, dirIdx) {
 % Dokument
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
+
+    \section*{Connectfour}
 
     \begin{Form}
 
@@ -226,6 +257,19 @@ function colorWinner(x, y, dirIdx) {
             \end{flushright}
         \end{tcolorbox}
 
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=winner, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
     \end{Form}
 
 \end{document}
