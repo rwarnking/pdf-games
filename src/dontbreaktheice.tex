@@ -1,0 +1,330 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{8}
+\def\fieldHeight{8}
+% TODO make these selectable in the gui
+\def\playerCount{2}
+\def\winningPieces{4}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
+
+var fieldWidth = AFMakeNumber(\fieldWidth);
+var fieldHeight = AFMakeNumber(\fieldHeight);
+
+var run;
+var complField = new Array();
+var freePath = new Array();
+var gameover = false;
+var drawPiece = 0;
+var play = false;
+
+var colors = new Array(
+    color.black,
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ],
+    [ "RGB", 0.560, 0.078, 0.533 ]
+);
+
+highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
+
+%%%%%%%%%%%%%%%%%%
+% Initialisation %
+%%%%%%%%%%%%%%%%%%
+function initialise() {
+    for (var row = 0; row < fieldHeight; row++) {
+        var tmp = new Array();
+        for (var column = 0; column < fieldWidth; column++) {
+            tmp.push(0);
+        }
+        complField.push(tmp);
+    }
+
+    this.getField("winner").fillColor = color.transparent;
+    this.getField("winner").borderColor = color.transparent;
+
+    initialiseButtons();
+
+    createPath();
+}
+
+function initialiseButtons() {
+    % for (var x = 0; x < fieldWidth; x++) {
+    %     this.getField("col" + x).setAction("MouseUp", "addToColumn(x);");
+    %     this.getField("col" + x).highlight="invert";
+    % }
+
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    var funcName = "colorField";
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
+            this.getField("pos" + x + y).setAction("MouseDown", callbackName);
+        }
+    }
+    % var x = 0;
+    % var y = 0;
+    % var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
+    % this.getField("pos00").setAction("MouseDown", callbackName);
+    % this.getField("pos01").setAction("MouseDown", "colorField(0, 1);");
+    % this.getField("pos02").setAction("MouseDown", "colorField(0, 2);");
+    % this.getField("pos10").setAction("MouseDown", "colorField(1, 0);");
+    % this.getField("pos11").setAction("MouseDown", "colorField(1, 1);");
+    % this.getField("pos12").setAction("MouseDown", "colorField(1, 2);");
+}
+
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+function createPath() {
+    freePath = new Array();
+    var randomPoints = new Array();
+    var pointCount = 3;
+    for (var i = 0; i < pointCount; i++) {
+        var x = getRandomInt(fieldWidth);
+        var y = getRandomInt(fieldHeight - 2) + 1;
+        randomPoints.push([x, y]);
+    }
+
+    var startX = getRandomInt(fieldWidth);
+    freePath.push([startX, 0]);
+
+    % TODO algorithm to connect the points
+    % for (var i = 0; i < 1; i++) {
+    %     var elem = freePath[freePath.length - 1];
+
+    %     var dist = Math.abs(elem[0] - randomPoints[0][0]) +
+    %         Math.abs(elem[1] - randomPoints[0][1]);
+    %     var nearest = 0;
+
+    %     for (var idx = 1; idx < pointCount; idx++) {
+    %         var newDist = Math.abs(elem[0] - randomPoints[idx][0]) +
+    %             Math.abs(elem[1] - randomPoints[idx][1]);
+    %         if (newDist < dist) {
+    %             nearest = idx;
+    %         }
+    %     }
+
+    %     % Generate path from last to nearest
+    %     for (var y = 0; y < Math.abs(elem[1] - randomPoints[nearest][1]); y++) {
+    %         freePath.push([elem[0], elem[1] + y]);
+    %     }
+    %     for (var x = 0; x < Math.abs(elem[0] - randomPoints[nearest][0]); x++) {
+    %         freePath.push([elem[0] + x, randomPoints[nearest][1]]);
+    %     }
+    % }
+
+    for (var idx = 1; idx < pointCount; idx++) {
+        freePath.push([randomPoints[idx][0], randomPoints[idx][1]]);
+    }
+
+    for (var y = 1; y < fieldHeight; y++) {
+        freePath.push([startX, y]);
+    }
+
+    % for (var idx = 0; idx < freePath.length; idx++) {
+    %     complField[freePath[idx][1]][freePath[idx][0]] = 0;
+    % }
+    draw();
+
+    run = app.setInterval("drawPath()", 300);
+    %run.count = 0;
+    %var timeout = app.setTimeOut( "app.clearInterval(run);", freePath.length * 300);
+}
+
+function drawPath() {
+    if (drawPiece >= freePath.length) {
+        drawPiece = 0;
+        for (var idx = 0; idx < freePath.length; idx++) {
+            complField[freePath[idx][1]][freePath[idx][0]] = 0;
+        }
+        draw();
+        play = true;
+        app.clearInterval(run);
+    } else {
+        complField[freePath[drawPiece][1]][freePath[drawPiece][0]] = 1;
+        draw();
+
+        drawPiece++;
+    }
+}
+
+function restart() {
+    % Clear complField and redraw
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            field.borderColor = color.white;
+            field.fillColor = color.white;
+            field.delay = false;
+        }
+    }
+
+    gameover = false;
+    play = false;
+    this.getField("winner").value = "";
+    createPath();
+}
+
+function draw() {
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            var value = complField[y][x];
+            if (value > 0) {
+                field.fillColor = colors[1];
+            } else if (value < 0) {
+                field.fillColor = colors[0];
+            } else {
+                field.fillColor = color.white;
+            }
+            field.delay = false;
+        }
+    }
+}
+
+function colorField(x, y) {
+    if (gameover || !play) {
+        return;
+    }
+    var hit = false;
+    for (var idx = 0; idx < freePath.length; idx++) {
+        if (freePath[idx][0] == x && freePath[idx][1] == y) {
+            complField[y][x] = 1;
+            hit = true;
+            if (idx == freePath.length - 1) {
+                gameover = true;
+                printWinner(true);
+            }
+        }
+    }
+
+    if (!hit) {
+        gameover = true;
+        for (var idx = 0; idx < freePath.length; idx++) {
+            complField[freePath[idx][1]][freePath[idx][0]] = 1;
+        }
+        complField[y][x] = -1;
+        printWinner(false);
+    }
+
+    draw();
+}
+
+function printWinner(won) {
+    if (won) {
+        this.getField("winner").value = "Congratulations you found a way across!";
+    } else {
+        this.getField("winner").value = "Sadly you died!";
+    }
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \section*{Don't break the ice}
+
+    \FPeval{\result}{(\fieldWidth * 3 + 3)}
+    \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
+
+    \begin{Form}
+
+        \begin{tcolorbox}
+            % \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
+            %     \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+            %         \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            %             \xintifForLast{
+            %                 \PushButton[name=col#1#2, bordercolor=black]{
+            %                     \begin{tcolorbox}
+            %                         \centering
+            %                         Col#1
+            %                     \end{tcolorbox}
+            %                 }
+            %             }
+            %             {
+            %                 \PushButton[name=col#1#2, bordercolor=black]{
+            %                     \begin{tcolorbox}
+            %                         \centering
+            %                         \TextField[%
+            %                 width=\blocksize, height=\blocksize,%
+            %                 bordercolor=white, name=pos#1#2, readonly=true]{}%
+            %                     \strut
+            %                     \end{tcolorbox}
+            %                 } &
+            %             }%
+            %         }\\%
+            %     }%
+            % \end{tabularx}%
+            %
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                    }\vspace{3pt}
+                    \newline
+                }
+            \end{flushright}
+        \end{tcolorbox}
+
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=winner, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+    \end{Form}
+
+\end{document}
