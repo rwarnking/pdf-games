@@ -43,9 +43,14 @@ var fieldHeight = AFMakeNumber(\fieldHeight);
 var run;
 var complField = new Array();
 var freePath = new Array();
+% Lock if the game has ended
 var gameover = false;
+% Indicater which piece was last animated
 var drawPiece = 0;
+% Needed for so one cant play before the animation is finished
 var play = false;
+% Which field was found last
+var currentField = -1;
 
 var colors = new Array(
     color.black,
@@ -78,11 +83,6 @@ function initialise() {
 }
 
 function initialiseButtons() {
-    % for (var x = 0; x < fieldWidth; x++) {
-    %     this.getField("col" + x).setAction("MouseUp", "addToColumn(x);");
-    %     this.getField("col" + x).highlight="invert";
-    % }
-
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="none";
 
@@ -93,15 +93,6 @@ function initialiseButtons() {
             this.getField("pos" + x + y).setAction("MouseDown", callbackName);
         }
     }
-    % var x = 0;
-    % var y = 0;
-    % var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-    % this.getField("pos00").setAction("MouseDown", callbackName);
-    % this.getField("pos01").setAction("MouseDown", "colorField(0, 1);");
-    % this.getField("pos02").setAction("MouseDown", "colorField(0, 2);");
-    % this.getField("pos10").setAction("MouseDown", "colorField(1, 0);");
-    % this.getField("pos11").setAction("MouseDown", "colorField(1, 1);");
-    % this.getField("pos12").setAction("MouseDown", "colorField(1, 2);");
 }
 
 function getRandomInt(max) {
@@ -119,7 +110,7 @@ function createPath() {
     }
 
     var startX = getRandomInt(fieldWidth);
-    freePath.push([startX, 0]);
+    freePath.push([startX, fieldHeight - 1]);
 
     % TODO algorithm to connect the points
     % for (var i = 0; i < 1; i++) {
@@ -146,25 +137,27 @@ function createPath() {
     %     }
     % }
 
-    for (var idx = 1; idx < pointCount; idx++) {
-        freePath.push([randomPoints[idx][0], randomPoints[idx][1]]);
-    }
+    % for (var idx = 1; idx < pointCount; idx++) {
+    %     freePath.push([randomPoints[idx][0], randomPoints[idx][1]]);
+    % }
 
-    for (var y = 1; y < fieldHeight; y++) {
+    for (var y = fieldHeight - 2; y >= 0; y--) {
         freePath.push([startX, y]);
     }
+
+    currentField = -1;
 
     % for (var idx = 0; idx < freePath.length; idx++) {
     %     complField[freePath[idx][1]][freePath[idx][0]] = 0;
     % }
     draw();
 
+    % Animation interval
     run = app.setInterval("drawPath()", 300);
-    %run.count = 0;
-    %var timeout = app.setTimeOut( "app.clearInterval(run);", freePath.length * 300);
 }
 
 function drawPath() {
+    % Test if animation has finished then reset
     if (drawPiece >= freePath.length) {
         drawPiece = 0;
         for (var idx = 0; idx < freePath.length; idx++) {
@@ -174,6 +167,7 @@ function drawPath() {
         play = true;
         app.clearInterval(run);
     } else {
+        % Redraw and continue
         complField[freePath[drawPiece][1]][freePath[drawPiece][0]] = 1;
         draw();
 
@@ -182,6 +176,11 @@ function drawPath() {
 }
 
 function restart() {
+    % Prevent multiple restart processes at the same time
+    if (!play) {
+         return;
+    }
+
     % Clear complField and redraw
     var field;
     for (var x = 0; x < fieldWidth; x++) {
@@ -202,41 +201,39 @@ function restart() {
     createPath();
 }
 
-function draw() {
-    var field;
-    for (var x = 0; x < fieldWidth; x++) {
-        for (var y = 0; y < fieldHeight; y++) {
-            field = this.getField("pos" + x + y);
-            field.delay = true;
-            var value = complField[y][x];
-            if (value > 0) {
-                field.fillColor = colors[1];
-            } else if (value < 0) {
-                field.fillColor = colors[0];
-            } else {
-                field.fillColor = color.white;
-            }
-            field.delay = false;
-        }
-    }
-}
-
+% Color one field
 function colorField(x, y) {
     if (gameover || !play) {
         return;
     }
-    var hit = false;
-    for (var idx = 0; idx < freePath.length; idx++) {
-        if (freePath[idx][0] == x && freePath[idx][1] == y) {
-            complField[y][x] = 1;
-            hit = true;
-            if (idx == freePath.length - 1) {
-                gameover = true;
-                printWinner(true);
-            }
+
+    % Is field a neighbour of the current or first line
+    if (currentField == -1) {
+        if (y != fieldHeight -1) {
+            return;
+        }
+    } else {
+        var diffX = Math.abs(freePath[currentField][0] - x);
+        var diffY = Math.abs(freePath[currentField][1] - y);
+        if (diffX + diffY > 1) {
+            return;
         }
     }
 
+    % Test if the selected field is on the path
+    var hit = false;
+    if (freePath[currentField + 1][0] == x && freePath[currentField + 1][1] == y) {
+        complField[y][x] = 1;
+        hit = true;
+        currentField++;
+        if (currentField == freePath.length - 1) {
+            gameover = true;
+            printWinner(true);
+        }
+    }
+
+    % If nothing was hit the game is over
+    % Mark the miss accordingly
     if (!hit) {
         gameover = true;
         for (var idx = 0; idx < freePath.length; idx++) {
@@ -247,6 +244,52 @@ function colorField(x, y) {
     }
 
     draw();
+}
+
+function draw() {
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            var value = complField[y][x];
+            if (value > 0) {
+                field.fillColor = colors[1];
+                field.borderColor = colors[1];
+            } else if (value < 0) {
+                field.fillColor = colors[0];
+                field.borderColor = colors[0];
+            } else {
+                field.fillColor = color.white;
+                field.borderColor = color.white;
+            }
+            field.delay = false;
+        }
+    }
+
+    % Mark the neighbouring fields that are accessible
+    if (currentField > -1) {
+        var x = freePath[currentField][0];
+        var y = freePath[currentField][1];
+
+        % Define the neighbourhood
+        var directions = [[-1, 0], [1, 0], [0, 1], [0, -1]]
+
+        for (var idx = 0; idx < directions.length; idx++) {
+            var newX = x + directions[idx][0];
+            var newY = y + directions[idx][1];
+
+            % Check for out of bounds
+            if (newX < 0 || newX >= fieldWidth || newY < 0 || newY >= fieldHeight) {
+                continue;
+            }
+
+            field = this.getField("pos" + newX + newY);
+            field.delay = true;
+            field.borderColor = colors[2];
+            field.delay = false;
+        }
+    }
 }
 
 function printWinner(won) {
@@ -274,32 +317,6 @@ function printWinner(won) {
     \begin{Form}
 
         \begin{tcolorbox}
-            % \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
-            %     \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-            %         \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-            %             \xintifForLast{
-            %                 \PushButton[name=col#1#2, bordercolor=black]{
-            %                     \begin{tcolorbox}
-            %                         \centering
-            %                         Col#1
-            %                     \end{tcolorbox}
-            %                 }
-            %             }
-            %             {
-            %                 \PushButton[name=col#1#2, bordercolor=black]{
-            %                     \begin{tcolorbox}
-            %                         \centering
-            %                         \TextField[%
-            %                 width=\blocksize, height=\blocksize,%
-            %                 bordercolor=white, name=pos#1#2, readonly=true]{}%
-            %                     \strut
-            %                     \end{tcolorbox}
-            %                 } &
-            %             }%
-            %         }\\%
-            %     }%
-            % \end{tabularx}%
-            %
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
@@ -310,6 +327,9 @@ function printWinner(won) {
                     \newline
                 }
             \end{flushright}
+
+            \centering
+            \includegraphics[width=0.25\textwidth]{images/start}
         \end{tcolorbox}
 
         \begin{center}%
@@ -326,5 +346,4 @@ function printWinner(won) {
             \end{tabularx}
         \end{center}
     \end{Form}
-
 \end{document}
