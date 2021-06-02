@@ -62,9 +62,16 @@ var colors = new Array(
 
 highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
 
-%%%%%%%%%%%%%%%%%%
-% Initialisation %
-%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function initialise() {
     for (var row = 0; row < fieldHeight; row++) {
         var tmp = new Array();
@@ -95,86 +102,6 @@ function initialiseButtons() {
     }
 }
 
-function getRandomInt(max) {
-    return Math.floor(Math.random() * max);
-}
-
-function createPath() {
-    freePath = new Array();
-    var randomPoints = new Array();
-    var pointCount = 3;
-    for (var i = 0; i < pointCount; i++) {
-        var x = getRandomInt(fieldWidth);
-        var y = getRandomInt(fieldHeight - 2) + 1;
-        randomPoints.push([x, y]);
-    }
-
-    var startX = getRandomInt(fieldWidth);
-    freePath.push([startX, fieldHeight - 1]);
-
-    % TODO algorithm to connect the points
-    % for (var i = 0; i < 1; i++) {
-    %     var elem = freePath[freePath.length - 1];
-
-    %     var dist = Math.abs(elem[0] - randomPoints[0][0]) +
-    %         Math.abs(elem[1] - randomPoints[0][1]);
-    %     var nearest = 0;
-
-    %     for (var idx = 1; idx < pointCount; idx++) {
-    %         var newDist = Math.abs(elem[0] - randomPoints[idx][0]) +
-    %             Math.abs(elem[1] - randomPoints[idx][1]);
-    %         if (newDist < dist) {
-    %             nearest = idx;
-    %         }
-    %     }
-
-    %     % Generate path from last to nearest
-    %     for (var y = 0; y < Math.abs(elem[1] - randomPoints[nearest][1]); y++) {
-    %         freePath.push([elem[0], elem[1] + y]);
-    %     }
-    %     for (var x = 0; x < Math.abs(elem[0] - randomPoints[nearest][0]); x++) {
-    %         freePath.push([elem[0] + x, randomPoints[nearest][1]]);
-    %     }
-    % }
-
-    % for (var idx = 1; idx < pointCount; idx++) {
-    %     freePath.push([randomPoints[idx][0], randomPoints[idx][1]]);
-    % }
-
-    for (var y = fieldHeight - 2; y >= 0; y--) {
-        freePath.push([startX, y]);
-    }
-
-    currentField = -1;
-
-    % for (var idx = 0; idx < freePath.length; idx++) {
-    %     complField[freePath[idx][1]][freePath[idx][0]] = 0;
-    % }
-    draw();
-
-    % Animation interval
-    run = app.setInterval("drawPath()", 300);
-}
-
-function drawPath() {
-    % Test if animation has finished then reset
-    if (drawPiece >= freePath.length) {
-        drawPiece = 0;
-        for (var idx = 0; idx < freePath.length; idx++) {
-            complField[freePath[idx][1]][freePath[idx][0]] = 0;
-        }
-        draw();
-        play = true;
-        app.clearInterval(run);
-    } else {
-        % Redraw and continue
-        complField[freePath[drawPiece][1]][freePath[drawPiece][0]] = 1;
-        draw();
-
-        drawPiece++;
-    }
-}
-
 function restart() {
     % Prevent multiple restart processes at the same time
     if (!play) {
@@ -195,10 +122,188 @@ function restart() {
         }
     }
 
+    % Reset field for other use
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+        }
+    }
+
     gameover = false;
     play = false;
     this.getField("winner").value = "";
     createPath();
+}
+
+%%%%%%%%%%%%%%%%%%%
+% Path generation %
+%%%%%%%%%%%%%%%%%%%
+function createPath() {
+    freePath = new Array();
+
+    var startX = getRandomInt(fieldWidth);
+    var endX = getRandomInt(fieldWidth);
+
+    for (var ix = 0; ix < fieldWidth; ix++) {
+        complField[0][ix] = -1;
+        complField[fieldHeight - 1][ix] = -1;
+    }
+
+    % Create a list of all potential fields
+    var fieldList = [];
+    for (var i = 0; i < fieldWidth; i++) {
+        for (var j = 1; j < fieldHeight - 1; j++) {
+            fieldList.push([i, j]);
+        }
+    }
+    fieldList.push([startX, fieldHeight - 1]);
+
+    % Loop as long as there are entrys in the list
+    while (fieldList.length !== 0) {
+        % Get one random entry
+        var rnd = getRandomInt(fieldList.length);
+        var elem = fieldList[rnd];
+
+        % Remove and mark the field
+        fieldList.splice(rnd, 1);
+        complField[elem[1]][elem[0]] = -1;
+        if (!doesPathExist([startX, fieldHeight - 1], [endX, 0], complField)) {
+            complField[elem[1]][elem[0]] = 0;
+        }
+    }
+
+    freePath = getPath([startX, fieldHeight - 1], [endX, 0], complField);
+
+    % Reset field for other use
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+        }
+    }
+
+    currentField = -1;
+    draw();
+
+    % Animation interval
+    run = app.setInterval("drawPath()", 300);
+}
+
+function getPath(start, end, field) {
+    var pathList = [start];
+    while (pathList[pathList.length - 1][0] !== end[0] || pathList[pathList.length - 1][1] !== end[1]) {
+        var elem = pathList[pathList.length - 1];
+    	field[elem[1]][elem[0]] = -2;
+
+        % Push next piece
+        var xpo = elem[0] + 1;
+        var xmo = elem[0] - 1;
+        var ypo = elem[1] + 1;
+        var ymo = elem[1] - 1;
+
+        var added = false;
+       	if (ypo < fieldHeight && field[ypo][elem[0]] == 1) {
+        	pathList.push([elem[0], ypo]);
+        	added = true;
+        }
+        if (ymo >= 0 && field[ymo][elem[0]] == 1) {
+        	pathList.push([elem[0], ymo]);
+        	added = true;
+        }
+        if (xpo < fieldWidth && field[elem[1]][xpo] == 1) {
+        	pathList.push([xpo, elem[1]]);
+        	added = true;
+        }
+        if (xmo >= 0 && field[elem[1]][xmo] == 1) {
+        	pathList.push([xmo, elem[1]]);
+        	added = true;
+        }
+
+        if (!added) {
+            % Dead end reached, no path can be found!
+            break;
+        }
+    }
+    return pathList;
+}
+
+function doesPathExist(start, end, field) {
+	% Cleanup: Ensure that there is no leftover data
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            if (field[y][x] > 0) {
+                field[y][x] = 0;
+            }
+        }
+    }
+
+    % Starting from the goal mark all fields to indicate
+    % whether they can reach it
+    var toMarkList = [end];
+    field[end[1]][end[0]] = 1;
+    field[start[1]][start[0]] = 0;
+
+    var i = 100;
+
+    while (toMarkList.length !== 0) {
+  	    var elem = toMarkList.pop();
+
+        % Push neighbours if not marked
+        var xpo = elem[0] + 1;
+        var xmo = elem[0] - 1;
+        var ypo = elem[1] + 1;
+        var ymo = elem[1] - 1;
+
+       	if (ypo < fieldHeight && field[ypo][elem[0]] == 0) {
+        	toMarkList.push([elem[0], ypo]);
+            % Mark the field
+            field[ypo][elem[0]] = 1;
+        }
+        if (ymo >= 0 && field[ymo][elem[0]] == 0) {
+        	toMarkList.push([elem[0], ymo]);
+            % Mark the field
+            field[ymo][elem[0]] = 1;
+        }
+        if (xpo < fieldWidth && field[elem[1]][xpo] == 0) {
+        	toMarkList.push([xpo, elem[1]]);
+            % Mark the field
+            field[elem[1]][xpo] = 1;
+        }
+        if (xmo >= 0 && field[elem[1]][xmo] == 0) {
+        	toMarkList.push([xmo, elem[1]]);
+            % Mark the field
+            field[elem[1]][xmo] = 1;
+        }
+
+        % TODO remove
+        if (i-- < 0) {
+            break;
+        }
+    }
+
+	% Check the start field if it is marked as reachable
+    return field[start[1]][start[0]] == 1;
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+function drawPath() {
+    % Test if animation has finished then reset
+    if (drawPiece >= freePath.length) {
+        drawPiece = 0;
+        for (var idx = 0; idx < freePath.length; idx++) {
+            complField[freePath[idx][1]][freePath[idx][0]] = 0;
+        }
+        draw();
+        play = true;
+        app.clearInterval(run);
+    } else {
+        % Redraw and continue
+        complField[freePath[drawPiece][1]][freePath[drawPiece][0]] = 1;
+        draw();
+
+        drawPiece++;
+    }
 }
 
 % Color one field
