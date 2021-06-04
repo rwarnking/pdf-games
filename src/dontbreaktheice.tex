@@ -25,17 +25,14 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{8}
-\def\fieldHeight{8}
-% TODO make these selectable in the gui
-\def\playerCount{2}
-\def\winningPieces{4}
+\def\fieldWidth{10}
+\def\fieldHeight{12}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
-\begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
+\begin{insDLJS}[]{JSDateiname}{DBTI}
 
 var fieldWidth = AFMakeNumber(\fieldWidth);
 var fieldHeight = AFMakeNumber(\fieldHeight);
@@ -244,8 +241,6 @@ function doesPathExist(start, end, field) {
     field[end[1]][end[0]] = 1;
     field[start[1]][start[0]] = 0;
 
-    var i = 100;
-
     while (toMarkList.length !== 0) {
   	    var elem = toMarkList.pop();
 
@@ -274,11 +269,6 @@ function doesPathExist(start, end, field) {
         	toMarkList.push([xmo, elem[1]]);
             % Mark the field
             field[elem[1]][xmo] = 1;
-        }
-
-        % TODO remove
-        if (i-- < 0) {
-            break;
         }
     }
 
@@ -418,12 +408,26 @@ function printWinner(won) {
 
     \section*{Don't break the ice}
 
-    \FPeval{\result}{(\fieldWidth * 3 + 3)}
-    \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
+    % Calculate the max width and height of a block
+    \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+    \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+    \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+    \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+    % Define the blocksize via the smaller amount
+    \ifnum\blocksizeW<\blocksizeH
+        \def\blocksize{\blocksizeW}
+    \else
+        \def\blocksize{\blocksizeH}
+    \fi
 
     \begin{Form}
 
         \begin{tcolorbox}
+            \centering%
+            \includegraphics[width=0.25\textwidth]{images/end}
+            %
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
@@ -431,11 +435,11 @@ function printWinner(won) {
                             width=\blocksize, height=\blocksize,%
                             bordercolor=white, name=pos#1#2, readonly=true]{}%
                     }\vspace{3pt}
-                    \newline
-                }
-            \end{flushright}
-
-            \centering
+                    \newline%
+                }%
+            \end{flushright}%
+            %
+            \centering%
             \includegraphics[width=0.25\textwidth]{images/start}
         \end{tcolorbox}
 
