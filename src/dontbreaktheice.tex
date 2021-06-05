@@ -1,0 +1,460 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{10}
+\def\fieldHeight{12}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{DBTI}
+
+var fieldWidth = AFMakeNumber(\fieldWidth);
+var fieldHeight = AFMakeNumber(\fieldHeight);
+
+var run;
+var complField = new Array();
+var freePath = new Array();
+% Lock if the game has ended
+var gameover = false;
+% Indicater which piece was last animated
+var drawPiece = 0;
+% Needed for so one cant play before the animation is finished
+var play = false;
+% Which field was found last
+var currentField = -1;
+
+var colors = new Array(
+    color.black,
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ],
+    [ "RGB", 0.560, 0.078, 0.533 ]
+);
+
+highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function initialise() {
+    for (var row = 0; row < fieldHeight; row++) {
+        var tmp = new Array();
+        for (var column = 0; column < fieldWidth; column++) {
+            tmp.push(0);
+        }
+        complField.push(tmp);
+    }
+
+    this.getField("winner").fillColor = color.transparent;
+    this.getField("winner").borderColor = color.transparent;
+
+    initialiseButtons();
+
+    createPath();
+}
+
+function initialiseButtons() {
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    var funcName = "colorField";
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
+            this.getField("pos" + x + y).setAction("MouseDown", callbackName);
+        }
+    }
+}
+
+function restart() {
+    % Prevent multiple restart processes at the same time
+    if (!play) {
+         return;
+    }
+
+    % Clear complField and redraw
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            field.borderColor = color.white;
+            field.fillColor = color.white;
+            field.delay = false;
+        }
+    }
+
+    % Reset field for other use
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+        }
+    }
+
+    gameover = false;
+    play = false;
+    this.getField("winner").value = "";
+    createPath();
+}
+
+%%%%%%%%%%%%%%%%%%%
+% Path generation %
+%%%%%%%%%%%%%%%%%%%
+function createPath() {
+    freePath = new Array();
+
+    var startX = getRandomInt(fieldWidth);
+    var endX = getRandomInt(fieldWidth);
+
+    for (var ix = 0; ix < fieldWidth; ix++) {
+        complField[0][ix] = -1;
+        complField[fieldHeight - 1][ix] = -1;
+    }
+
+    % Create a list of all potential fields
+    var fieldList = [];
+    for (var i = 0; i < fieldWidth; i++) {
+        for (var j = 1; j < fieldHeight - 1; j++) {
+            fieldList.push([i, j]);
+        }
+    }
+    fieldList.push([startX, fieldHeight - 1]);
+
+    % Loop as long as there are entrys in the list
+    while (fieldList.length !== 0) {
+        % Get one random entry
+        % Exclude the last entry since the algorithm does not
+        % work otherwise, not sure why
+        var rnd = getRandomInt(fieldList.length - 1);
+        var elem = fieldList[rnd];
+
+        % Remove and mark the field
+        fieldList.splice(rnd, 1);
+        complField[elem[1]][elem[0]] = -1;
+        if (!doesPathExist([startX, fieldHeight - 1], [endX, 0], complField)) {
+            complField[elem[1]][elem[0]] = 0;
+        }
+    }
+
+    freePath = getPath([startX, fieldHeight - 1], [endX, 0], complField);
+
+    % Reset field for other use
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+        }
+    }
+
+    currentField = -1;
+    draw();
+
+    % Animation interval
+    run = app.setInterval("drawPath()", 300);
+}
+
+function getPath(start, end, field) {
+    var pathList = [start];
+    while (pathList[pathList.length - 1][0] !== end[0] || pathList[pathList.length - 1][1] !== end[1]) {
+        var elem = pathList[pathList.length - 1];
+    	field[elem[1]][elem[0]] = -2;
+
+        % Push next piece
+        var xpo = elem[0] + 1;
+        var xmo = elem[0] - 1;
+        var ypo = elem[1] + 1;
+        var ymo = elem[1] - 1;
+
+        var added = false;
+       	if (ypo < fieldHeight && field[ypo][elem[0]] == 1) {
+        	pathList.push([elem[0], ypo]);
+        	added = true;
+        }
+        if (ymo >= 0 && field[ymo][elem[0]] == 1) {
+        	pathList.push([elem[0], ymo]);
+        	added = true;
+        }
+        if (xpo < fieldWidth && field[elem[1]][xpo] == 1) {
+        	pathList.push([xpo, elem[1]]);
+        	added = true;
+        }
+        if (xmo >= 0 && field[elem[1]][xmo] == 1) {
+        	pathList.push([xmo, elem[1]]);
+        	added = true;
+        }
+
+        if (!added) {
+            % Dead end reached, no path can be found!
+            break;
+        }
+    }
+    return pathList;
+}
+
+function doesPathExist(start, end, field) {
+	% Cleanup: Ensure that there is no leftover data
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            if (field[y][x] > 0) {
+                field[y][x] = 0;
+            }
+        }
+    }
+
+    % Starting from the goal mark all fields to indicate
+    % whether they can reach it
+    var toMarkList = [end];
+    field[end[1]][end[0]] = 1;
+    field[start[1]][start[0]] = 0;
+
+    while (toMarkList.length !== 0) {
+  	    var elem = toMarkList.pop();
+
+        % Push neighbours if not marked
+        var xpo = elem[0] + 1;
+        var xmo = elem[0] - 1;
+        var ypo = elem[1] + 1;
+        var ymo = elem[1] - 1;
+
+       	if (ypo < fieldHeight && field[ypo][elem[0]] == 0) {
+        	toMarkList.push([elem[0], ypo]);
+            % Mark the field
+            field[ypo][elem[0]] = 1;
+        }
+        if (ymo >= 0 && field[ymo][elem[0]] == 0) {
+        	toMarkList.push([elem[0], ymo]);
+            % Mark the field
+            field[ymo][elem[0]] = 1;
+        }
+        if (xpo < fieldWidth && field[elem[1]][xpo] == 0) {
+        	toMarkList.push([xpo, elem[1]]);
+            % Mark the field
+            field[elem[1]][xpo] = 1;
+        }
+        if (xmo >= 0 && field[elem[1]][xmo] == 0) {
+        	toMarkList.push([xmo, elem[1]]);
+            % Mark the field
+            field[elem[1]][xmo] = 1;
+        }
+    }
+
+	% Check the start field if it is marked as reachable
+    return field[start[1]][start[0]] == 1;
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+function drawPath() {
+    % Test if animation has finished then reset
+    if (drawPiece >= freePath.length) {
+        drawPiece = 0;
+        for (var idx = 0; idx < freePath.length; idx++) {
+            complField[freePath[idx][1]][freePath[idx][0]] = 0;
+        }
+        draw();
+        play = true;
+        app.clearInterval(run);
+    } else {
+        % Redraw and continue
+        complField[freePath[drawPiece][1]][freePath[drawPiece][0]] = 1;
+        draw();
+
+        drawPiece++;
+    }
+}
+
+% Color one field
+function colorField(x, y) {
+    if (gameover || !play) {
+        return;
+    }
+
+    % Is field a neighbour of the current or first line
+    if (currentField == -1) {
+        if (y != fieldHeight -1) {
+            return;
+        }
+    } else {
+        var diffX = Math.abs(freePath[currentField][0] - x);
+        var diffY = Math.abs(freePath[currentField][1] - y);
+        if (diffX + diffY != 1) {
+            return;
+        }
+    }
+
+    % Test if the selected field is on the path
+    var hit = false;
+    if (freePath[currentField + 1][0] == x && freePath[currentField + 1][1] == y) {
+        complField[y][x] = 1;
+        hit = true;
+        currentField++;
+        if (currentField == freePath.length - 1) {
+            gameover = true;
+            printWinner(true);
+        }
+    }
+
+    % If nothing was hit the game is over
+    % Mark the miss accordingly
+    if (!hit) {
+        gameover = true;
+        for (var idx = 0; idx < freePath.length; idx++) {
+            complField[freePath[idx][1]][freePath[idx][0]] = 1;
+        }
+        complField[y][x] = -1;
+        printWinner(false);
+    }
+
+    draw();
+}
+
+function draw() {
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            var value = complField[y][x];
+            if (value > 0) {
+                field.fillColor = colors[1];
+                field.borderColor = colors[1];
+            } else if (value < 0) {
+                field.fillColor = colors[0];
+                field.borderColor = colors[0];
+            } else {
+                field.fillColor = color.white;
+                field.borderColor = color.white;
+            }
+            field.delay = false;
+        }
+    }
+
+    % Mark the neighbouring fields that are accessible
+    if (currentField > -1) {
+        var x = freePath[currentField][0];
+        var y = freePath[currentField][1];
+
+        % Define the neighbourhood
+        var directions = [[-1, 0], [1, 0], [0, 1], [0, -1]]
+
+        for (var idx = 0; idx < directions.length; idx++) {
+            var newX = x + directions[idx][0];
+            var newY = y + directions[idx][1];
+
+            % Check for out of bounds
+            if (newX < 0 || newX >= fieldWidth || newY < 0 || newY >= fieldHeight) {
+                continue;
+            }
+
+            field = this.getField("pos" + newX + newY);
+            field.delay = true;
+            field.borderColor = colors[2];
+            field.delay = false;
+        }
+    }
+}
+
+function printWinner(won) {
+    if (won) {
+        this.getField("winner").value = "Congratulations you found a way across!";
+    } else {
+        this.getField("winner").value = "Sadly you died!";
+    }
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \section*{Don't break the ice}
+
+    % Calculate the max width and height of a block
+    \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+    \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+    \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+    \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+    % Define the blocksize via the smaller amount
+    \ifnum\blocksizeW<\blocksizeH
+        \def\blocksize{\blocksizeW}
+    \else
+        \def\blocksize{\blocksizeH}
+    \fi
+
+    \begin{Form}
+
+        \begin{tcolorbox}
+            \centering%
+            \includegraphics[width=0.25\textwidth]{images/end}
+            %
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                    }\vspace{3pt}
+                    \newline%
+                }%
+            \end{flushright}%
+            %
+            \centering%
+            \includegraphics[width=0.25\textwidth]{images/start}
+        \end{tcolorbox}
+
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=winner, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+    \end{Form}
+\end{document}
