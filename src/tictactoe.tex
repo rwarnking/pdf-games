@@ -1,0 +1,261 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{3}
+\def\fieldHeight{3}
+\def\winningPieces{3}
+\def\playerCount{2}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{TicTacToe}
+
+var fieldWidth = AFMakeNumber(\fieldWidth);
+var fieldHeight = AFMakeNumber(\fieldHeight);
+var WINNING_PIECES = AFMakeNumber(\winningPieces);
+var MAY_PLAYERS = AFMakeNumber(\playerCount);
+
+var run;
+var complField = new Array();
+% Lock if the game has ended
+var gameover = false;
+var playerIdx = 0;
+var playerSymbols = [ 0x2717, 0x274D ];
+
+var colors = new Array(
+    color.black,
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ],
+    [ "RGB", 0.560, 0.078, 0.533 ]
+);
+
+highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function initialise() {
+    for (var row = 0; row < fieldHeight; row++) {
+        var tmp = new Array();
+        for (var column = 0; column < fieldWidth; column++) {
+            tmp.push(0);
+        }
+        complField.push(tmp);
+    }
+
+    this.getField("winner").fillColor = color.transparent;
+    this.getField("winner").borderColor = color.transparent;
+
+    initialiseButtons();
+}
+
+function initialiseButtons() {
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    var funcName = "markField";
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
+            this.getField("pos" + x + y).setAction("MouseDown", callbackName);
+            this.getField("pos" + x + y).textSize = 100;
+            this.getField("pos" + x + y).alignment = "center";
+        }
+    }
+}
+
+function restart() {
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
+        }
+    }
+    gameover = false;
+    playerIdx = 0;
+
+    this.getField("winner").value = "";
+
+    draw();
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+function markField(x, y) {
+    if (gameover || complField[y][x] != 0) {
+        return;
+    }
+
+    playerIdx++;
+    complField[y][x] = playerIdx;
+
+    % Check for winner
+    checkGameover(x, y);
+
+    if (playerIdx >= MAY_PLAYERS) {
+        playerIdx = 0;
+    }
+
+    % Check if field full
+    if (!gameover) {
+        gameover = true;
+        for (var x = 0; x < fieldWidth; x++) {
+            for (var y = 0; y < fieldHeight; y++) {
+                if (complField[y][x] == 0) {
+                    gameover = false;
+                    y = fieldHeight;
+                    x = fieldWidth;
+                }
+            }
+        }
+        if (gameover) {
+            printWinner(false);
+        }
+    }
+
+    draw();
+}
+
+function checkGameover(x, y) {
+    var count = 0;
+    var maxCount = 0;
+    % Define directions
+    var directions = [
+        0, 1,
+        1, 1,
+        1, 0,
+        1, -1
+    ]
+    % Iterate directions
+    for (var dirIdx = 0; dirIdx < directions.length; dirIdx += 2) {
+        count = 0;
+        maxCount = 0;
+        % Count succeeding stones
+        for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
+            var nx = x + directions[dirIdx] * wp;
+            var ny = y + directions[dirIdx + 1] * wp;
+            if (nx < 0 || nx >= fieldWidth || ny < 0 || ny >= fieldHeight || complField[ny][nx] != playerIdx) {
+                count = 0;
+            } else {
+                count++;
+                maxCount = count;
+            }
+        }
+        if (maxCount >= WINNING_PIECES) {
+            gameover = true;
+            printWinner(true);
+        }
+    }
+}
+
+function draw() {
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            var value = complField[y][x];
+            if (value > 0) {
+                %field.fillColor = colors[1];
+                %field.borderColor = colors[1];
+                field.textColor = colors[value];
+                field.value = String.fromCharCode(playerSymbols[value - 1]);
+            } else {
+                field.value = "";
+            }
+            field.delay = false;
+        }
+    }
+}
+
+function printWinner(won) {
+    if (won) {
+        this.getField("winner").value =
+        "The winner is: Player " + playerIdx + " - (" + String.fromCharCode(playerSymbols[playerIdx - 1]) + ")";
+    } else {
+        this.getField("winner").value = "No one did win and the field is full.";
+    }
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \section*{Tic Tac Toe}
+
+    % Calculate the max width and height of a block
+    \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+    \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+    \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+    \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+    % Define the blocksize via the smaller amount
+    \ifnum\blocksizeW<\blocksizeH
+        \def\blocksize{\blocksizeW}
+    \else
+        \def\blocksize{\blocksizeH}
+    \fi
+
+    \begin{Form}
+
+        \begin{tcolorbox}
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                    }\vspace{3pt}
+                    \newline%
+                }%
+            \end{flushright}%
+        \end{tcolorbox}
+
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=winner, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+    \end{Form}
+\end{document}
