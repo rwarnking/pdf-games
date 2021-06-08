@@ -10,6 +10,7 @@
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
+\usepackage{multicol}
 
 \usepackage{xinttools}
 \usepackage[nomessages]{fp}
@@ -102,7 +103,36 @@ function initialiseButtons() {
     this.getField("winner").fillColor = color.transparent;
     this.getField("winner").borderColor = color.transparent;
 
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
     printInfoText(0, false);
+}
+
+function tooltip(on) {
+    if (on) {
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.alignment = "center";
+        field.value = "This is a game.";
+
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
 }
 
 function restart() {
@@ -255,7 +285,18 @@ function printInfoText(winner, full) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-    \section*{Tic Tac Toe}
+    \begin{multicols}{2}
+        \section*{Tic Tac Toe}
+    \columnbreak
+        \begin{flushright}%
+        \PushButton[name=tooltipbtn, bordercolor=white]{%
+            \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                \centering
+                ?\strut
+            \end{tcolorbox}%
+        }
+        \end{flushright}%
+    \end{multicols}
 
     % Calculate the max width and height of a block
     \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
@@ -299,5 +340,8 @@ function printInfoText(winner, full) {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+
     \end{Form}
 \end{document}
