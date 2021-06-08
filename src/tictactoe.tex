@@ -25,9 +25,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% to slow to play
 \def\fieldWidth{3}
 \def\fieldHeight{3}
 \def\winningPieces{3}
+% Max playercount is 5
 \def\playerCount{2}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -36,42 +39,48 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{TicTacToe}
 
-var fieldWidth = AFMakeNumber(\fieldWidth);
-var fieldHeight = AFMakeNumber(\fieldHeight);
-var WINNING_PIECES = AFMakeNumber(\winningPieces);
-var MAY_PLAYERS = AFMakeNumber(\playerCount);
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const SCREEN_TEXT_WIDTH = 300;
+const WINNING_PIECES = AFMakeNumber(\winningPieces);
+const MAY_PLAYERS = AFMakeNumber(\playerCount);
 
 var run;
 var complField = new Array();
 % Lock if the game has ended
 var gameover = false;
-var playerIdx = 0;
-var playerSymbols = [ 0x2717, 0x274D ];
+var playerIdx = 1;
+var lastField = false;
+
+var playerSymbols = [
+    0x2717,
+    0x274D,
+    0x2730,
+    0x2752,
+    0x271C
+];
 
 var colors = new Array(
-    color.black,
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
     [ "RGB", 0.078, 0.305, 0.560 ],
-    [ "RGB", 0.560, 0.078, 0.533 ]
+    [ "RGB", 0.560, 0.078, 0.533 ],
+    color.black
 );
 
-highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
+highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function initialise() {
-    for (var row = 0; row < fieldHeight; row++) {
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
         var tmp = new Array();
-        for (var column = 0; column < fieldWidth; column++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
             tmp.push(0);
         }
         complField.push(tmp);
     }
-
-    this.getField("winner").fillColor = color.transparent;
-    this.getField("winner").borderColor = color.transparent;
 
     initialiseButtons();
 }
@@ -81,26 +90,35 @@ function initialiseButtons() {
     this.getField("restart").highlight="none";
 
     var funcName = "markField";
-    for (var x = 0; x < fieldWidth; x++) {
-        for (var y = 0; y < fieldHeight; y++) {
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             this.getField("pos" + x + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + y).textSize = 100;
+            this.getField("pos" + x + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
             this.getField("pos" + x + y).alignment = "center";
         }
     }
+
+    this.getField("winner").fillColor = color.transparent;
+    this.getField("winner").borderColor = color.transparent;
+
+    printInfoText(0, false);
 }
 
 function restart() {
-    for (var x = 0; x < fieldWidth; x++) {
-        for (var y = 0; y < fieldHeight; y++) {
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
             complField[y][x] = 0;
         }
     }
-    gameover = false;
-    playerIdx = 0;
 
-    this.getField("winner").value = "";
+    % Reset field marking
+    lastField = false;
+
+    gameover = false;
+    playerIdx = 1;
+
+    printInfoText(0, false);
 
     draw();
 }
@@ -113,37 +131,44 @@ function markField(x, y) {
         return;
     }
 
-    playerIdx++;
+    % Safe the last field so it can be marked
+    lastField = [x, y];
+
     complField[y][x] = playerIdx;
 
-    % Check for winner
-    checkGameover(x, y);
+    % Check for winner (playerIdx)
+    var winner = checkForWinner(x, y);
 
-    if (playerIdx >= MAY_PLAYERS) {
-        playerIdx = 0;
+    playerIdx++;
+    if (playerIdx > MAY_PLAYERS) {
+        playerIdx = 1;
     }
 
     % Check if field full
-    if (!gameover) {
-        gameover = true;
-        for (var x = 0; x < fieldWidth; x++) {
-            for (var y = 0; y < fieldHeight; y++) {
+    var full = true;
+    if (winner == 0) {
+        for (var x = 0; x < FIELD_WIDTH; x++) {
+            for (var y = 0; y < FIELD_HEIGHT; y++) {
                 if (complField[y][x] == 0) {
-                    gameover = false;
-                    y = fieldHeight;
-                    x = fieldWidth;
+                    full = false;
+                    y = FIELD_HEIGHT;
+                    x = FIELD_WIDTH;
                 }
             }
         }
-        if (gameover) {
-            printWinner(false);
-        }
     }
+
+    if (winner > 0 || full) {
+        gameover = true;
+    }
+
+    % Print whether the game is over, or whos turn it is
+    printInfoText(winner, full);
 
     draw();
 }
 
-function checkGameover(x, y) {
+function checkForWinner(x, y) {
     var count = 0;
     var maxCount = 0;
     % Define directions
@@ -161,7 +186,7 @@ function checkGameover(x, y) {
         for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
             var nx = x + directions[dirIdx] * wp;
             var ny = y + directions[dirIdx + 1] * wp;
-            if (nx < 0 || nx >= fieldWidth || ny < 0 || ny >= fieldHeight || complField[ny][nx] != playerIdx) {
+            if (nx < 0 || nx >= FIELD_WIDTH || ny < 0 || ny >= FIELD_HEIGHT || complField[ny][nx] != playerIdx) {
                 count = 0;
             } else {
                 count++;
@@ -169,39 +194,56 @@ function checkGameover(x, y) {
             }
         }
         if (maxCount >= WINNING_PIECES) {
-            gameover = true;
-            printWinner(true);
+            return playerIdx;
         }
     }
+    return 0;
 }
 
 function draw() {
     var field;
-    for (var x = 0; x < fieldWidth; x++) {
-        for (var y = 0; y < fieldHeight; y++) {
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
             field = this.getField("pos" + x + y);
             field.delay = true;
             var value = complField[y][x];
             if (value > 0) {
-                %field.fillColor = colors[1];
-                %field.borderColor = colors[1];
-                field.textColor = colors[value];
+                field.textColor = colors[value - 1];
                 field.value = String.fromCharCode(playerSymbols[value - 1]);
             } else {
                 field.value = "";
             }
+            field.borderColor = color.white;
             field.delay = false;
         }
     }
+
+    if (lastField !== false) {
+        var x = lastField[0];
+        var y = lastField[1];
+        field = this.getField("pos" + x + y);
+        field.delay = true;
+        field.borderColor = highlightcolor;
+        field.delay = false;
+    }
 }
 
-function printWinner(won) {
-    if (won) {
-        this.getField("winner").value =
-        "The winner is: Player " + playerIdx + " - (" + String.fromCharCode(playerSymbols[playerIdx - 1]) + ")";
-    } else {
+function printInfoText(winner, full) {
+    var field = this.getField("winner");
+    field.delay = true;
+    if (winner > 0) {
+        field.textColor = colors[winner - 1];
+        var symbol = String.fromCharCode(playerSymbols[winner - 1]);
+        field.value = "The winner is: Player " + winner + " - (" + symbol + ")";
+    } else if (full) {
+        field.textColor = color.black;
         this.getField("winner").value = "No one did win and the field is full.";
+    } else {
+        field.textColor = color.black;
+        var symbol = String.fromCharCode(playerSymbols[playerIdx - 1]);
+        field.value = "Please make a move: Player " + playerIdx + " - (" + symbol + ")";
     }
+    field.delay = false;
 }
 
 \end{insDLJS}
