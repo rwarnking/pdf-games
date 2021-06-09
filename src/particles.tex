@@ -27,7 +27,7 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Obacht: It is discuraged to use more than 50 particles the performance might be to bad
-\def\particleCount{10}
+\def\particleCount{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -43,10 +43,16 @@ const RIGHT_LIMIT = 596;
 const PARTICLE_SIZE = 10;
 const PARTICLE_SIZE_H = PARTICLE_SIZE / 2;
 % The amount of space that a particle moves each frame
-const STEP_SIZE = 2;
+const STEP_SIZE = 4;
 
 var run;
 var particles = new Array();
+var particleType = 0;
+
+var probability = [
+    98,
+    50
+]
 
 var snowSymbols = [
     0x2744,
@@ -55,8 +61,14 @@ var snowSymbols = [
     0x2749
 ]
 
-var paticleSymbols = [
+var flowerSymbols = [
     0x2740
+];
+
+var circleSymbols = [
+    0x25CF,
+    0x25CB,
+    0x25CC
 ];
 
 var colors = new Array(
@@ -82,7 +94,7 @@ function getRandomInt(max) {
 function initialise() {
     % Initialise all particles as dead
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        particles.push([false, [0, 0, 0, 0], 0]);
+        particles.push([false, [0, 0], 0]);
 
         field = this.getField("particle" + idx);
         field.delay = true;
@@ -102,14 +114,22 @@ function initialiseButtons() {
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="none";
 
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
+    % field.textColor = colors[value - 1];
+    % field.value = String.fromCharCode(playerSymbols[value - 1]);
+    % field.borderColor = color.white;
+    % field.setAction("MouseDown", callbackName);
+    % field.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+    % field.alignment = "center";
+    % Rotation does work but only for 90, 180 and 270
+    % field.rotation = 90;
+
+    this.getField("particleType").borderColor = color.white;
+    this.getField("particleType").currentValueIndices = 0;
+    this.getField("particleType").commitOnSelChange = true;
 
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
-
-    % printInfoText(0, false);
 }
 
 function tooltip(on) {
@@ -138,15 +158,33 @@ function tooltip(on) {
 }
 
 function restart() {
+    app.clearInterval(run);
+
+    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
+        particles[idx] = [false, [0, 0], 0];
+
+        field = this.getField("particle" + idx);
+        field.delay = true;
+        field.rect = [0, 0, 0, 0];
+        field.alignment = "center";
+        field.fillColor = color.transparent;
+        field.borderColor = color.transparent;
+        field.textSize = PARTICLE_SIZE;
+        field.delay = false;
+    }
+
+    run = app.setInterval("runAll()", 100);
 }
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 function runAll() {
+    particleType = this.getField("particleType").currentValueIndices;
+
     % Emit new particle if particle dead and random condition
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        if (particles[idx][0] === false && getRandomInt(100) > 98) {
+        if (particles[idx][0] === false && getRandomInt(100) > probability[particleType]) {
             emitParticle(idx);
         } else {
             moveParticles(idx);
@@ -156,30 +194,56 @@ function runAll() {
 }
 
 function emitParticle(idx) {
-    var pos = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
-    var left_x = pos - PARTICLE_SIZE_H;
-    var right_x = pos + PARTICLE_SIZE_H;
-    var symb = snowSymbols[getRandomInt(snowSymbols.length)];
+    if (particleType == 0) {
+        var pos = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        var symb = snowSymbols[getRandomInt(snowSymbols.length)];
 
-    particles[idx] = [true, [left_x, LOWER_LIMIT + PARTICLE_SIZE, right_x, LOWER_LIMIT], symb];
+        particles[idx] = [true, [pos, UPPER_LIMIT - PARTICLE_SIZE_H], symb];
+    } else {
+        var pos_x = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        var pos_y = getRandomInt(UPPER_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+
+        particles[idx] = [true, [pos_x, pos_y], 0];
+    }
 }
 
 function moveParticles(idx) {
-    particles[idx][1][1] += STEP_SIZE;
-    particles[idx][1][3] += STEP_SIZE;
-    if (particles[idx][1][3] > UPPER_LIMIT) {
-        particles[idx][0] = false;
-        particles[idx][1] = [0, 0, 0, 0];
-    }
-
+    var shift_x = 0;
+    var add_x = 0;
+    var add_y = 0;
     var field = this.getField("particle" + idx);
     field.delay = true;
-    field.rect = particles[idx][1];
-    field.value = String.fromCharCode(particles[idx][2]);
-    field.delay = false;
-}
 
-function printInfoText(winner, full) {
+    if (particleType == 0) {
+        field.value = String.fromCharCode(particles[idx][2]);
+        field.textSize = PARTICLE_SIZE;
+        shift_x = Math.cos((particles[idx][1][0] + particles[idx][1][1]) / 40.0) * 20;
+
+        particles[idx][1][1] -= STEP_SIZE;
+        if (particles[idx][1][1] < LOWER_LIMIT) {
+            particles[idx][0] = false;
+        }
+    } else {
+        field.value = String.fromCharCode(circleSymbols[Math.floor(particles[idx][2] / 3)]);
+        field.textSize = PARTICLE_SIZE + particles[idx][2] * 2;
+
+        particles[idx][2]++;
+        add_x = particles[idx][2];
+        add_y = particles[idx][2];
+        if (particles[idx][2] >= circleSymbols.length * 3) {
+            particles[idx][0] = false;
+        }
+    }
+
+    var rect = [
+        particles[idx][1][0] - PARTICLE_SIZE_H - add_x + shift_x,
+        particles[idx][1][1] + PARTICLE_SIZE_H + add_y,
+        particles[idx][1][0] + PARTICLE_SIZE_H + add_x + shift_x,
+        particles[idx][1][1] - PARTICLE_SIZE_H - add_y
+    ];
+    field.rect = rect;
+
+    field.delay = false;
 }
 
 \end{insDLJS}
@@ -204,7 +268,15 @@ function printInfoText(winner, full) {
         \end{flushright}%
     \end{multicols}
 
+    \vspace*{\fill}
+
     \begin{Form}
+
+        \xintFor* #1 in {\xintSeq{0}{\particleCount-1}} \do {%
+            \TextField[bordercolor=white, name=particle#1, readonly=true]{}%
+        }
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}%
 
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} X X @{}}%
@@ -215,14 +287,10 @@ function printInfoText(winner, full) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \ChoiceMenu[name=particleType, width=50mm, combo]{Particlesystem:}{Snow, Explosions}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
-
-        \xintFor* #1 in {\xintSeq{0}{\particleCount-1}} \do {%
-            \TextField[bordercolor=white, name=particle#1, readonly=true]{}%
-        }
 
     \end{Form}
 \end{document}
