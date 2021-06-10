@@ -1,0 +1,296 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obacht: It is discuraged to use more than 50 particles the performance might be to bad
+\def\particleCount{20}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{TicTacToe}
+
+const PARTICLE_COUNT = AFMakeNumber(\particleCount);
+const UPPER_LIMIT = 842;
+const LOWER_LIMIT = 0;
+const LEFT_LIMIT = 0;
+const RIGHT_LIMIT = 596;
+const PARTICLE_SIZE = 10;
+const PARTICLE_SIZE_H = PARTICLE_SIZE / 2;
+% The amount of space that a particle moves each frame
+const STEP_SIZE = 4;
+
+var run;
+var particles = new Array();
+var particleType = 0;
+
+var probability = [
+    98,
+    50
+]
+
+var snowSymbols = [
+    0x2744,
+    0x2745,
+    0x2746,
+    0x2749
+]
+
+var flowerSymbols = [
+    0x2740
+];
+
+var circleSymbols = [
+    0x25CF,
+    0x25CB,
+    0x25CC
+];
+
+var colors = new Array(
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ],
+    [ "RGB", 0.560, 0.078, 0.533 ],
+    color.black
+);
+
+highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function initialise() {
+    % Initialise all particles as dead
+    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
+        particles.push([false, [0, 0], 0]);
+
+        field = this.getField("particle" + idx);
+        field.delay = true;
+        field.rect = [0, 0, 0, 0];
+        field.alignment = "center";
+        field.fillColor = color.transparent;
+        field.borderColor = color.transparent;
+        field.delay = false;
+    }
+
+    initialiseButtons();
+
+    run = app.setInterval("runAll()", 100);
+}
+
+function initialiseButtons() {
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    % field.textColor = colors[value - 1];
+    % field.value = String.fromCharCode(playerSymbols[value - 1]);
+    % field.borderColor = color.white;
+    % field.setAction("MouseDown", callbackName);
+    % field.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+    % field.alignment = "center";
+    % Rotation does work but only for 90, 180 and 270
+    % field.rotation = 90;
+
+    this.getField("particleType").borderColor = color.white;
+    this.getField("particleType").currentValueIndices = 0;
+    this.getField("particleType").commitOnSelChange = true;
+
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+}
+
+function tooltip(on) {
+    if (on) {
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.alignment = "center";
+        field.value = "This is a particle system.";
+
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+function restart() {
+    app.clearInterval(run);
+
+    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
+        particles[idx] = [false, [0, 0], 0];
+
+        field = this.getField("particle" + idx);
+        field.delay = true;
+        field.rect = [0, 0, 0, 0];
+        field.alignment = "center";
+        field.fillColor = color.transparent;
+        field.borderColor = color.transparent;
+        field.textSize = PARTICLE_SIZE;
+        field.delay = false;
+    }
+
+    run = app.setInterval("runAll()", 100);
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+function runAll() {
+    particleType = this.getField("particleType").currentValueIndices;
+
+    % Emit new particle if particle dead and random condition
+    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
+        if (particles[idx][0] === false && getRandomInt(100) > probability[particleType]) {
+            emitParticle(idx);
+        } else {
+            moveParticles(idx);
+        }
+    }
+
+}
+
+function emitParticle(idx) {
+    if (particleType == 0) {
+        var pos = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        var symb = snowSymbols[getRandomInt(snowSymbols.length)];
+
+        particles[idx] = [true, [pos, UPPER_LIMIT - PARTICLE_SIZE_H], symb];
+    } else {
+        var pos_x = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        var pos_y = getRandomInt(UPPER_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+
+        particles[idx] = [true, [pos_x, pos_y], 0];
+    }
+}
+
+function moveParticles(idx) {
+    var shift_x = 0;
+    var add_x = 0;
+    var add_y = 0;
+    var field = this.getField("particle" + idx);
+    field.delay = true;
+
+    if (particleType == 0) {
+        field.value = String.fromCharCode(particles[idx][2]);
+        field.textSize = PARTICLE_SIZE;
+        shift_x = Math.cos((particles[idx][1][0] + particles[idx][1][1]) / 40.0) * 20;
+
+        particles[idx][1][1] -= STEP_SIZE;
+        if (particles[idx][1][1] < LOWER_LIMIT) {
+            particles[idx][0] = false;
+        }
+    } else {
+        field.value = String.fromCharCode(circleSymbols[Math.floor(particles[idx][2] / 3)]);
+        field.textSize = PARTICLE_SIZE + particles[idx][2] * 2;
+
+        particles[idx][2]++;
+        add_x = particles[idx][2];
+        add_y = particles[idx][2];
+        if (particles[idx][2] >= circleSymbols.length * 3) {
+            particles[idx][0] = false;
+        }
+    }
+
+    var rect = [
+        particles[idx][1][0] - PARTICLE_SIZE_H - add_x + shift_x,
+        particles[idx][1][1] + PARTICLE_SIZE_H + add_y,
+        particles[idx][1][0] + PARTICLE_SIZE_H + add_x + shift_x,
+        particles[idx][1][1] - PARTICLE_SIZE_H - add_y
+    ];
+    field.rect = rect;
+
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{multicols}{2}
+        \section*{Particles}
+    \columnbreak
+        \begin{flushright}%
+        \PushButton[name=tooltipbtn, bordercolor=white]{%
+            \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                \centering
+                ?\strut
+            \end{tcolorbox}%
+        }
+        \end{flushright}%
+    \end{multicols}
+
+    \vspace*{\fill}
+
+    \begin{Form}
+
+        \xintFor* #1 in {\xintSeq{0}{\particleCount-1}} \do {%
+            \TextField[bordercolor=white, name=particle#1, readonly=true]{}%
+        }
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}%
+
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart particle system\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \ChoiceMenu[name=particleType, width=50mm, combo]{Particlesystem:}{Snow, Explosions}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+
+    \end{Form}
+\end{document}
