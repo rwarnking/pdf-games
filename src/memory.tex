@@ -1,0 +1,386 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obacht: width * height needs to be an even number
+\def\fieldWidth{4}
+\def\fieldHeight{4}
+\def\winningPieces{3}
+% Max playercount is 5
+\def\playerCount{2}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{Memory}
+
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const SCREEN_TEXT_WIDTH = 300;
+const MAX_PLAYERS = AFMakeNumber(\playerCount);
+const MAX_PAIRS = (FIELD_WIDTH * FIELD_HEIGHT) / 2;
+
+var run;
+var complField = new Array();
+% Lock if the game has ended
+var gameover = false;
+var playerIdx = 1;
+var lastField = false;
+var beforeLastField = false;
+var pairsFound = 0;
+var playerPoints = [];
+
+var memorySymbols = [
+    0x260E, % telefon
+    0x261E, % hand white
+    0x261B, % hand black
+    0x263B, % smilie
+    0x266B, % note
+    0x2702, % scissors
+    0x2712, % pencil
+    0x2706, % telefon2
+    0x2707, % video
+    0x2708, % plane
+    0x2709, % mail
+    0x2756, % diamond
+    0x271F, % cross
+    0x2717,
+    0x274D,
+    0x2730,
+    0x2752,
+    0x271C
+];
+
+var colors = new Array(
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ],
+    [ "RGB", 0.560, 0.078, 0.533 ],
+    color.black
+);
+
+highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function initialise() {
+    var symbols = [];
+    for (var i = 0; i < MAX_PAIRS; i++) {
+        symbols.push(String.fromCharCode(memorySymbols[i]));
+        symbols.push(String.fromCharCode(memorySymbols[i]));
+    }
+
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        var tmp = new Array();
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            var rnd = getRandomInt(symbols.length);
+            var elem = symbols[rnd];
+            symbols.splice(rnd, 1);
+            tmp.push([elem, false]);
+        }
+        % UTF8 symbol and is the field removed
+        complField.push(tmp);
+    }
+
+    for (var i = 0; i < MAX_PLAYERS; i++) {
+        playerPoints.push(0);
+    }
+
+    initialiseButtons();
+}
+
+function initialiseButtons() {
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    var funcName = "revealField";
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
+            this.getField("pos" + x + y).setAction("MouseDown", callbackName);
+            this.getField("pos" + x + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+            this.getField("pos" + x + y).alignment = "center";
+        }
+    }
+
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
+    printInfoText(0, false);
+}
+
+function tooltip(on) {
+    if (on) {
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.alignment = "center";
+        field.value = "This is a game.";
+
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+function restart() {
+    var symbols = [];
+    for (var i = 0; i < MAX_PAIRS; i++) {
+        symbols.push(String.fromCharCode(memorySymbols[i]));
+        symbols.push(String.fromCharCode(memorySymbols[i]));
+    }
+
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            var rnd = getRandomInt(symbols.length);
+            var elem = symbols[rnd];
+            symbols.splice(rnd, 1);
+            complField[y][x] = [elem, false];
+
+            var field = this.getField("pos" + x + y);
+            field.delay = true;
+            field.value = "";
+            field.borderColor = color.white;
+            field.delay = false;
+        }
+    }
+
+    for (var i = 0; i < MAX_PLAYERS; i++) {
+        playerPoints[i] = 0;
+    }
+
+    % Reset field marking
+    beforeLastField = false;
+    lastField = false;
+
+    gameover = false;
+    pairsFound = 0;
+    playerIdx = 1;
+
+    printInfoText();
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+function revealField(x, y) {
+    % This removes the cursor and fixes minor bugs
+    this.getField("info").setFocus();
+
+    if (gameover) {
+        return;
+    }
+
+    % If there are two fields selected either hide or remove them
+    if (beforeLastField != false && lastField != false) {
+
+        % Test if symbols match
+        var match = complField[lastField[1]][lastField[0]][0] == complField[beforeLastField[1]][beforeLastField[0]][0]
+        if (match) {
+            % Remove both symbols
+            remove(lastField[0], lastField[1]);
+            remove(beforeLastField[0], beforeLastField[1]);
+
+            complField[lastField[1]][lastField[0]][1] = true;
+            complField[beforeLastField[1]][beforeLastField[0]][1] = true;
+
+            % Check if field is full or pairs left
+            if (++pairsFound == MAX_PAIRS) {
+                gameover = true;
+            }
+            % Print game is over
+            printInfoText();
+        } else {
+            % Hide both symbols
+            draw(lastField[0], lastField[1], "");
+            draw(beforeLastField[0], beforeLastField[1], "");
+        }
+        beforeLastField = false;
+        lastField = false;
+
+        return;
+    }
+
+    if (complField[y][x][1]) {
+        return;
+    }
+
+    % If one field is selected allow for a second one
+    if (lastField != false && (lastField[0] != x || lastField[1] != y)) {
+        % Save both selections
+        beforeLastField = lastField;
+        lastField = [x, y];
+
+        % Test if symbols match
+        var match = complField[lastField[1]][lastField[0]][0] == complField[beforeLastField[1]][beforeLastField[0]][0]
+        if (!match) {
+            % Advance player
+            playerIdx++;
+            if (playerIdx > MAX_PLAYERS) {
+                playerIdx = 1;
+            }
+        } else {
+            playerPoints[playerIdx - 1]++;
+        }
+        % Print whos turn it is
+        printInfoText();
+    } else {
+        lastField = [x, y];
+    }
+
+    draw(x, y, complField[y][x][0]);
+}
+
+function draw(x, y, value) {
+    var field = this.getField("pos" + x + y);
+    field.delay = true;
+    field.value = value;
+    field.delay = false;
+}
+
+function remove(x, y) {
+    var field = this.getField("pos" + x + y);
+    field.delay = true;
+    field.value = "";
+    field.borderColor = color.black;
+    field.delay = false;
+}
+
+function printInfoText() {
+    var field = this.getField("info");
+    field.delay = true;
+    if (gameover) {
+        field.value = "Gameover";
+    } else {
+        field.value = "Your Turn: Player " + playerIdx;
+    }
+    field.delay = false;
+
+    var field = this.getField("pointtable");
+    field.delay = true;
+    var string = "";
+    for (var i = 0; i < MAX_PLAYERS; i++) {
+        string += "Player " + (i + 1) + " has " + playerPoints[i] + " Points.\n";
+    }
+    field.value = string;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{multicols}{2}
+        \section*{Memory}
+    \columnbreak
+        \begin{flushright}%
+        \PushButton[name=tooltipbtn, bordercolor=white]{%
+            \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                \centering
+                ?\strut
+            \end{tcolorbox}%
+        }
+        \end{flushright}%
+    \end{multicols}
+
+    % Calculate the max width and height of a block
+    \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+    \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+    \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+    \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+    % Define the blocksize via the smaller amount
+    \ifnum\blocksizeW<\blocksizeH
+        \def\blocksize{\blocksizeW}
+    \else
+        \def\blocksize{\blocksizeH}
+    \fi
+
+    \begin{Form}
+
+        \begin{tcolorbox}
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                    }\vspace{3pt}
+                    \newline%
+                }%
+            \end{flushright}%
+        \end{tcolorbox}
+
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+
+        \TextField[bordercolor=black, name=pointtable, readonly=true, multiline=true]{}
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+
+    \end{Form}
+\end{document}
