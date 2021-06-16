@@ -41,12 +41,17 @@ const SCREEN_TEXT_WIDTH = 300;
 const NUMBERS = 9;
 
 var complField = new Array();
+var solution = new Array();
+var original = new Array();
+
+var customMode = false;
 
 var colors = new Array(
     [ "RGB", 1.0, 1.0, 1.0 ], % white
+    [ "RGB", 0.8, 0.8, 0.8 ], % gray
     [ "RGB", 0.203, 0.603, 0.054 ], % green
-    [ "RGB", 0.078, 0.305, 0.560 ],
-    [ "RGB", 0.560, 0.078, 0.533 ]
+    [ "RGB", 0.660, 0.178, 0.233 ], % red
+    [ "RGB", 0.078, 0.305, 0.560 ]
 );
 
 highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
@@ -80,11 +85,17 @@ function shuffle(a) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function initialise() {
     for (var row = 0; row < FIELD_HEIGHT; row++) {
-        var tmp = new Array();
+        var zArr1 = new Array();
+        var zArr2 = new Array();
+        var zArr3 = new Array();
         for (var column = 0; column < FIELD_WIDTH; column++) {
-            tmp.push(0);
+            zArr1.push(0);
+            zArr2.push(0);
+            zArr3.push(0);
         }
-        complField.push(tmp);
+        complField.push(zArr1);
+        solution.push(zArr2);
+        original.push(zArr3);
     }
 
     initialiseButtons();
@@ -95,22 +106,24 @@ function initialise() {
 function initialiseButtons() {
     this.getField("generate").setAction("MouseUp", "generateSudoku();");
     this.getField("generate").highlight="none";
-    this.getField("hint").setAction("MouseUp", "hint();");
+    this.getField("hint").setAction("MouseUp", "showHint();");
     this.getField("hint").highlight="none";
-    this.getField("solve").setAction("MouseUp", "solveSudoku();");
+    this.getField("solve").setAction("MouseUp", "showSolution();");
     this.getField("solve").highlight="none";
     this.getField("enter").setAction("MouseUp", "enterSudoku();");
     this.getField("enter").highlight="none";
+    this.getField("reset").setAction("MouseUp", "resetSudoku();");
+    this.getField("reset").highlight="none";
 
     this.getField("elemcount").borderColor = color.white;
     this.getField("elemcount").currentValueIndices = 2;
     this.getField("elemcount").commitOnSelChange = true;
 
-    var funcName = "refreshField";
+    var funcName = "checkInput";
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + y).setAction("MouseUp", callbackName);
+            this.getField("pos" + x + y).setAction("OnBlur", callbackName);
             this.getField("pos" + x + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
             this.getField("pos" + x + y).alignment = "center";
         }
@@ -155,16 +168,22 @@ function enterSudoku() {
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             complField[y][x] = 0;
+            solution[y][x] = 0;
+            original[y][x] = 0;
         }
     }
 
-    drawAll(true);
+    customMode = true;
+
+    drawAll(false);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 % Generation and solving %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 function generateSudoku() {
+    customMode = false;
+
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             complField[y][x] = 0;
@@ -205,6 +224,12 @@ function generateSudoku() {
         var elem = positions[rnd];
         complField[elem[1]][elem[0]] = 0;
         positions.splice(rnd, 1);
+    }
+
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            original[y][x] = complField[y][x];
+        }
     }
 
     drawAll(true);
@@ -252,7 +277,6 @@ function solveSudoku() {
     for (var idx = 0; idx < spaces.length && apple < 500000; idx++) {
         apple++;
         complField[spaces[idx][1]][spaces[idx][0]] = candidates[idx][indices[idx]];
-
         if (!isFieldValid(spaces[idx][0], spaces[idx][1])) {
 
             var tmpIdx = idx;
@@ -276,10 +300,11 @@ function solveSudoku() {
         }
     }
 
-    %refreshField(spaces[idx][0], spaces[idx][1]);
-
-    % Redraw
-    drawAll(false);
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            solution[y][x] = complField[y][x];
+        }
+    }
 }
 
 function getEmptySpaces() {
@@ -351,6 +376,7 @@ function getCandidates(spaces) {
 
 function isFieldValid(valX, valY) {
     var value = complField[valY][valX];
+
     % Check the row
     for (var x = 0; x < FIELD_WIDTH; x++) {
         if (complField[valY][x] == value && x != valX) {
@@ -380,17 +406,96 @@ function isFieldValid(valX, valY) {
     return true;
 }
 
+function checkInput(x, y) {
+    var field = this.getField("pos" + x + y);
+
+    % If the value did not change dont do anything
+    if (complField[y][x] == field.value) {
+        return;
+    }
+    field.delay = true;
+
+    if (field.value > 0 && field.value < 10) {
+        complField[y][x] = field.value;
+        if (isFieldValid(x, y)) {
+            field.fillColor = colors[2];
+        } else {
+            field.fillColor = colors[3];
+        }
+    } else {
+        field.value = "";
+        field.fillColor = colors[0];
+    }
+
+    field.delay = false;
+}
+
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
-function refreshField(x, y) {
+function resetSudoku() {
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            complField[y][x] = original[y][x];
+            refreshField(x, y, colors[1]);
+        }
+    }
+}
+
+function showHint() {
+    % If one field in the solution array is zero the whole array should be
+    % zero and therefore the solution was not yet generated
+    if (solution[0][0] == 0) {
+        solveSudoku();
+    }
+
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            if (complField[y][x] == 0) {
+                complField[y][x] = solution[y][x];
+                refreshField(x, y, colors[1]);
+                return;
+            }
+        }
+    }
+}
+
+function showSolution() {
+    % When in custom mode it is not possible to know when
+    % the user is done therefore the solution can only be
+    % generated after requesting it
+    if (customMode) {
+        solveSudoku();
+    }
+
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            if (complField[y][x] == 0 || customMode) {
+                complField[y][x] = solution[y][x];
+                refreshField(x, y, colors[0]);
+            }
+        }
+    }
+}
+
+/**
+ * Refreshes value of one input field
+ *
+ * @param {int} x The x position.
+ * @param {int} y The y position.
+ * @param {RGB} color The rgb color.
+ *              Gray for given fields, green for correct fields,
+ *              Red for wrong fields, white for empty fields.
+ */
+function refreshField(x, y, color) {
     var field = this.getField("pos" + x + y);
     field.delay = true;
     if (complField[y][x] > 0) {
         field.value = complField[y][x];
-        %field.fillColor = colors[1];
+        field.fillColor = color;
     } else {
         field.value = "";
+        field.fillColor = colors[0];
     }
     field.delay = false;
 }
@@ -404,10 +509,12 @@ function drawAll(color) {
                 field.value = complField[y][x];
                 if (color) {
                     field.fillColor = colors[1];
+                    field.readonly = true;
                 }
             } else {
                 field.value = "";
                 field.fillColor = colors[0];
+                field.readonly = false;
             }
             field.delay = false;
         }
@@ -488,7 +595,10 @@ function printInfoText(error) {
                 }%
             \end{flushright}%
         \end{tcolorbox}
-
+        %
+        \ChoiceMenu[name=elemcount, width=50mm, combo]{Fullfield count:}{15, 30, 45, 60, 75}
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        %
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} X X @{}}%
                 \PushButton[name=generate, bordercolor=white]{
@@ -506,7 +616,7 @@ function printInfoText(error) {
                 \PushButton[name=solve, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        Solve current Sudoku\strut
+                        Show current solution\strut
                     \end{tcolorbox}
                 } &
                 \PushButton[name=hint, bordercolor=white]{
@@ -515,17 +625,17 @@ function printInfoText(error) {
                         Give me a hint\strut
                     \end{tcolorbox}
                 } \\
-                \begin{tcolorbox}
-                    \ChoiceMenu[name=elemcount, width=50mm, combo]{Fullfield count:}{15, 30, 45, 60, 75}
-                \end{tcolorbox} &
+                \PushButton[name=reset, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Reset current input\strut
+                    \end{tcolorbox}
+                } &
                 \begin{tcolorbox}
                     \TextField[name=info, width=\linewidth, readonly=true]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
-
-        \vspace{-10pt}
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
 
     \end{Form}
 \end{document}
