@@ -38,18 +38,15 @@
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 300;
+const NUMBERS = 9;
 
-var run;
 var complField = new Array();
-% Lock if the game has ended
-var gameover = false;
 
 var colors = new Array(
-    [ "RGB", 0.843, 0.078, 0.058 ],
-    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 1.0, 1.0, 1.0 ], % white
+    [ "RGB", 0.203, 0.603, 0.054 ], % green
     [ "RGB", 0.078, 0.305, 0.560 ],
-    [ "RGB", 0.560, 0.078, 0.533 ],
-    color.black
+    [ "RGB", 0.560, 0.078, 0.533 ]
 );
 
 highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
@@ -59,6 +56,23 @@ highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
 %%%%%%%%%%
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
+}
+
+/**
+ * Shuffles array in place.
+ * https://stackoverflow.com/questions/6274339/how-can-i-shuffle-an-array
+ *
+ * @param {Array} a items An array containing the items.
+ */
+function shuffle(a) {
+    var j, x, i;
+    for (i = a.length - 1; i > 0; i--) {
+        j = Math.floor(Math.random() * (i + 1));
+        x = a[i];
+        a[i] = a[j];
+        a[j] = x;
+    }
+    return a;
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -74,16 +88,23 @@ function initialise() {
     }
 
     initialiseButtons();
-    initTestSudoku();
 
-    drawAll(true);
-
-    solveSudoku();
+    generateSudoku();
 }
 
 function initialiseButtons() {
-    this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
+    this.getField("generate").setAction("MouseUp", "generateSudoku();");
+    this.getField("generate").highlight="none";
+    this.getField("hint").setAction("MouseUp", "hint();");
+    this.getField("hint").highlight="none";
+    this.getField("solve").setAction("MouseUp", "solveSudoku();");
+    this.getField("solve").highlight="none";
+    this.getField("enter").setAction("MouseUp", "enterSudoku();");
+    this.getField("enter").highlight="none";
+
+    this.getField("elemcount").borderColor = color.white;
+    this.getField("elemcount").currentValueIndices = 2;
+    this.getField("elemcount").commitOnSelChange = true;
 
     var funcName = "refreshField";
     for (var x = 0; x < FIELD_WIDTH; x++) {
@@ -130,66 +151,80 @@ function tooltip(on) {
     }
 }
 
-function restart() {
+function enterSudoku() {
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             complField[y][x] = 0;
         }
     }
 
-    gameover = false;
-
-    printInfoText();
+    drawAll(true);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 % Generation and solving %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
-function initTestSudoku() {
-    complField[0][2] = 4;
-    complField[0][4] = 5;
+function generateSudoku() {
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            complField[y][x] = 0;
+        }
+    }
 
-    complField[1][0] = 9;
-    complField[1][3] = 7;
-    complField[1][4] = 3;
-    complField[1][5] = 4;
-    complField[1][6] = 6;
+    % https://www.geeksforgeeks.org/program-sudoku-generator/
 
-    complField[2][2] = 3;
-    complField[2][4] = 2;
-    complField[2][5] = 1;
-    complField[2][7] = 4;
-    complField[2][8] = 9;
+    % Fill all the diagonal 3x3 matrices randomly.
+    var numberArray = [];
+    for (var i = 1; i <= NUMBERS; i++) {
+        numberArray.push(i);
+    }
 
-    complField[3][1] = 3;
-    complField[3][2] = 5;
-    complField[3][4] = 9;
-    complField[3][6] = 4;
-    complField[3][7] = 8;
+    % % Fill top left
+    fillQuad(numberArray, 0, 0);
+    % Fill middle
+    fillQuad(numberArray, 3, 3);
+    % Fill bot right
+    fillQuad(numberArray, 6, 6);
 
-    complField[4][1] = 9;
-    complField[4][7] = 3;
+    % Fill rest of the non-diagonal matrices.
+    % For every cell to be filled, try all numbers until
+    % a safe number is found.
+    solveSudoku();
 
-    complField[5][1] = 7;
-    complField[5][2] = 6;
-    complField[5][4] = 1;
-    complField[5][6] = 9;
-    complField[5][7] = 2;
+    % Remove K elements randomly
+    var positions = [];
+    for (var x = 0; x < NUMBERS; x++) {
+        for (var y = 0; y < NUMBERS; y++) {
+            positions.push([x, y]);
+        }
+    }
+    var num_elements = this.getField("elemcount").value;
+    var rnd = 0;
+    for (var count = NUMBERS * NUMBERS; count > num_elements; count--) {
+        rnd = getRandomInt(positions.length);
+        var elem = positions[rnd];
+        complField[elem[1]][elem[0]] = 0;
+        positions.splice(rnd, 1);
+    }
 
-    complField[6][0] = 3;
-    complField[6][1] = 1;
-    complField[6][3] = 9;
-    complField[6][4] = 7;
-    complField[6][6] = 2;
+    drawAll(true);
+}
 
-    complField[7][2] = 9;
-    complField[7][3] = 1;
-    complField[7][4] = 8;
-    complField[7][5] = 2;
-    complField[7][8] = 3;
+function fillQuad(numberArray, offsetX, offsetY) {
+    shuffle(numberArray);
 
-    complField[8][4] = 6;
-    complField[8][6] = 1;
+    var x = 0;
+    var y = 0;
+    for (var idx = 0; idx < numberArray.length; idx++) {
+        x = offsetX + idx;
+        if (idx > 5) {
+            x -= 6;
+        } else if (idx > 2) {
+            x -= 3;
+        }
+        y = offsetY + Math.floor(idx / 3);
+        complField[y][x] = numberArray[idx];
+    }
 }
 
 function solveSudoku() {
@@ -372,12 +407,8 @@ function drawAll(color) {
                 }
             } else {
                 field.value = "";
+                field.fillColor = colors[0];
             }
-            % if (complField[y][x] > 0) {
-            % }
-            % else {
-            %     field.fillColor = color.white;
-            % }
             field.delay = false;
         }
     }
@@ -460,19 +491,40 @@ function printInfoText(error) {
 
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} X X @{}}%
-                \PushButton[name=restart, bordercolor=white]{
+                \PushButton[name=generate, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        Restart game\strut
+                        Generate new Sudoku\strut
                     \end{tcolorbox}
                 } &
+                \PushButton[name=enter, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Enter own Sudoku\strut
+                    \end{tcolorbox}
+                } \\
+                \PushButton[name=solve, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Solve current Sudoku\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=hint, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Give me a hint\strut
+                    \end{tcolorbox}
+                } \\
+                \begin{tcolorbox}
+                    \ChoiceMenu[name=elemcount, width=50mm, combo]{Fullfield count:}{15, 30, 45, 60, 75}
+                \end{tcolorbox} &
                 \begin{tcolorbox}
                     \TextField[name=info, width=\linewidth, readonly=true]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=black, name=pointtable, readonly=true, multiline=true]{}
+        \vspace{-10pt}
         \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
 
     \end{Form}
