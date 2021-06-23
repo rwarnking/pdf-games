@@ -10,14 +10,12 @@
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
+\usepackage{multicol}
 
 \usepackage{xinttools}
 \usepackage[nomessages]{fp}
 \usepackage{tabularx}
 \usepackage{tcolorbox}
-
-% Chess symbols
-\usepackage{skak}
 
 \setlength{\parindent}{0pt}
 
@@ -37,27 +35,43 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{ascii_donut}
 
-var fieldWidth = AFMakeNumber(\fieldWidth);
-var fieldHeight = AFMakeNumber(\fieldHeight);
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
 
-var run;
-var output = new Array();
-var zbuffer = new Array();
+% Outside variables
+const fieldWidth = AFMakeNumber(\fieldWidth);
+const fieldHeight = AFMakeNumber(\fieldHeight);
 
-var A = 0;
-var B = 0;
+% Constants
 const SCALE = 10;
 const INTERVAL = 300;
 
-var charSet= ".,-~:;=!*#S@";
+const charSet = ".,-~:;=!*#S@";
+
+% Globals
+% Animation interval variable
+var run;
+% The display arrays
+var output = new Array();
+var zbuffer = new Array();
+
+% Algorithm vars
+var A = 0;
+var B = 0;
 
 %%%%%%%%%%%%%%%%%%
 % Initialisation %
 %%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default donut state.
+ */
 function initialise() {
     for (var x = 0; x < fieldWidth; x++) {
         for (var y = 0; y < fieldHeight; y++) {
-            field = this.getField("pos" + x + y);
+            field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             field.fillColor = color.transparent;
             field.borderColor = color.transparent;
@@ -77,9 +91,62 @@ function initialise() {
         zbuffer.push(tmp2);
     }
 
+    % Init the GUI
+    initialiseButtons();
+
+    % Start the animation interval
     run = app.setInterval("runAll()", INTERVAL);
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%%%%%%
+% Run %
+%%%%%%%%%%%%%%%%%%
 function runAll() {
     clearBuffer();
     render_frame(A, B);
@@ -175,7 +242,7 @@ function draw() {
     % Now, dump output[] to the screen.
     for (var x = 0; x < fieldWidth; x++) {
         for (var y = 0; y < fieldHeight; y++) {
-            field = this.getField("pos" + x + y);
+            field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             field.fillColor = color.transparent;
             field.borderColor = color.transparent;
@@ -194,30 +261,41 @@ function draw() {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-    \section*{Ascii Donut}
-
-    \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-    \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
-
     \begin{Form}
+
+        \begin{multicols}{2}
+            \section*{Ascii Donut}
+        \columnbreak
+            \begin{flushright}%
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
+            \end{flushright}%
+        \end{multicols}
+
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
         \begin{tcolorbox}[colback=black]
             %\centering
             \begin{flushright}
             \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    %\TextField[width=\blocksizeW, bordercolor=white, name=pos#1#2, readonly=true]{}%
-                    \TextField[width=10pt, height=10pt, bordercolor=white, name=pos#1#2, readonly=true]{}%
+                    %\TextField[width=\blocksizeW, bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                    \TextField[width=10pt, height=10pt, bordercolor=white, name=pos#1-#2, readonly=true]{}%
                 }\vspace{3pt}
                 \newline
             }
             \end{flushright}
         \end{tcolorbox}
 
-
-
         \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
+
+       \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
 
     \end{Form}
 
