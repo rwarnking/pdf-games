@@ -1,0 +1,302 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{20}
+\def\fieldHeight{20}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{ascii_donut}
+
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
+
+% Outside variables
+const fieldWidth = AFMakeNumber(\fieldWidth);
+const fieldHeight = AFMakeNumber(\fieldHeight);
+
+% Constants
+const SCALE = 10;
+const INTERVAL = 300;
+
+const charSet = ".,-~:;=!*#S@";
+
+% Globals
+% Animation interval variable
+var run;
+% The display arrays
+var output = new Array();
+var zbuffer = new Array();
+
+% Algorithm vars
+var A = 0;
+var B = 0;
+
+%%%%%%%%%%%%%%%%%%
+% Initialisation %
+%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default donut state.
+ */
+function initialise() {
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + "-" + y);
+            field.delay = true;
+            field.fillColor = color.transparent;
+            field.borderColor = color.transparent;
+            field.textColor = color.white
+            field.delay = false;
+        }
+    }
+
+    for (var row = 0; row < fieldHeight; row++) {
+        var tmp = new Array();
+        var tmp2 = new Array();
+        for (var column = 0; column < fieldWidth; column++) {
+            tmp.push(" ");
+            tmp2.push(0);
+        }
+        output.push(tmp);
+        zbuffer.push(tmp2);
+    }
+
+    % Init the GUI
+    initialiseButtons();
+
+    % Start the animation interval
+    run = app.setInterval("runAll()", INTERVAL);
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%%%%%%
+% Run %
+%%%%%%%%%%%%%%%%%%
+function runAll() {
+    clearBuffer();
+    render_frame(A, B);
+    draw();
+    A += 0.04 * SCALE;
+    B += 0.02 * SCALE;
+}
+
+function clearBuffer() {
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            output[y][x] = " ";
+            zbuffer[y][x] = 0;
+        }
+    }
+}
+
+% https://www.a1k0n.net/2011/07/20/donut-math.html
+const THETA_SPACING = 0.07;
+const PHI_SPACING   = 0.02;
+
+const R1 = 1;
+const R2 = 2;
+const K2 = 5;
+% Calculate K1 based on screen size:
+% the maximum x-distance occurs roughly at the edge of the torus,
+% which is at x = R1 + R2, z = 0.
+% We want that to be displaced 3/8ths of the width of the screen,
+% which is 3/4th of the way from the center to the side of the screen.
+% fieldWidth*3/8 = K1*(R1+R2)/(K2+0)
+% fieldWidth*K2*3/(8*(R1+R2)) = K1
+const K1 = fieldWidth * K2 * 3 / (8 * (R1 + R2));
+
+function render_frame(A, B) {
+    % Precompute sines and cosines of A and B
+    var cosA = Math.cos(A);
+    var sinA = Math.sin(A);
+    var cosB = Math.cos(B);
+    var sinB = Math.sin(B);
+
+    % Theta goes around the cross-sectional circle of a torus
+    for (var theta = 0; theta < 2 * Math.PI; theta += THETA_SPACING) {
+        % Precompute sines and cosines of theta
+        var costheta = Math.cos(theta);
+        var sintheta = Math.sin(theta);
+
+        % Phi goes around the center of revolution of a torus
+        for (var phi = 0; phi < 2 * Math.PI; phi += PHI_SPACING) {
+            % Precompute sines and cosines of phi
+            var cosphi = Math.cos(phi);
+            var sinphi = Math.sin(phi);
+
+            % The x, y coordinate of the circle, before revolving
+            % (factored out of the above equations)
+            var circlex = R2 + R1 * costheta;
+            var circley = R1 * sintheta;
+
+            % Final 3D (x, y, z) coordinate after rotations
+            var x = circlex * (cosB * cosphi + sinA * sinB * sinphi)
+                - circley * cosA * sinB;
+            var y = circlex * (sinB * cosphi - sinA * cosB * sinphi)
+                + circley * cosA * cosB;
+            var z = K2 + cosA * circlex * sinphi + circley * sinA;
+            var ooz = 1/z;
+
+            % x and y projection.
+            % Note that y is negated here, because y goes up in 3D space but down on 2D displays.
+            var xp = Math.floor(fieldWidth / 2 + K1 * ooz * x);
+            var yp = Math.floor(fieldHeight / 2 - K1 * ooz * y);
+
+            % Calculate luminance.
+            var L = cosphi * costheta * sinB - cosA * costheta * sinphi -
+                sinA * sintheta + cosB * (cosA * sintheta - costheta * sinA * sinphi);
+            % L ranges from -sqrt(2) to +sqrt(2). If it's < 0, the surface
+            % is pointing away from us, so we won't bother trying to plot it.
+            if (L > 0) {
+                % Test against the z-buffer. Larger 1/z means the pixel is
+                % closer to the viewer than what's already plotted.
+                if (ooz > zbuffer[yp][xp]) {
+                    zbuffer[yp][xp] = ooz;
+                    var luminanceIndex = L * 8;
+                    % luminanceIndex is now in the range 0..11 (8*sqrt(2) = 11.3)
+                    % now we lookup the character corresponding to the
+                    % luminance and plot it in our output:
+                    output[yp][xp] = charSet.charAt(luminanceIndex);
+                }
+            }
+        }
+    }
+}
+
+function draw() {
+    % Now, dump output[] to the screen.
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + "-" + y);
+            field.delay = true;
+            field.fillColor = color.transparent;
+            field.borderColor = color.transparent;
+            field.value = output[y][x];
+            field.delay = false;
+        }
+    }
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        \begin{multicols}{2}
+            \section*{Ascii Donut}
+        \columnbreak
+            \begin{flushright}%
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
+            \end{flushright}%
+        \end{multicols}
+
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \begin{tcolorbox}[colback=black]
+            %\centering
+            \begin{flushright}
+            \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                    %\TextField[width=\blocksizeW, bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                    \TextField[width=10pt, height=10pt, bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                }\vspace{3pt}
+                \newline
+            }
+            \end{flushright}
+        \end{tcolorbox}
+
+        \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
+        \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
+
+       \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+
+    \end{Form}
+
+\end{document}
