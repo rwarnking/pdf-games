@@ -155,10 +155,11 @@ function initialiseButtons() {
             for (var z = 0; z < SYMB_COUNT; z++) {
                 var f = this.getField("field" + z + x + y);
                 f.setAction("MouseUp", callbackName);
+
                 f.textSize = SCREEN_TEXT_HEIGHT / (FIELD_HEIGHT * 5);
                 f.alignment = "center";
                 f.fillColor = color.transparent;
-                f.borderColor = color.black; % TODO
+                f.borderColor = color.transparent;
             }
         }
     }
@@ -246,7 +247,8 @@ function restart() {
  * @param {Number} y The y position.
  */
 function markField(x, y) {
-    %this.getField("info").setFocus();
+    % Remove blinking cursor after selection
+    this.getField("info").setFocus();
 
     % If there are not jet 3 cards selected
     var len = lastSelections.length;
@@ -561,19 +563,19 @@ function printInfoText(text) {
                                 % so the elements need to be copy pasted
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field0#1#2, readonly=true]{}\\%
+                                    bordercolor=white, name=field0#1#2, readonly=true]{}\\[0.5mm]%
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field1#1#2, readonly=true]{}\\%
+                                    bordercolor=white, name=field1#1#2, readonly=true]{}\\[0.5mm]%
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field2#1#2, readonly=true]{}\\%
+                                    bordercolor=white, name=field2#1#2,  readonly=true]{}\\[0.5mm]%
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field3#1#2, readonly=true]{}\\%
+                                    bordercolor=white, name=field3#1#2,  readonly=true]{}\\[0.5mm]%
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field4#1#2, readonly=true]{}\\%
+                                    bordercolor=white, name=field4#1#2,  readonly=true]{}\\%
                             \end{tcolorbox}%
                         }%
                         % Have the cell divider for all elements
