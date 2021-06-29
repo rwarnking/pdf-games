@@ -31,7 +31,6 @@
 \def\fieldWidth{4}
 \def\fieldHeight{3}
 
-\def\winningPieces{3}
 % Max playercount is 5
 \def\playerCount{2}
 
@@ -46,7 +45,6 @@ const GAME_DESC = "Set is a game.";
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_HEIGHT = 500;
-const WINNING_PIECES = AFMakeNumber(\winningPieces);
 const MAY_PLAYERS = AFMakeNumber(\playerCount);
 
 const APPEARANCES = 3;
@@ -136,11 +134,14 @@ function initialise() {
 
 function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
-    this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
-
     this.getField("refill").setAction("MouseUp", "refill();");
     this.getField("refill").highlight="none";
+
+    this.getField("hint").setAction("MouseUp", "hint();");
+    this.getField("hint").highlight="none";
+
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
 
     % Each field needs to be connected to an input function
     % Define text style
@@ -265,9 +266,68 @@ function markField(x, y) {
         printInfoText("Selected " + lastSelections.length + ".");
     }
 
-    var idx1 = complField[lastSelections[0][1]][lastSelections[0][0]];
-    var idx2 = complField[lastSelections[1][1]][lastSelections[1][0]];
-    var idx3 = complField[lastSelections[2][1]][lastSelections[2][0]];
+    % Check if is a set
+    if (isSet(lastSelections)) {
+        printInfoText("You fount a set!");
+        % Clear the fields
+        for (var i = 0; i < lastSelections.length; i++) {
+            clear(lastSelections[i][0], lastSelections[i][1]);
+            complField[lastSelections[i][1]][lastSelections[i][0]] = -1;
+        }
+
+        if (gameOverCheck()) {
+            printInfoText("The game is over, there are no further sets to be found.");
+        }
+    } else {
+        printInfoText("This was not a set!");
+    }
+
+    % Reset selection
+    lastSelections = [];
+}
+
+/**
+ * Search all cards for potential sets.
+ * If there is a set print the coordinates of the first card to the info box.
+ * Else advise to use refill.
+ */
+function hint() {
+    var posArray = [[], [], []];
+    var cardCount = FIELD_WIDTH * FIELD_HEIGHT;
+    for (var e1 = 0; e1 < cardCount - 2; e1++) {
+        for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
+            for (var e3 = e2 + 1; e3 < cardCount; e3++) {
+                % Reassign
+                posArray[0] = [e1 \% FIELD_WIDTH, Math.floor(e1 / FIELD_WIDTH)];
+                posArray[1] = [e2 \% FIELD_WIDTH, Math.floor(e2 / FIELD_WIDTH)];
+                posArray[2] = [e3 \% FIELD_WIDTH, Math.floor(e3 / FIELD_WIDTH)];
+
+                if (isSet(posArray)) {
+                    printInfoText("Try card " + posArray[0] + " ([x, y]).");
+                    return;
+                }
+            }
+        }
+    }
+
+    printInfoText("No set available, use refill!");
+}
+
+/**
+ * Test if the given positions refer to cards that qualify as a set
+ *
+ * @param {Array} positions The card positions.
+ * @return true if is a set false else.
+ */
+function isSet(positions) {
+    var idx1 = complField[positions[0][1]][positions[0][0]];
+    var idx2 = complField[positions[1][1]][positions[1][0]];
+    var idx3 = complField[positions[2][1]][positions[2][0]];
+
+    % If a card slot is empty there can not be a set
+    if (idx1 == -1 || idx2 == -1 || idx3 == -1) {
+        return false;
+    }
 
     % Symbol
     var i1S = cardList[idx1][0];
@@ -301,24 +361,10 @@ function markField(x, y) {
     var numEqual = i1N == i2N && i2N == i3N;
     var numUnequal = i1N != i2N && i2N != i3N && i1N != i3N;
 
-    % Check if is a set
-    if ((symbEqual || symbUnequal) &&
+    return (symbEqual || symbUnequal) &&
         (colEqual || colUnequal) &&
         (appEqual || appUnequal) &&
-        (numEqual || numUnequal)
-    ) {
-        printInfoText("You fount a set!");
-        % Clear the fields
-        for (var i = 0; i < lastSelections.length; i++) {
-            clear(lastSelections[i][0], lastSelections[i][1]);
-            complField[lastSelections[i][1]][lastSelections[i][0]] = -1;
-        }
-    } else {
-        printInfoText("This was not a set!");
-    }
-
-    % Reset selection
-    lastSelections = [];
+        (numEqual || numUnequal);
 }
 
 /**
@@ -326,7 +372,7 @@ function markField(x, y) {
  * If not refill all slots.
  */
 function refill() {
-    var foundOne = false;
+    var slotCount = 0;
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             if (complField[y][x] == -1) {
@@ -335,23 +381,64 @@ function refill() {
                 unusedCards.splice(rnd, 1);
                 draw(x, y);
 
-                foundOne = true;
+                slotCount++;
             }
         }
     }
-    % if (!foundOne) {
+    printInfoText("Refilled " + slotCount + " slots.");
 
-    % }
+    % If there are no empty slots refill the complete field.
+    if (slotCount == 0) {
+        % Remove the current cards and mark them as unused
+        for (var x = 0; x < FIELD_WIDTH; x++) {
+            for (var y = 0; y < FIELD_HEIGHT; y++) {
+                unusedCards.push(complField[y][x]);
+            }
+        }
+
+        for (var x = 0; x < FIELD_WIDTH; x++) {
+            for (var y = 0; y < FIELD_HEIGHT; y++) {
+                if (unusedCards.length == 0) {
+                    continue;
+                }
+                var rnd = getRandomInt(unusedCards.length);
+                complField[y][x] = unusedCards[rnd];
+                unusedCards.splice(rnd, 1);
+                draw(x, y);
+            }
+        }
+        printInfoText("Refilled the complete field.");
+    }
 }
 
 /**
- *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
- * @return {Number} The player index or 0 if no winner
+ * Check if the remaining cards do not allow for another set.
+ * TODO this is not totally correct since it does not check all cards
+ * but rather the cards that are on the field.
  */
-function checkForWinner(x, y) {
-    return 0;
+function gameOverCheck() {
+    if (unusedCards.length != 0) {
+        return false;
+    }
+
+    var posArray = [[], [], []];
+    var cardCount = FIELD_WIDTH * FIELD_HEIGHT;
+    for (var e1 = 0; e1 < cardCount - 2; e1++) {
+        for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
+            for (var e3 = e2 + 1; e3 < cardCount; e3++) {
+                % Reassign
+                posArray[0] = [e1 \% FIELD_WIDTH, Math.floor(e1 / FIELD_WIDTH)];
+                posArray[1] = [e2 \% FIELD_WIDTH, Math.floor(e2 / FIELD_WIDTH)];
+                posArray[2] = [e3 \% FIELD_WIDTH, Math.floor(e3 / FIELD_WIDTH)];
+
+                if (isSet(posArray)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 function drawAll() {
@@ -391,20 +478,25 @@ function draw(x, y) {
     % spans[1].textColor = color.red;
     % spans[1].underline = true;
 
+    var posList = [
+        [0, 0, 1, 0, 0],
+        [0, 1, 0, 1, 0],
+        [1, 0, 1, 0, 1]
+    ];
+    var positions = posList[cardList[idx][3] - 1];
+
     % Assign the text value to the right fields
-    for (var f = 0; f < cardList[idx][3]; f++) {
+    for (var f = 0; f < SYMB_COUNT; f++) {
         var field = this.getField("field" + f + x + y);
         field.delay = true;
         field.richText = true;
-        field.richValue = spans;
-        field.delay = false;
-    }
 
-    % TODO remove this
-    for (var f = cardList[idx][3]; f < 5; f++) {
-        var field = this.getField("field" + f + x + y);
-        field.delay = true;
-        field.value = "";
+        if (positions[f] == 1) {
+            field.richValue = spans;
+        } else {
+            % Clear field from previous element
+            field.value = "";
+        }
         field.delay = false;
     }
 }
@@ -412,7 +504,7 @@ function draw(x, y) {
 function clear(x, y) {
     var idx = complField[y][x];
 
-    for (var f = 0; f < 5; f++) {
+    for (var f = 0; f < SYMB_COUNT; f++) {
         var field = this.getField("field" + f + x + y);
         field.delay = true;
         field.value = "";
@@ -452,19 +544,9 @@ function printInfoText(text) {
         \end{flushright}%
     \end{multicols}
 
-    % Calculate the max width and height of a block
-    % \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-    % \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
-
+    % Calculate the max height of a block
     \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
     \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
-
-    % Define the blocksize via the smaller amount
-    % \ifnum\blocksizeW<\blocksizeH
-    %     \def\blocksize{\blocksizeW}
-    % \else
-    %     \def\blocksize{\blocksizeH}
-    % \fi
 
     \begin{Form}
 
@@ -510,11 +592,10 @@ function printInfoText(text) {
                         Refill card slots.\strut
                     \end{tcolorbox}
                 } &
-                % TODO
                 \PushButton[name=hint, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        Hint.\strut
+                        Hint\strut
                     \end{tcolorbox}
                 }\\%
                 \PushButton[name=restart, bordercolor=white]{
