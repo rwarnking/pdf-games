@@ -1,0 +1,303 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{20}
+\def\fieldHeight{20}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{gameoflife}
+
+const GAME_DESC = "Text.\
+Text\
+Text,\
+Text.";
+
+var fieldWidth = AFMakeNumber(\fieldWidth);
+var fieldHeight = AFMakeNumber(\fieldHeight);
+
+var complField1 = new Array();
+var complField2 = new Array();
+
+var fieldIdx = 0;
+const DEAD = 0;
+const ALIVE = 1;
+
+var colors = new Array(
+    color.black,
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ],
+    [ "RGB", 0.560, 0.078, 0.533 ]
+);
+
+highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function initialise() {
+    for (var row = 0; row < fieldHeight; row++) {
+        var tmp1 = new Array();
+        var tmp2 = new Array();
+        for (var column = 0; column < fieldWidth; column++) {
+            tmp1.push(DEAD);
+            tmp2.push(DEAD);
+        }
+        complField1.push(tmp1);
+        complField2.push(tmp2);
+    }
+
+    complField1[5][5] = ALIVE;
+    complField1[6][5] = ALIVE;
+    complField1[7][5] = ALIVE;
+
+    initialiseButtons();
+
+    % Initial run
+    runAll();
+    % Animation interval
+    run = app.setInterval("runAll()", 1000);
+}
+
+function initialiseButtons() {
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Info Text!");
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 581, 468, 381];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+function runAll() {
+    process();
+    fieldIdx = (fieldIdx + 1) \% 2;
+    printInfoText("Idx: " + fieldIdx);
+    draw();
+}
+
+function process() {
+    var state = DEAD;
+    var result = DEAD;
+    var n = 0;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            if (fieldIdx == 1) {
+                state = complField2[y][x];
+            } else {
+                state = complField1[y][x];
+            }
+
+            var n = getNeighbourCount(x, y);
+            if (state == DEAD && n == 3) {
+                % Repopulation
+                result = ALIVE;
+            } else if (state == ALIVE) {
+                if (n < 2) {
+                    % Underpopulation
+                    result = DEAD;
+                } else if (n == 2 || n == 3) {
+                    result = ALIVE;
+                } else {
+                    % Overpopulation
+                    result = DEAD;
+                }
+            } else {
+                result = DEAD;
+            }
+
+            if (fieldIdx == 1) {
+                complField1[y][x] = result;
+            } else {
+                complField2[y][x] = result;
+            }
+        }
+    }
+}
+
+function getNeighbourCount(pX, pY) {
+    var counter = 0;
+    for (var x = pX - 1; x <= pX + 1; x++) {
+        for (var y = pY - 1; y <= pY + 1; y++) {
+            % Ignore own position and border
+            if ((x == pX && y == pY) || x < 0 || y < 0 || x >= fieldWidth || y >= fieldHeight) {
+                continue;
+            }
+            if ((fieldIdx == 1 && complField2[y][x] == ALIVE) || (fieldIdx == 0 && complField1[y][x] == ALIVE)) {
+                counter++;
+            }
+        }
+    }
+    return counter;
+}
+
+function draw() {
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            var value = DEAD;
+            if (fieldIdx == 1) {
+                value = complField1[y][x];
+            } else {
+                value = complField2[y][x];
+            }
+
+            if (value > DEAD) {
+                field.fillColor = colors[0];
+                field.borderColor = colors[0];
+            } else {
+                field.fillColor = color.transparent;
+                field.borderColor = color.transparent;
+            }
+            field.delay = false;
+        }
+    }
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        \begin{multicols}{2}
+            \section*{Game of Life}
+        \columnbreak
+            \begin{flushright}%
+            \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
+
+        \begin{tcolorbox}
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                    }\vspace{3pt}
+                    \newline%
+                }%
+            \end{flushright}%
+        \end{tcolorbox}
+
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+    \end{Form}
+\end{document}
