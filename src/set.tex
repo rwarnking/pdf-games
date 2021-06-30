@@ -32,7 +32,7 @@
 \def\fieldHeight{3}
 
 % Max playercount is 5
-\def\playerCount{2}
+\def\playerCount{5}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -45,7 +45,7 @@ const GAME_DESC = "Set is a game.";
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_HEIGHT = 500;
-const MAY_PLAYERS = AFMakeNumber(\playerCount);
+const MAX_PLAYERS = AFMakeNumber(\playerCount);
 
 const APPEARANCES = 3;
 % The count of symbols on the field
@@ -56,7 +56,11 @@ const SYMB_COUNT = 5;
 var complField = new Array();
 % Lock if the game has ended
 var gameover = false;
-% Save the last moves for dehighlighting
+% Save player idx so for points
+var playerIdx = -1;
+% Save the points
+var points = [];
+% Save the last moves for set checking
 var lastSelections = [];
 
 var cardList = new Array();
@@ -108,23 +112,21 @@ function initialise() {
         }
     }
 
-        %     var rnd = getRandomInt(fieldList.length - 1);
-        % var elem = fieldList[rnd];
-
-        % % Remove and mark the field
-        % fieldList.splice(rnd, 1);
-
     % Initlialise the array with a cardindex
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         var zArr = new Array();
         for (var column = 0; column < FIELD_WIDTH; column++) {
             % Get random element from the cardList and remove the card afterwards
-            %var rnd = row * FIELD_WIDTH + column;
             var rnd = getRandomInt(unusedCards.length);
             zArr.push(unusedCards[rnd]);
             unusedCards.splice(rnd, 1);
         }
         complField.push(zArr);
+    }
+
+    % Initialise player points
+    for (var p = 0; p < MAX_PLAYERS; p++) {
+        points.push(0);
     }
 
     initialiseButtons();
@@ -151,6 +153,7 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             this.getField("pos" + x + y).setAction("MouseDown", callbackName);
             this.getField("pos" + x + y).highlight="none";
+            this.getField("pos" + x + y).borderColor = color.transparent;
 
             for (var z = 0; z < SYMB_COUNT; z++) {
                 var f = this.getField("field" + z + x + y);
@@ -164,6 +167,21 @@ function initialiseButtons() {
         }
     }
 
+    var funcName = "selectPlayer";
+    for (var p = 1; p <= MAX_PLAYERS; p++) {
+        var callbackName = funcName + "(" + p.toString() + ");";
+        % Set buttonpress callback
+        this.getField("player" + p).setAction("MouseDown", callbackName);
+        % Set point-fields to zero
+        var f = this.getField("points" + p);
+        f.delay = true;
+        f.setAction("MouseDown", callbackName);
+        f.value = points[p - 1];
+        f.fillColor = color.transparent;
+        f.borderColor = color.transparent;
+        f.delay = false;
+    }
+
     this.getField("info").fillColor = color.transparent;
     this.getField("info").borderColor = color.transparent;
 
@@ -172,7 +190,7 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
 
-    %printInfoText(0, false);
+    printInfoText("Please select the player who found a set!");
 }
 
 /**
@@ -193,20 +211,37 @@ function tooltip(on) {
         field.fillColor = color.gray;
         % hight 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
-        field.rect = [128, 601, 468, 401];
+        field.rect = [128, 581, 468, 381];
 
         field.delay = false;
+
+        % Hide the textelements that lie behind the tooltip
+        % so the text is not shown
+        for (var z = 0; z < SYMB_COUNT; z++) {
+            field = this.getField("field" + z + 1 + 1);
+            field.hidden = true;
+            field = this.getField("field" + z + 2 + 1);
+            field.hidden = true;
+        }
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
         field.value = "";
 
-                field.multiline = false;
+        field.multiline = false;
         field.fillColor = color.gray;
         field.rect = [0, 0, 0, 0];
 
         field.delay = false;
+
+        % Unhide the textelements
+        for (var z = 0; z < SYMB_COUNT; z++) {
+            field = this.getField("field" + z + 1 + 1);
+            field.hidden = false;
+            field = this.getField("field" + z + 2 + 1);
+            field.hidden = false;
+        }
     }
 }
 
@@ -230,16 +265,36 @@ function restart() {
         }
     }
 
+    % Set point-fields back to zero
+    for (var p = 1; p <= MAX_PLAYERS; p++) {
+        points[p - 1] = 0;
+        var f = this.getField("points" + p);
+        f.delay = true;
+        f.value = 0;
+        f.delay = false;
+    }
+
     % Reset game state
     lastSelections = [];
     gameover = false;
 
-    printInfoText("");
+    playerIdx = -1;
+
+    printInfoText("Please select the player who found a set!");
 }
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
+function selectPlayer(idx) {
+    if (playerIdx != -1) {
+        printInfoText("Can not switch player after selection. (Player " + playerIdx + ")");
+        return;
+    }
+    playerIdx = idx;
+    printInfoText("Player " + idx + " selected. Now select three cards!");
+}
+
 /**
  * Set the value of the input field.
  *
@@ -247,8 +302,15 @@ function restart() {
  * @param {Number} y The y position.
  */
 function markField(x, y) {
+    if (gameover || playerIdx == -1) {
+        if (playerIdx == -1) {
+            printInfoText("Please select the player who found a set!");
+        }
+        return;
+    }
+
     % Remove blinking cursor after selection
-    this.getField("info").setFocus();
+    this.getField("tooltiptxt").setFocus();
 
     % If there are not jet 3 cards selected
     var len = lastSelections.length;
@@ -270,7 +332,13 @@ function markField(x, y) {
 
     % Check if is a set
     if (isSet(lastSelections)) {
-        printInfoText("You fount a set!");
+        printInfoText("Player " + playerIdx + " found a set! Select next Player.");
+
+        % Increase the points of this player
+        this.getField("points" + playerIdx).delay = true;
+        this.getField("points" + playerIdx).value++;
+        this.getField("points" + playerIdx).delay = false;
+
         % Clear the fields
         for (var i = 0; i < lastSelections.length; i++) {
             clear(lastSelections[i][0], lastSelections[i][1]);
@@ -279,10 +347,19 @@ function markField(x, y) {
 
         if (gameOverCheck()) {
             printInfoText("The game is over, there are no further sets to be found.");
+            gameover = true;
         }
     } else {
-        printInfoText("This was not a set!");
+        % Decrease the points of this player
+        this.getField("points" + playerIdx).delay = true;
+        this.getField("points" + playerIdx).value--;
+        this.getField("points" + playerIdx).delay = false;
+
+        printInfoText("This was not a set! Select next Player.");
     }
+
+    % Reset player
+    playerIdx = -1;
 
     % Reset selection
     lastSelections = [];
@@ -294,6 +371,11 @@ function markField(x, y) {
  * Else advise to use refill.
  */
 function hint() {
+    if (playerIdx != -1) {
+        printInfoText("Hint unavailable while player selected. (Player " + playerIdx + ")");
+        return;
+    }
+
     var posArray = [[], [], []];
     var cardCount = FIELD_WIDTH * FIELD_HEIGHT;
     for (var e1 = 0; e1 < cardCount - 2; e1++) {
@@ -374,6 +456,11 @@ function isSet(positions) {
  * If not refill all slots.
  */
 function refill() {
+    if (playerIdx != -1) {
+        printInfoText("Can not refill while player selected. (Player " + playerIdx + ")");
+        return;
+    }
+
     var slotCount = 0;
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
@@ -533,10 +620,13 @@ function printInfoText(text) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
+    \begin{Form}
+
     \begin{multicols}{2}
         \section*{Set}
     \columnbreak
         \begin{flushright}%
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
         \PushButton[name=tooltipbtn, bordercolor=white]{%
             \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                 \centering
@@ -550,9 +640,7 @@ function printInfoText(text) {
     \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
     \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
 
-    \begin{Form}
-
-        \begin{center}%
+        \begin{center}
             \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
@@ -585,8 +673,24 @@ function printInfoText(text) {
                 }%
             \end{tabularx}
         \end{center}
-
-        \begin{center}%
+        %
+        \begin{center}
+            \begin{tabularx}{\textwidth}{@{} *{\playerCount}{X} @{}}%
+                \xintFor* #1 in {\xintSeq{1}{\playerCount}} \do {%
+                    \PushButton[name=player#1, bordercolor=white]{
+                        \begin{tcolorbox}
+                            \centering
+                            \TextField[name=points#1, height=0.35cm, width=0.5cm, readonly=true]{Player #1:}
+                        \end{tcolorbox}
+                    }
+                    % Have the cell divider for all elements
+                    % that are not the last one
+                    \xintifForLast{}{&}
+                }%
+            \end{tabularx}
+        \end{center}
+        %
+        \begin{center}
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=refill, bordercolor=white]{
                     \begin{tcolorbox}
@@ -611,8 +715,6 @@ function printInfoText(text) {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
-
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
 
     \end{Form}
 \end{document}
