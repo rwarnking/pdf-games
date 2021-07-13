@@ -55,6 +55,15 @@ const APPEARANCES = 3;
 const NUMBER = 3;
 const SYMB_COUNT = 5;
 
+% Constants
+const ITALIC = 0;
+const UNDERLINE = 1;
+const BOLD = 2;
+const SYM_P = 0;
+const COL_P = 1;
+const APP_P = 2;
+const NUM_P = 3;
+
 % The game field
 var complField = new Array();
 % Lock if the game has ended
@@ -66,31 +75,26 @@ var points = [];
 % Save the last moves for set checking
 var lastSelections = [];
 
+% List of all card combinations
 var cardList = new Array();
+% Save the indices of the unused cards
 var unusedCards = new Array();
 
-% Each player gets a symbol
+% Different symbols
+% Sadly special symbols using String.fromCharCode() does not work
+% because they cant be visualised in italic/bold
 var symbols = [
     "A",
     "B",
     "C"
-    % 0x2717,
-    % 0x274D,
-    % 0x2730,
-    % 0x2752,
-    % 0x271C
 ];
 
-% Each player gets a color
+% Different colors
 var colors = new Array(
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
-    [ "RGB", 0.078, 0.305, 0.560 ]%,
-    %[ "RGB", 0.560, 0.078, 0.533 ],
-    %color.black
+    [ "RGB", 0.078, 0.305, 0.560 ]
 );
-
-highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
 
 %%%%%%%%%%
 % Helper %
@@ -103,6 +107,7 @@ function getRandomInt(max) {
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function initialise() {
+    % Create all card combinations and indices
     var idx = 0;
     for (var s = 0; s < symbols.length; s++) {
         for (var c = 0; c < colors.length; c++) {
@@ -132,11 +137,16 @@ function initialise() {
         points.push(0);
     }
 
+    % Init the GUI
     initialiseButtons();
 
     drawAll();
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
 function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
     this.getField("refill").setAction("MouseUp", "refill();");
@@ -149,14 +159,13 @@ function initialiseButtons() {
     this.getField("restart").highlight="none";
 
     % Each field needs to be connected to an input function
-    % Define text style
     var funcName = "markField";
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + y).highlight="none";
-            this.getField("pos" + x + y).borderColor = color.transparent;
+            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
+            this.getField("pos" + x + "-" + y).highlight="none";
+            this.getField("pos" + x + "-" + y).borderColor = color.transparent;
 
             for (var z = 0; z < SYMB_COUNT; z++) {
                 var f = this.getField("field" + z + x + y);
@@ -170,6 +179,7 @@ function initialiseButtons() {
         }
     }
 
+    % Add callbacks for the player selection
     var funcName = "selectPlayer";
     for (var p = 1; p <= MAX_PLAYERS; p++) {
         var callbackName = funcName + "(" + p.toString() + ");";
@@ -252,6 +262,7 @@ function tooltip(on) {
  * Restart the game and clear everything
  */
 function restart() {
+    % Reset the unused cards - every card is unused now
     unusedCards = new Array();
     for (var idx = 0; idx < symbols.length * colors.length * APPEARANCES * NUMBER; idx++) {
         unusedCards.push(idx++);
@@ -289,6 +300,10 @@ function restart() {
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
+/**
+ * Selects a player via the given id.
+ * @param {Number} idx The player index.
+ */
 function selectPlayer(idx) {
     if (gameover) {
         return;
@@ -381,11 +396,13 @@ function hint() {
     if (gameover) {
         return;
     }
+    % Dont give a hint after a player selection
     if (playerIdx != -1) {
         printInfoText("Hint unavailable while player selected. (Player " + playerIdx + ")");
         return;
     }
 
+    % Actuall search for a set in the given cards
     var posArray = [[], [], []];
     var cardCount = FIELD_WIDTH * FIELD_HEIGHT;
     for (var e1 = 0; e1 < cardCount - 2; e1++) {
@@ -424,33 +441,33 @@ function isSet(positions) {
     }
 
     % Symbol
-    var i1S = cardList[idx1][0];
-    var i2S = cardList[idx2][0];
-    var i3S = cardList[idx3][0];
+    var i1S = cardList[idx1][SYM_P];
+    var i2S = cardList[idx2][SYM_P];
+    var i3S = cardList[idx3][SYM_P];
 
     var symbEqual = i1S == i2S && i2S == i3S;
     var symbUnequal = i1S != i2S && i2S != i3S && i1S != i3S;
 
     % Color
-    var i1C = cardList[idx1][1];
-    var i2C = cardList[idx2][1];
-    var i3C = cardList[idx3][1];
+    var i1C = cardList[idx1][COL_P];
+    var i2C = cardList[idx2][COL_P];
+    var i3C = cardList[idx3][COL_P];
 
     var colEqual = i1C == i2C && i2C == i3C;
     var colUnequal = i1C != i2C && i2C != i3C && i1C != i3C;
 
     % Appearance
-    var i1A = cardList[idx1][2];
-    var i2A = cardList[idx2][2];
-    var i3A = cardList[idx3][2];
+    var i1A = cardList[idx1][APP_P];
+    var i2A = cardList[idx2][APP_P];
+    var i3A = cardList[idx3][APP_P];
 
     var appEqual = i1A == i2A && i2A == i3A;
     var appUnequal = i1A != i2A && i2A != i3A && i1A != i3A;
 
     % Number
-    var i1N = cardList[idx1][3];
-    var i2N = cardList[idx2][3];
-    var i3N = cardList[idx3][3];
+    var i1N = cardList[idx1][NUM_P];
+    var i2N = cardList[idx2][NUM_P];
+    var i3N = cardList[idx3][NUM_P];
 
     var numEqual = i1N == i2N && i2N == i3N;
     var numUnequal = i1N != i2N && i2N != i3N && i1N != i3N;
@@ -474,6 +491,7 @@ function refill() {
         return;
     }
 
+    % Fill all empty slots and count all occurrences
     var slotCount = 0;
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
@@ -498,6 +516,7 @@ function refill() {
             }
         }
 
+        % Select new cards
         for (var x = 0; x < FIELD_WIDTH; x++) {
             for (var y = 0; y < FIELD_HEIGHT; y++) {
                 if (unusedCards.length == 0) {
@@ -579,6 +598,9 @@ function gameOverCheck() {
     return true;
 }
 
+/**
+ * Draw all fields.
+ */
 function drawAll() {
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
@@ -600,12 +622,13 @@ function draw(x, y) {
     % Generate the text value that is to be assigned
     var spans = new Array();
     spans[0] = new Object();
-    spans[0].text = symbols[cardList[idx][0]];
-    spans[0].textColor = colors[cardList[idx][1]];
+    spans[0].text = symbols[cardList[idx][SYM_P]];
+    spans[0].textColor = colors[cardList[idx][COL_P]];
+
     % Select apperance
-    if (cardList[idx][2] == 0) {
+    if (cardList[idx][APP_P] == ITALIC) {
         spans[0].fontStyle = "italic";
-    } else if (cardList[idx][2] == 1) {
+    } else if (cardList[idx][APP_P] == UNDERLINE) {
         spans[0].underline = true;
     } else {
         spans[0].fontWeight = 700;
@@ -616,12 +639,14 @@ function draw(x, y) {
     % spans[1].textColor = color.red;
     % spans[1].underline = true;
 
+    % Define which position should be filled
+    % Depending on the amount of symbols
     var posList = [
         [0, 0, 1, 0, 0],
         [0, 1, 0, 1, 0],
         [1, 0, 1, 0, 1]
     ];
-    var positions = posList[cardList[idx][3] - 1];
+    var positions = posList[cardList[idx][NUM_P] - 1];
 
     % Assign the text value to the right fields
     for (var f = 0; f < SYMB_COUNT; f++) {
@@ -639,6 +664,12 @@ function draw(x, y) {
     }
 }
 
+/**
+ * Clear the field at the given position.
+ *
+ * @param {Number} x The x coordinate.
+ * @param {Number} y The y coordinate.
+ */
 function clear(x, y) {
     var idx = complField[y][x];
 
@@ -671,29 +702,30 @@ function printInfoText(text) {
 
     \begin{Form}
 
-    \begin{multicols}{2}
-        \section*{Set}
-    \columnbreak
-        \begin{flushright}%
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
-        \PushButton[name=tooltipbtn, bordercolor=white]{%
-            \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                \centering
-                ?\strut
-            \end{tcolorbox}%
-        }
-        \end{flushright}%
-    \end{multicols}
+        \begin{multicols}{2}
+            \section*{Set}
+        \columnbreak
+            \begin{flushright}%
+            \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
+            \end{flushright}%
+        \end{multicols}
 
-    % Calculate the max height of a block
-    \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-    \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
+        % Calculate the max height of a block
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
 
         \begin{center}
+            % Add all card fields
             \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \PushButton[name=pos#1#2, bordercolor=white]{%
+                        \PushButton[name=pos#1-#2, bordercolor=white]{%
                             \begin{tcolorbox}%
                                 \centering%
                                 % Sadly xintFor* does not work inside a PushButton
@@ -724,6 +756,7 @@ function printInfoText(text) {
         \end{center}
         %
         \begin{center}
+            % Player selection buttons
             \begin{tabularx}{\textwidth}{@{} *{\playerCount}{X} @{}}%
                 \xintFor* #1 in {\xintSeq{1}{\playerCount}} \do {%
                     \PushButton[name=player#1, bordercolor=white]{
@@ -740,6 +773,7 @@ function printInfoText(text) {
         \end{center}
         %
         \begin{center}
+            % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=refill, bordercolor=white]{
                     \begin{tcolorbox}
