@@ -290,6 +290,9 @@ function restart() {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 function selectPlayer(idx) {
+    if (gameover) {
+        return;
+    }
     if (playerIdx != -1) {
         printInfoText("Can not switch player after selection. (Player " + playerIdx + ")");
         return;
@@ -305,10 +308,11 @@ function selectPlayer(idx) {
  * @param {Number} y The y position.
  */
 function markField(x, y) {
-    if (gameover || playerIdx == -1) {
-        if (playerIdx == -1) {
-            printInfoText("Please select the player who found a set!");
-        }
+    if (gameover) {
+        return;
+    }
+    if (playerIdx == -1) {
+        printInfoText("Please select the player who found a set!");
         return;
     }
 
@@ -349,7 +353,7 @@ function markField(x, y) {
         }
 
         if (gameOverCheck()) {
-            printInfoText("The game is over, there are no further sets to be found.");
+            printInfoText("The game is over, there are no further sets.");
             gameover = true;
         }
     } else {
@@ -374,6 +378,9 @@ function markField(x, y) {
  * Else advise to use refill.
  */
 function hint() {
+    if (gameover) {
+        return;
+    }
     if (playerIdx != -1) {
         printInfoText("Hint unavailable while player selected. (Player " + playerIdx + ")");
         return;
@@ -459,6 +466,9 @@ function isSet(positions) {
  * If not refill all slots.
  */
 function refill() {
+    if (gameover) {
+        return;
+    }
     if (playerIdx != -1) {
         printInfoText("Can not refill while player selected. (Player " + playerIdx + ")");
         return;
@@ -505,16 +515,47 @@ function refill() {
 
 /**
  * Check if the remaining cards do not allow for another set.
- * TODO this is not totally correct since it does not check all cards
- * but rather the cards that are on the field.
+ * If there are more then 20 cards left, these will contain a set.
+ * Otherwise all cards need to be checked.
+ *
+ * TODO this function was not tested that intensly
  */
 function gameOverCheck() {
-    if (unusedCards.length != 0) {
+    % Count remaining cards on the field
+    var count = 0;
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            if (complField[y][x] > -1) {
+                count++;
+            }
+        }
+    }
+    % The max possible amount of cards without a set is 20
+    % https://en.wikipedia.org/wiki/Set_(card_game)
+    if (unusedCards.length + count > 20) {
         return false;
     }
 
+    % Add as much rows as needed to have space for all missing elems
+    var rows = Math.ceil(unusedCards.length / FIELD_WIDTH);
+    for (var row = 0; row < rows; row++) {
+        var zArr = new Array();
+        % Get all unused cards and push them to the array
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            var idx = column + row * FIELD_WIDTH;
+            % Push the index if there is one left. -1 otherwise
+            if (idx < unusedCards.length) {
+                zArr.push(unusedCards[idx]);
+            } else {
+                zArr.push(-1);
+            }
+        }
+        complField.push(zArr);
+    }
+
+    % Iterate all combinations
     var posArray = [[], [], []];
-    var cardCount = FIELD_WIDTH * FIELD_HEIGHT;
+    var cardCount = FIELD_WIDTH * (FIELD_HEIGHT + rows);
     for (var e1 = 0; e1 < cardCount - 2; e1++) {
         for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
             for (var e3 = e2 + 1; e3 < cardCount; e3++) {
@@ -528,6 +569,11 @@ function gameOverCheck() {
                 }
             }
         }
+    }
+
+    % Remove the added rows again
+    for (var row = FIELD_HEIGHT; row < FIELD_HEIGHT + rows; row++) {
+        complField.splice(row, 1);
     }
 
     return true;
