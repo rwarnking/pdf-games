@@ -1,0 +1,68 @@
+############################
+############################
+## Release GitHub Actions ##
+############################
+############################
+name: Create Release
+
+#
+# Documentation:
+# https://github.com/marketplace/actions/github-action-for-latex
+# https://tex-d-l.llstserv.dfn.narkive.com/KsPxiTk5/insdljs-sty-not-found
+# http://www.math.uakron.edu/~dpstory/webeq.html
+#
+# Commit pdfs
+# https://github.com/marketplace/actions/github-action-for-latex
+#
+
+#############################
+# Start the job on all push #
+#############################
+on: [push]
+
+###############
+# Set the Job #
+###############
+jobs:
+  build_latex:
+    # Name the Job
+    name: Create Release
+    # Set the agent to run on
+    runs-on: ubuntu-latest
+
+    ##################
+    # Load all steps #
+    ##################
+    steps:
+      ##########################
+      # Checkout the code base #
+      ##########################
+      - name: Set up Git repository
+        uses: actions/checkout@v2
+      ##########################
+      # Download extra package #
+      ##########################
+      - name: Download the insdljs package as a zip
+        run: wget http://www.math.uakron.edu/~dpstory/acrotex/acrotex.zip -O ./acrotex.zip
+      - name: Unzip package
+        run: unzip acrotex.zip
+      ####################
+      # Run the compiler #
+      ####################
+      - name: Compile LaTeX document
+        uses: xu-cheng/latex-action@v2
+        with:
+          root_file: src/set.tex
+          pre_compile: "tex acrotex/acrotex.ins"
+        env:
+          TEXINPUTS: ".:./acrotex//:"
+      ###################
+      # Push pdf commit #
+      ###################
+      # - name: Commit compiled pdfs
+      #   run: |
+      #     mv set.pdf pdf/set.pdf
+      #     git config --global user.name 'rwarnking'
+      #     git config --global user.email 'rwarnking@users.noreply.github.com'
+      #     git commit -am "Automated commit: Add compiled pdfs"
+      #     git push
