@@ -1,5 +1,7 @@
 # PDF games
 
+[![Latex Linter](https://github.com/rwarnking/pdf-games/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/latex-linter-chktex)
+
 ## Description
 This is a collection of small latex files, that contain some sort of javascript
 allowing for small applications or games.
@@ -26,10 +28,7 @@ Supported games are:
 ### Dependencies
 
 #### Need to be installed
-* [tkinter](https://docs.python.org/3/library/tkinter.html) for the interface/GUI
-* [tkcalendar](https://pypi.org/project/tkcalendar/) for the date selection
-* [Pillow (PIL)](https://pillow.readthedocs.io/en/stable/#) for reading the image metadata (EXIF)
-* [piexif](https://piexif.readthedocs.io/en/latest/) for modification of the image metadata (EXIF)
+TODO
 
 ## Usage
 
