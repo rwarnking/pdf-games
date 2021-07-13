@@ -1,0 +1,803 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[ngerman]{babel}
+\usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% to slow to play
+\def\fieldWidth{4}
+\def\fieldHeight{3}
+
+% Max playercount is 5
+\def\playerCount{5}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{Set}
+
+const GAME_DESC = "In this game you are shown a selection from 81 cards with symbols on them.\
+It is your job to find a so called set, containing three cards, where each attribute\
+is either the same or for each card different. Example: You may find a set,\
+where the symbol is the same but color and appearance differ.";
+
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const SCREEN_TEXT_HEIGHT = 500;
+const MAX_PLAYERS = AFMakeNumber(\playerCount);
+
+const APPEARANCES = 3;
+% The count of symbols on the field
+const NUMBER = 3;
+const SYMB_COUNT = 5;
+
+% Constants
+const ITALIC = 0;
+const UNDERLINE = 1;
+const BOLD = 2;
+const SYM_P = 0;
+const COL_P = 1;
+const APP_P = 2;
+const NUM_P = 3;
+
+% The game field
+var complField = new Array();
+% Lock if the game has ended
+var gameover = false;
+% Save player idx so for points
+var playerIdx = -1;
+% Save the points
+var points = [];
+% Save the last moves for set checking
+var lastSelections = [];
+
+% List of all card combinations
+var cardList = new Array();
+% Save the indices of the unused cards
+var unusedCards = new Array();
+
+% Different symbols
+% Sadly special symbols using String.fromCharCode() does not work
+% because they cant be visualised in italic/bold
+var symbols = [
+    "A",
+    "B",
+    "C"
+];
+
+% Different colors
+var colors = new Array(
+    [ "RGB", 0.843, 0.078, 0.058 ],
+    [ "RGB", 0.203, 0.603, 0.054 ],
+    [ "RGB", 0.078, 0.305, 0.560 ]
+);
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function initialise() {
+    % Create all card combinations and indices
+    var idx = 0;
+    for (var s = 0; s < symbols.length; s++) {
+        for (var c = 0; c < colors.length; c++) {
+            for (var a = 0; a < APPEARANCES; a++) {
+                for (var n = 1; n <= NUMBER; n++) {
+                    cardList.push([s, c, a, n]);
+                    unusedCards.push(idx++);
+                }
+            }
+        }
+    }
+
+    % Initlialise the array with a cardindex
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        var zArr = new Array();
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            % Get random element from the cardList and remove the card afterwards
+            var rnd = getRandomInt(unusedCards.length);
+            zArr.push(unusedCards[rnd]);
+            unusedCards.splice(rnd, 1);
+        }
+        complField.push(zArr);
+    }
+
+    % Initialise player points
+    for (var p = 0; p < MAX_PLAYERS; p++) {
+        points.push(0);
+    }
+
+    % Init the GUI
+    initialiseButtons();
+
+    drawAll();
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
+    this.getField("refill").setAction("MouseUp", "refill();");
+    this.getField("refill").highlight="none";
+
+    this.getField("hint").setAction("MouseUp", "hint();");
+    this.getField("hint").highlight="none";
+
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    % Each field needs to be connected to an input function
+    var funcName = "markField";
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
+            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
+            this.getField("pos" + x + "-" + y).highlight="none";
+            this.getField("pos" + x + "-" + y).borderColor = color.transparent;
+
+            for (var z = 0; z < SYMB_COUNT; z++) {
+                var f = this.getField("field" + z + x + y);
+                f.setAction("MouseUp", callbackName);
+
+                f.textSize = SCREEN_TEXT_HEIGHT / (FIELD_HEIGHT * 5);
+                f.alignment = "center";
+                f.fillColor = color.transparent;
+                f.borderColor = color.transparent;
+            }
+        }
+    }
+
+    % Add callbacks for the player selection
+    var funcName = "selectPlayer";
+    for (var p = 1; p <= MAX_PLAYERS; p++) {
+        var callbackName = funcName + "(" + p.toString() + ");";
+        % Set buttonpress callback
+        this.getField("player" + p).setAction("MouseDown", callbackName);
+        % Set point-fields to zero
+        var f = this.getField("points" + p);
+        f.delay = true;
+        f.setAction("MouseDown", callbackName);
+        f.value = points[p - 1];
+        f.fillColor = color.transparent;
+        f.borderColor = color.transparent;
+        f.delay = false;
+    }
+
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Please select the player who found a set!");
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 581, 468, 381];
+
+        field.delay = false;
+
+        % Hide the textelements that lie behind the tooltip
+        % so the text is not shown
+        for (var z = 0; z < SYMB_COUNT; z++) {
+            field = this.getField("field" + z + 1 + 1);
+            field.hidden = true;
+            field = this.getField("field" + z + 2 + 1);
+            field.hidden = true;
+        }
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+
+        % Unhide the textelements
+        for (var z = 0; z < SYMB_COUNT; z++) {
+            field = this.getField("field" + z + 1 + 1);
+            field.hidden = false;
+            field = this.getField("field" + z + 2 + 1);
+            field.hidden = false;
+        }
+    }
+}
+
+/**
+ * Restart the game and clear everything
+ */
+function restart() {
+    % Reset the unused cards - every card is unused now
+    unusedCards = new Array();
+    for (var idx = 0; idx < symbols.length * colors.length * APPEARANCES * NUMBER; idx++) {
+        unusedCards.push(idx++);
+    }
+
+    % Reset field
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            % Get random element from the cardList and remove the card afterwards
+            var rnd = getRandomInt(unusedCards.length);
+            complField[y][x] = unusedCards[rnd];
+            unusedCards.splice(rnd, 1);
+            draw(x, y);
+        }
+    }
+
+    % Set point-fields back to zero
+    for (var p = 1; p <= MAX_PLAYERS; p++) {
+        points[p - 1] = 0;
+        var f = this.getField("points" + p);
+        f.delay = true;
+        f.value = 0;
+        f.delay = false;
+    }
+
+    % Reset game state
+    lastSelections = [];
+    gameover = false;
+
+    playerIdx = -1;
+
+    printInfoText("Please select the player who found a set!");
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Selects a player via the given id.
+ * @param {Number} idx The player index.
+ */
+function selectPlayer(idx) {
+    if (gameover) {
+        return;
+    }
+    if (playerIdx != -1) {
+        printInfoText("Can not switch player after selection. (Player " + playerIdx + ")");
+        return;
+    }
+    playerIdx = idx;
+    printInfoText("Player " + idx + " selected. Now select three cards!");
+}
+
+/**
+ * Set the value of the input field.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function markField(x, y) {
+    if (gameover) {
+        return;
+    }
+    if (playerIdx == -1) {
+        printInfoText("Please select the player who found a set!");
+        return;
+    }
+
+    % Remove blinking cursor after selection
+    this.getField("tooltiptxt").setFocus();
+
+    % If there are not jet 3 cards selected
+    var len = lastSelections.length;
+    if (len < 3) {
+        % Ignore fields that are already selected
+        if (len == 1 && (x == lastSelections[len - 1][0] && y == lastSelections[len - 1][1])) {
+            return;
+        }
+        if (len == 2 && (
+            (x == lastSelections[len - 1][0] && y == lastSelections[len - 1][1]) ||
+            (x == lastSelections[len - 2][0] && y == lastSelections[len - 2][1]))
+        ) {
+            return;
+        }
+
+        lastSelections.push([x, y]);
+        printInfoText("Selected " + lastSelections.length + ".");
+    }
+
+    % Check if is a set
+    if (isSet(lastSelections)) {
+        printInfoText("Player " + playerIdx + " found a set! Select next Player.");
+
+        % Increase the points of this player
+        this.getField("points" + playerIdx).delay = true;
+        this.getField("points" + playerIdx).value++;
+        this.getField("points" + playerIdx).delay = false;
+
+        % Clear the fields
+        for (var i = 0; i < lastSelections.length; i++) {
+            clear(lastSelections[i][0], lastSelections[i][1]);
+            complField[lastSelections[i][1]][lastSelections[i][0]] = -1;
+        }
+
+        if (gameOverCheck()) {
+            printInfoText("The game is over, there are no further sets.");
+            gameover = true;
+        }
+    } else {
+        % Decrease the points of this player
+        this.getField("points" + playerIdx).delay = true;
+        this.getField("points" + playerIdx).value--;
+        this.getField("points" + playerIdx).delay = false;
+
+        printInfoText("This was not a set! Select next Player.");
+    }
+
+    % Reset player
+    playerIdx = -1;
+
+    % Reset selection
+    lastSelections = [];
+}
+
+/**
+ * Search all cards for potential sets.
+ * If there is a set print the coordinates of the first card to the info box.
+ * Else advise to use refill.
+ */
+function hint() {
+    if (gameover) {
+        return;
+    }
+    % Dont give a hint after a player selection
+    if (playerIdx != -1) {
+        printInfoText("Hint unavailable while player selected. (Player " + playerIdx + ")");
+        return;
+    }
+
+    % Actuall search for a set in the given cards
+    var posArray = [[], [], []];
+    var cardCount = FIELD_WIDTH * FIELD_HEIGHT;
+    for (var e1 = 0; e1 < cardCount - 2; e1++) {
+        for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
+            for (var e3 = e2 + 1; e3 < cardCount; e3++) {
+                % Reassign
+                posArray[0] = [e1 \% FIELD_WIDTH, Math.floor(e1 / FIELD_WIDTH)];
+                posArray[1] = [e2 \% FIELD_WIDTH, Math.floor(e2 / FIELD_WIDTH)];
+                posArray[2] = [e3 \% FIELD_WIDTH, Math.floor(e3 / FIELD_WIDTH)];
+
+                if (isSet(posArray)) {
+                    printInfoText("Try card " + posArray[0] + " ([x, y]).");
+                    return;
+                }
+            }
+        }
+    }
+
+    printInfoText("No set available, use refill!");
+}
+
+/**
+ * Test if the given positions refer to cards that qualify as a set
+ *
+ * @param {Array} positions The card positions.
+ * @return true if is a set false else.
+ */
+function isSet(positions) {
+    var idx1 = complField[positions[0][1]][positions[0][0]];
+    var idx2 = complField[positions[1][1]][positions[1][0]];
+    var idx3 = complField[positions[2][1]][positions[2][0]];
+
+    % If a card slot is empty there can not be a set
+    if (idx1 == -1 || idx2 == -1 || idx3 == -1) {
+        return false;
+    }
+
+    % Symbol
+    var i1S = cardList[idx1][SYM_P];
+    var i2S = cardList[idx2][SYM_P];
+    var i3S = cardList[idx3][SYM_P];
+
+    var symbEqual = i1S == i2S && i2S == i3S;
+    var symbUnequal = i1S != i2S && i2S != i3S && i1S != i3S;
+
+    % Color
+    var i1C = cardList[idx1][COL_P];
+    var i2C = cardList[idx2][COL_P];
+    var i3C = cardList[idx3][COL_P];
+
+    var colEqual = i1C == i2C && i2C == i3C;
+    var colUnequal = i1C != i2C && i2C != i3C && i1C != i3C;
+
+    % Appearance
+    var i1A = cardList[idx1][APP_P];
+    var i2A = cardList[idx2][APP_P];
+    var i3A = cardList[idx3][APP_P];
+
+    var appEqual = i1A == i2A && i2A == i3A;
+    var appUnequal = i1A != i2A && i2A != i3A && i1A != i3A;
+
+    % Number
+    var i1N = cardList[idx1][NUM_P];
+    var i2N = cardList[idx2][NUM_P];
+    var i3N = cardList[idx3][NUM_P];
+
+    var numEqual = i1N == i2N && i2N == i3N;
+    var numUnequal = i1N != i2N && i2N != i3N && i1N != i3N;
+
+    return (symbEqual || symbUnequal) &&
+        (colEqual || colUnequal) &&
+        (appEqual || appUnequal) &&
+        (numEqual || numUnequal);
+}
+
+/**
+ * Refill all slots that are -1 if there are any.
+ * If not refill all slots.
+ */
+function refill() {
+    if (gameover) {
+        return;
+    }
+    if (playerIdx != -1) {
+        printInfoText("Can not refill while player selected. (Player " + playerIdx + ")");
+        return;
+    }
+
+    % Fill all empty slots and count all occurrences
+    var slotCount = 0;
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            if (complField[y][x] == -1) {
+                var rnd = getRandomInt(unusedCards.length);
+                complField[y][x] = unusedCards[rnd];
+                unusedCards.splice(rnd, 1);
+                draw(x, y);
+
+                slotCount++;
+            }
+        }
+    }
+    printInfoText("Refilled " + slotCount + " slots.");
+
+    % If there are no empty slots refill the complete field.
+    if (slotCount == 0) {
+        % Remove the current cards and mark them as unused
+        for (var x = 0; x < FIELD_WIDTH; x++) {
+            for (var y = 0; y < FIELD_HEIGHT; y++) {
+                unusedCards.push(complField[y][x]);
+            }
+        }
+
+        % Select new cards
+        for (var x = 0; x < FIELD_WIDTH; x++) {
+            for (var y = 0; y < FIELD_HEIGHT; y++) {
+                if (unusedCards.length == 0) {
+                    continue;
+                }
+                var rnd = getRandomInt(unusedCards.length);
+                complField[y][x] = unusedCards[rnd];
+                unusedCards.splice(rnd, 1);
+                draw(x, y);
+            }
+        }
+        printInfoText("Refilled the complete field.");
+    }
+}
+
+/**
+ * Check if the remaining cards do not allow for another set.
+ * If there are more then 20 cards left, these will contain a set.
+ * Otherwise all cards need to be checked.
+ *
+ * TODO this function was not tested that intensly
+ */
+function gameOverCheck() {
+    % Count remaining cards on the field
+    var count = 0;
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            if (complField[y][x] > -1) {
+                count++;
+            }
+        }
+    }
+    % The max possible amount of cards without a set is 20
+    % https://en.wikipedia.org/wiki/Set_(card_game)
+    if (unusedCards.length + count > 20) {
+        return false;
+    }
+
+    % Add as much rows as needed to have space for all missing elems
+    var rows = Math.ceil(unusedCards.length / FIELD_WIDTH);
+    for (var row = 0; row < rows; row++) {
+        var zArr = new Array();
+        % Get all unused cards and push them to the array
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            var idx = column + row * FIELD_WIDTH;
+            % Push the index if there is one left. -1 otherwise
+            if (idx < unusedCards.length) {
+                zArr.push(unusedCards[idx]);
+            } else {
+                zArr.push(-1);
+            }
+        }
+        complField.push(zArr);
+    }
+
+    % Iterate all combinations
+    var posArray = [[], [], []];
+    var cardCount = FIELD_WIDTH * (FIELD_HEIGHT + rows);
+    for (var e1 = 0; e1 < cardCount - 2; e1++) {
+        for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
+            for (var e3 = e2 + 1; e3 < cardCount; e3++) {
+                % Reassign
+                posArray[0] = [e1 \% FIELD_WIDTH, Math.floor(e1 / FIELD_WIDTH)];
+                posArray[1] = [e2 \% FIELD_WIDTH, Math.floor(e2 / FIELD_WIDTH)];
+                posArray[2] = [e3 \% FIELD_WIDTH, Math.floor(e3 / FIELD_WIDTH)];
+
+                if (isSet(posArray)) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    % Remove the added rows again
+    for (var row = FIELD_HEIGHT; row < FIELD_HEIGHT + rows; row++) {
+        complField.splice(row, 1);
+    }
+
+    return true;
+}
+
+/**
+ * Draw all fields.
+ */
+function drawAll() {
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            draw(x, y);
+        }
+    }
+}
+
+/**
+ * Since only one field is updated with each input,
+ * only this field needs to be redrawn.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function draw(x, y) {
+    var idx = complField[y][x];
+
+    % Generate the text value that is to be assigned
+    var spans = new Array();
+    spans[0] = new Object();
+    spans[0].text = symbols[cardList[idx][SYM_P]];
+    spans[0].textColor = colors[cardList[idx][COL_P]];
+
+    % Select apperance
+    if (cardList[idx][APP_P] == ITALIC) {
+        spans[0].fontStyle = "italic";
+    } else if (cardList[idx][APP_P] == UNDERLINE) {
+        spans[0].underline = true;
+    } else {
+        spans[0].fontWeight = 700;
+    }
+
+    % spans[1] = new Object();
+    % spans[1].text = "Y";
+    % spans[1].textColor = color.red;
+    % spans[1].underline = true;
+
+    % Define which position should be filled
+    % Depending on the amount of symbols
+    var posList = [
+        [0, 0, 1, 0, 0],
+        [0, 1, 0, 1, 0],
+        [1, 0, 1, 0, 1]
+    ];
+    var positions = posList[cardList[idx][NUM_P] - 1];
+
+    % Assign the text value to the right fields
+    for (var f = 0; f < SYMB_COUNT; f++) {
+        var field = this.getField("field" + f + x + y);
+        field.delay = true;
+        field.richText = true;
+
+        if (positions[f] == 1) {
+            field.richValue = spans;
+        } else {
+            % Clear field from previous element
+            field.value = "";
+        }
+        field.delay = false;
+    }
+}
+
+/**
+ * Clear the field at the given position.
+ *
+ * @param {Number} x The x coordinate.
+ * @param {Number} y The y coordinate.
+ */
+function clear(x, y) {
+    var idx = complField[y][x];
+
+    for (var f = 0; f < SYMB_COUNT; f++) {
+        var field = this.getField("field" + f + x + y);
+        field.delay = true;
+        field.value = "";
+        field.delay = false;
+    }
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        \begin{multicols}{2}
+            \section*{Set}
+        \columnbreak
+            \begin{flushright}%
+            \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max height of a block
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
+
+        \begin{center}
+            % Add all card fields
+            \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \PushButton[name=pos#1-#2, bordercolor=white]{%
+                            \begin{tcolorbox}%
+                                \centering%
+                                % Sadly xintFor* does not work inside a PushButton
+                                % so the elements need to be copy pasted
+                                \TextField[%
+                                    height=\blocksizeH,%
+                                    bordercolor=white, name=field0#1#2, readonly=true]{}\\[0.5mm]%
+                                \TextField[%
+                                    height=\blocksizeH,%
+                                    bordercolor=white, name=field1#1#2, readonly=true]{}\\[0.5mm]%
+                                \TextField[%
+                                    height=\blocksizeH,%
+                                    bordercolor=white, name=field2#1#2,  readonly=true]{}\\[0.5mm]%
+                                \TextField[%
+                                    height=\blocksizeH,%
+                                    bordercolor=white, name=field3#1#2,  readonly=true]{}\\[0.5mm]%
+                                \TextField[%
+                                    height=\blocksizeH,%
+                                    bordercolor=white, name=field4#1#2,  readonly=true]{}\\%
+                            \end{tcolorbox}%
+                        }%
+                        % Have the cell divider for all elements
+                        % that are not the last one
+                        \xintifForLast{}{&}%
+                    }\\%
+                }%
+            \end{tabularx}
+        \end{center}
+        %
+        \begin{center}
+            % Player selection buttons
+            \begin{tabularx}{\textwidth}{@{} *{\playerCount}{X} @{}}%
+                \xintFor* #1 in {\xintSeq{1}{\playerCount}} \do {%
+                    \PushButton[name=player#1, bordercolor=white]{
+                        \begin{tcolorbox}
+                            \centering
+                            \TextField[name=points#1, height=0.35cm, width=0.5cm, readonly=true]{Player #1:}
+                        \end{tcolorbox}
+                    }
+                    % Have the cell divider for all elements
+                    % that are not the last one
+                    \xintifForLast{}{&}
+                }%
+            \end{tabularx}
+        \end{center}
+        %
+        \begin{center}
+            % Game related buttons
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=refill, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Refill card slots.\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=hint, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Hint\strut
+                    \end{tcolorbox}
+                }\\%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+
+    \end{Form}
+\end{document}
