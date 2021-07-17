@@ -27,11 +27,11 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Obacht: width * height needs to be an even number
-\def\fieldWidth{4}
-\def\fieldHeight{4}
-\def\winningPieces{3}
+\def\fieldWidth{6}
+\def\fieldHeight{6}
+
 % Max playercount is 5
-\def\playerCount{2}
+\def\playerCount{3}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -39,13 +39,24 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Memory}
 
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
+
+% Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 300;
 const MAX_PLAYERS = AFMakeNumber(\playerCount);
 const MAX_PAIRS = (FIELD_WIDTH * FIELD_HEIGHT) / 2;
 
-var run;
+% Constants
+% -
+
+% Globals
+% The game field array
 var complField = new Array();
 % Lock if the game has ended
 var gameover = false;
@@ -55,7 +66,8 @@ var beforeLastField = false;
 var pairsFound = 0;
 var playerPoints = [];
 
-var memorySymbols = [
+% Symbol array
+const memorySymbols = [
     0x260E, % telefon
     0x261E, % hand white
     0x261B, % hand black
@@ -76,7 +88,8 @@ var memorySymbols = [
     0x271C
 ];
 
-var colors = new Array(
+% Color data
+const colors = new Array(
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
     [ "RGB", 0.078, 0.305, 0.560 ],
@@ -84,11 +97,13 @@ var colors = new Array(
     color.black
 );
 
-highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
-
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
@@ -96,6 +111,9 @@ function getRandomInt(max) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
 function initialise() {
     var symbols = [];
     for (var i = 0; i < MAX_PAIRS; i++) {
@@ -109,9 +127,9 @@ function initialise() {
             var rnd = getRandomInt(symbols.length);
             var elem = symbols[rnd];
             symbols.splice(rnd, 1);
+            % UTF8 symbol and is the field removed
             tmp.push([elem, false]);
         }
-        % UTF8 symbol and is the field removed
         complField.push(tmp);
     }
 
@@ -119,10 +137,16 @@ function initialise() {
         playerPoints.push(0);
     }
 
+    % Init the GUI
     initialiseButtons();
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
 function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="none";
 
@@ -130,40 +154,52 @@ function initialiseButtons() {
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-            this.getField("pos" + x + y).alignment = "center";
+            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
+            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+            this.getField("pos" + x + "-" + y).alignment = "center";
         }
     }
 
+    % Info field setup
     this.getField("info").fillColor = color.transparent;
     this.getField("info").borderColor = color.transparent;
 
+    % Tooltip button setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
 
-    printInfoText(0, false);
+    printInfoText("Your Turn: Player " + playerIdx);
 }
 
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
 function tooltip(on) {
     if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.alignment = "center";
-        field.value = "This is a game.";
+        field.value = GAME_DESC;
 
+        field.multiline = true;
+        field.textSize = 16;
         field.fillColor = color.gray;
         % hight 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
-        field.rect = [128, 601, 468, 401];
+        field.rect = [128, 581, 468, 381];
 
         field.delay = false;
     } else {
+        % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
         field.value = "";
 
+        field.multiline = false;
         field.fillColor = color.gray;
         field.rect = [0, 0, 0, 0];
 
@@ -185,7 +221,7 @@ function restart() {
             symbols.splice(rnd, 1);
             complField[y][x] = [elem, false];
 
-            var field = this.getField("pos" + x + y);
+            var field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             field.value = "";
             field.borderColor = color.white;
@@ -205,7 +241,7 @@ function restart() {
     pairsFound = 0;
     playerIdx = 1;
 
-    printInfoText();
+    printInfoText("Your Turn: Player " + playerIdx);
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -235,9 +271,9 @@ function revealField(x, y) {
             % Check if field is full or pairs left
             if (++pairsFound == MAX_PAIRS) {
                 gameover = true;
+                % Print game is over
+                printInfoText("The Game is over, all pairs found.");
             }
-            % Print game is over
-            printInfoText();
         } else {
             % Hide both symbols
             draw(lastField[0], lastField[1], "");
@@ -271,7 +307,7 @@ function revealField(x, y) {
             playerPoints[playerIdx - 1]++;
         }
         % Print whos turn it is
-        printInfoText();
+        printInfoText("Your Turn: Player " + playerIdx);
     } else {
         lastField = [x, y];
     }
@@ -280,30 +316,32 @@ function revealField(x, y) {
 }
 
 function draw(x, y, value) {
-    var field = this.getField("pos" + x + y);
+    var field = this.getField("pos" + x + "-" + y);
     field.delay = true;
     field.value = value;
     field.delay = false;
 }
 
 function remove(x, y) {
-    var field = this.getField("pos" + x + y);
+    var field = this.getField("pos" + x + "-" + y);
     field.delay = true;
     field.value = "";
     field.borderColor = color.black;
     field.delay = false;
 }
 
-function printInfoText() {
+/**
+ * Print information about the game.
+ *
+ * @param {String} text Info string
+ */
+function printInfoText(text) {
     var field = this.getField("info");
     field.delay = true;
-    if (gameover) {
-        field.value = "Gameover";
-    } else {
-        field.value = "Your Turn: Player " + playerIdx;
-    }
+    field.value = text;
     field.delay = false;
 
+    % Refresh the current points
     var field = this.getField("pointtable");
     field.delay = true;
     var string = "";
@@ -358,7 +396,7 @@ function printInfoText() {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
                     }\vspace{3pt}
                     \newline%
                 }%
@@ -366,7 +404,7 @@ function printInfoText() {
         \end{tcolorbox}
 
         \begin{center}%
-            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering

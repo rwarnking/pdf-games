@@ -45,6 +45,7 @@ It is your job to find a so called set, containing three cards, where each attri
 is either the same or for each card different. Example: You may find a set,\
 where the symbol is the same but color and appearance differ.";
 
+% Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_HEIGHT = 500;
@@ -64,6 +65,7 @@ const COL_P = 1;
 const APP_P = 2;
 const NUM_P = 3;
 
+% Globals
 % The game field
 var complField = new Array();
 % Lock if the game has ended
@@ -80,17 +82,17 @@ var cardList = new Array();
 % Save the indices of the unused cards
 var unusedCards = new Array();
 
-% Different symbols
+% Symbol array
 % Sadly special symbols using String.fromCharCode() does not work
 % because they cant be visualised in italic/bold
-var symbols = [
+const symbols = [
     "A",
     "B",
     "C"
 ];
 
-% Different colors
-var colors = new Array(
+% Color data
+const colors = new Array(
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
     [ "RGB", 0.078, 0.305, 0.560 ]
@@ -99,6 +101,10 @@ var colors = new Array(
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
@@ -106,6 +112,9 @@ function getRandomInt(max) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
 function initialise() {
     % Create all card combinations and indices
     var idx = 0;
@@ -195,6 +204,7 @@ function initialiseButtons() {
         f.delay = false;
     }
 
+    % Info field setup
     this.getField("info").fillColor = color.transparent;
     this.getField("info").borderColor = color.transparent;
 

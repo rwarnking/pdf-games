@@ -10,6 +10,7 @@
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
+\usepackage{multicol}
 
 \usepackage{xinttools}
 \usepackage[nomessages]{fp}
@@ -37,10 +38,24 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
 
-var fieldWidth = AFMakeNumber(\fieldWidth);
-var halfFieldWidth = Math.floor(fieldWidth / 2.0);
-var fieldHeight = AFMakeNumber(\fieldHeight);
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
 
+% Outside variables
+const fieldWidth = AFMakeNumber(\fieldWidth);
+const halfFieldWidth = Math.floor(fieldWidth / 2.0);
+const fieldHeight = AFMakeNumber(\fieldHeight);
+
+% Constants
+%const EMPTY = 0;
+
+% Globals
+% Animation interval variable
+var run;
+% The game field
 var complField = new Array();
 
 var focus = true;
@@ -49,9 +64,8 @@ var speed = AFMakeNumber(\GAMESPEED);
 var lineCount = 0;
 
 var stone = new Array();
-var stoneColor = color.black;
 var shouldEmitStone = true;
-var stones = new Array(
+const stones = new Array(
     % Bar
     new Array(
         new Array(halfFieldWidth - 2, 0),
@@ -103,7 +117,9 @@ var stones = new Array(
     )
 );
 
-var colors = new Array(
+% Color data
+var stoneColor = color.black;
+const colors = new Array(
     color.black,
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
@@ -111,12 +127,12 @@ var colors = new Array(
     [ "RGB", 0.560, 0.078, 0.533 ]
 );
 
-% For saving the interval
-var run;
-
 %%%%%%%%%%%%%%%%%%
 % Initialisation %
 %%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
 function initialise() {
     for (var row = 0; row < fieldHeight; row++) {
         var tmp = new Array();
@@ -126,14 +142,19 @@ function initialise() {
         complField.push(tmp);
     }
 
+    % Init the GUI
     initialiseButtons();
 
+    % Start the animation interval
     run = app.setInterval("runAll()", 20);
-    %run.count = 0;
-    %var timeout = app.setTimeOut( "app.clearInterval(run);", 3*36*150);
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
 function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
     this.getField("input1").setFocus();
 
     this.getField("left").setAction("MouseUp", "move('a');");
@@ -151,10 +172,45 @@ function initialiseButtons() {
     this.getField("turnRight").setAction("MouseUp", "move('e');");
     this.getField("turnRight").highlight="invert";
 
-    %var aRect = this.getField("left").rect;
-    %aRect[0] -= 30;
-    %aRect[2] += 30;
-    %this.getField("left").rect = aRect;
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
 }
 
 %%%%%%%%
@@ -318,7 +374,7 @@ function removeStone() {
 function draw() {
     for (var x = 0; x < fieldWidth; x++) {
         for (var y = 0; y < fieldHeight; y++) {
-            field = this.getField("pos" + x + y);
+            field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             if (complField[y][x] > 0) {
                 field.fillColor = colors[complField[y][x] - 1];
@@ -461,6 +517,19 @@ function rotate(cx, cy, x, y, angle) {
 
     \begin{Form}
 
+        \begin{multicols}{2}
+            \section*{Tetris}
+        \columnbreak
+            \begin{flushright}%
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
+            \end{flushright}%
+        \end{multicols}
+
         \FPeval{\result}{(\fieldWidth * 3 + 3)}
         \def\blocksizeW{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
         \FPeval{\result}{(\fieldHeight * 3 + 3)}
@@ -471,7 +540,7 @@ function rotate(cx, cy, x, y, angle) {
             \begin{flushright}
             \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \TextField[width=\blocksizeW, height=\blocksizeH, bordercolor=white, readonly=true, name=pos#1#2]{}%
+                    \TextField[width=\blocksizeW, height=\blocksizeH, bordercolor=white, readonly=true, name=pos#1-#2]{}%
                 }\vspace{3pt}
                 \newline
             }
@@ -479,7 +548,7 @@ function rotate(cx, cy, x, y, angle) {
         \end{tcolorbox}
 
         \begin{center}%
-            \begin{tabularx}{\textwidth}{@{} X X X @{}}%
+            \begin{tabularx}{\textwidth}{@{} *{3}{X} @{}}%
                 \PushButton[name=start, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
@@ -543,6 +612,8 @@ function rotate(cx, cy, x, y, angle) {
 
         \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
 
     \end{Form}
 

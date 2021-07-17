@@ -42,14 +42,17 @@ while the placements needs to follow these rules:\
 2. Each column can only contain each digit once\
 3. Each 3x3 block can only contain each digit once.";
 
+% Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 300;
-const NUMBERS = 9;
 
+% Constants
+const NUMBERS = 9;
 const BOX_WIDTH = 3;
 const EMPTY = 0;
 
+% Globals
 % Field for current visualisation and input
 var complField = new Array();
 % The complete field with applied solution
@@ -60,7 +63,8 @@ var original = new Array();
 % Switch if the user wants to input a sudoku
 var customMode = false;
 
-var colors = new Array(
+% Color data
+const colors = new Array(
     [ "RGB", 1.0, 1.0, 1.0 ], % white
     [ "RGB", 0.8, 0.8, 0.8 ], % gray
     [ "RGB", 0.203, 0.603, 0.054 ], % green
@@ -71,6 +75,10 @@ var colors = new Array(
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
@@ -95,6 +103,9 @@ function shuffle(a) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
 function initialise() {
     % Initlialise all arrays with a zero array
     for (var row = 0; row < FIELD_HEIGHT; row++) {
@@ -111,11 +122,16 @@ function initialise() {
         original.push(zArr3);
     }
 
+    % Init the GUI
     initialiseButtons();
 
     generateSudoku();
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
 function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
     this.getField("generate").setAction("MouseUp", "generateSudoku();");
@@ -146,6 +162,7 @@ function initialiseButtons() {
         }
     }
 
+    % Info field setup
     this.getField("info").fillColor = color.transparent;
     this.getField("info").borderColor = color.transparent;
 

@@ -10,6 +10,7 @@
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
+\usepackage{multicol}
 
 \usepackage{xinttools}
 \usepackage[nomessages]{fp}
@@ -28,7 +29,7 @@
 \def\fieldWidth{8}
 \def\fieldHeight{8}
 % TODO make these selectable in the gui
-\def\playerCount{2}
+\def\playerCount{3}
 \def\winningPieces{4}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -37,16 +38,29 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
 
-var fieldWidth = AFMakeNumber(\fieldWidth);
-var fieldHeight = AFMakeNumber(\fieldHeight);
-var playerCount = AFMakeNumber(\playerCount);
-var WINNING_PIECES = AFMakeNumber(\winningPieces);
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
 
+% Outside variables
+const fieldWidth = AFMakeNumber(\fieldWidth);
+const fieldHeight = AFMakeNumber(\fieldHeight);
+const playerCount = AFMakeNumber(\playerCount);
+const WINNING_PIECES = AFMakeNumber(\winningPieces);
+
+% Constants
+% -
+
+% Globals
+% The game field array
 var complField = new Array();
 var activePlayer = 0;
 var gameover = false;
 
-var colors = new Array(
+% Color data
+const colors = new Array(
     color.black,
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
@@ -54,11 +68,14 @@ var colors = new Array(
     [ "RGB", 0.560, 0.078, 0.533 ]
 );
 
-highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
+const highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
 
 %%%%%%%%%%%%%%%%%%
 % Initialisation %
 %%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
 function initialise() {
     for (var row = 0; row < fieldHeight; row++) {
         var tmp = new Array();
@@ -71,12 +88,18 @@ function initialise() {
     this.getField("winner").fillColor = color.transparent;
     this.getField("winner").borderColor = color.transparent;
 
+    % Init the GUI
     initialiseButtons();
 
     draw();
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
 function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
     % for (var x = 0; x < fieldWidth; x++) {
     %     this.getField("col" + x).setAction("MouseUp", "addToColumn(x);");
     %     this.getField("col" + x).highlight="invert";
@@ -109,6 +132,46 @@ function initialiseButtons() {
     this.getField("col7").setAction("MouseUp", "addToColumn(7);");
     this.getField("col7").borderColor = color.transparent;
     this.getField("col7").highlight="none";
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
 }
 
 function restart() {
@@ -118,7 +181,7 @@ function restart() {
         for (var y = 0; y < fieldHeight; y++) {
             complField[y][x] = 0;
 
-            field = this.getField("pos" + x + y);
+            field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             field.borderColor = color.white;
             field.fillColor = color.white;
@@ -135,7 +198,7 @@ function draw() {
     var field;
     for (var x = 0; x < fieldWidth; x++) {
         for (var y = 0; y < fieldHeight; y++) {
-            field = this.getField("pos" + x + y);
+            field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             var value = complField[y][x];
             if (value > 0) {
@@ -224,7 +287,7 @@ function colorWinner(x, y, dirIdx) {
             if (nx < 0 || nx >= fieldWidth || ny < 0 || ny >= fieldHeight || complField[ny][nx] != activePlayer + 1) {
                 wp = WINNING_PIECES;
             } else {
-                var field = this.getField("pos" + nx + ny);
+                var field = this.getField("pos" + nx + "-" + ny);
                 field.delay = true;
                 field.borderColor = highlightcolor;
                 field.delay = false;
@@ -246,12 +309,23 @@ function printWinner() {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-    \section*{Connectfour}
-
-    \FPeval{\result}{(\fieldWidth * 3 + 3)}
-    \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
-
     \begin{Form}
+
+        \begin{multicols}{2}
+            \section*{Connectfour}
+        \columnbreak
+            \begin{flushright}%
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
+            \end{flushright}%
+        \end{multicols}
+
+        \FPeval{\result}{(\fieldWidth * 3 + 3)}
+        \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
 
         \begin{tcolorbox}
             \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
@@ -280,7 +354,7 @@ function printWinner() {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
                     }\vspace{3pt}
                     \newline
                 }
@@ -288,7 +362,7 @@ function printWinner() {
         \end{tcolorbox}
 
         \begin{center}%
-            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
@@ -300,6 +374,9 @@ function printWinner() {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+
     \end{Form}
 
 \end{document}
