@@ -35,7 +35,17 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{TicTacToe}
 
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
+
+% Outside variables
 const PARTICLE_COUNT = AFMakeNumber(\particleCount);
+
+% Constants
+% Spawn dimensions
 const UPPER_LIMIT = 842;
 const LOWER_LIMIT = 0;
 const LEFT_LIMIT = 0;
@@ -45,33 +55,39 @@ const PARTICLE_SIZE_H = PARTICLE_SIZE / 2;
 % The amount of space that a particle moves each frame
 const STEP_SIZE = 4;
 
+% Globals
+% Animation interval variable
 var run;
+% Particle array
 var particles = new Array();
 var particleType = 0;
 
-var probability = [
+% Probabilities for emits
+const probability = [
     98,
     50
 ]
 
-var snowSymbols = [
+% Particle arrays
+const snowSymbols = [
     0x2744,
     0x2745,
     0x2746,
     0x2749
 ]
 
-var flowerSymbols = [
+const flowerSymbols = [
     0x2740
 ];
 
-var circleSymbols = [
+const circleSymbols = [
     0x25CF,
     0x25CB,
     0x25CC
 ];
 
-var colors = new Array(
+% Color data
+const colors = new Array(
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
     [ "RGB", 0.078, 0.305, 0.560 ],
@@ -79,11 +95,15 @@ var colors = new Array(
     color.black
 );
 
-highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
+const highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
 
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
@@ -91,6 +111,9 @@ function getRandomInt(max) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default particle state.
+ */
 function initialise() {
     % Initialise all particles as dead
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
@@ -105,40 +128,47 @@ function initialise() {
         field.delay = false;
     }
 
+    % Init the GUI
     initialiseButtons();
 
+    % Start the animation interval
     run = app.setInterval("runAll()", 100);
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
 function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="none";
-
-    % field.textColor = colors[value - 1];
-    % field.value = String.fromCharCode(playerSymbols[value - 1]);
-    % field.borderColor = color.white;
-    % field.setAction("MouseDown", callbackName);
-    % field.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-    % field.alignment = "center";
-    % Rotation does work but only for 90, 180 and 270
-    % field.rotation = 90;
 
     this.getField("particleType").borderColor = color.white;
     this.getField("particleType").currentValueIndices = 0;
     this.getField("particleType").commitOnSelChange = true;
 
+    % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
 }
 
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
 function tooltip(on) {
     if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.alignment = "center";
-        field.value = "This is a particle system.";
+        field.value = GAME_DESC;
 
+        field.multiline = true;
+        field.textSize = 16;
         field.fillColor = color.gray;
         % hight 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
@@ -146,10 +176,12 @@ function tooltip(on) {
 
         field.delay = false;
     } else {
+        % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
         field.value = "";
 
+        field.multiline = false;
         field.fillColor = color.gray;
         field.rect = [0, 0, 0, 0];
 
@@ -279,7 +311,7 @@ function moveParticles(idx) {
         \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}%
 
         \begin{center}%
-            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering

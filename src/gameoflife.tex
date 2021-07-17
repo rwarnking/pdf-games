@@ -35,15 +35,23 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{gameoflife}
 
-const GAME_DESC = "Text.\
-Text\
-Text,\
-Text.";
+const GAME_DESC = "Conways game of life is a cellular automaton.\
+After the initial input the application will run on itself and without further interaction.\
+Dependent on the state the field will evolve based on certain rules.\
+The rules use the neighbourhood of a cell to determine the state of it in the next step.";
 
-var FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-var FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 
+% Constants
+const DEAD = 0;
+const ALIVE = 1;
+
+% Globals
+% Animation interval variable
 var run;
+% The game field arrays
 var complField1 = new Array();
 var complField2 = new Array();
 
@@ -53,12 +61,8 @@ var currentShape = 8;
 var shapeMode = true;
 var animate = false;
 
-const DEAD = 0;
-const ALIVE = 1;
-
-% var addShapeasdasd = true;
-
-var colors = new Array(
+% Color data
+const colors = new Array(
     color.black,
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
@@ -66,7 +70,8 @@ var colors = new Array(
     [ "RGB", 0.560, 0.078, 0.533 ]
 );
 
-var shapes = new Array(
+% Shape array that can be added to the field
+const shapes = new Array(
     % Still lifes
     [[0, 0]], % One
     [[0, 0], [1, 0], [0, 1], [1, 1]], % Block
@@ -97,11 +102,13 @@ var shapes = new Array(
     [[2, 0], [3, 0], [0, 1], [5, 1], [6, 2], [0, 3], [6, 3], [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4]] % Heavy-weight spaceship
 );
 
-highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
-
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
@@ -109,6 +116,9 @@ function getRandomInt(max) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
 function initialise() {
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         var tmp1 = new Array();
@@ -121,13 +131,19 @@ function initialise() {
         complField2.push(tmp2);
     }
 
+    % Init the GUI
     initialiseButtons();
 
     % Initial run
     runAll();
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
 function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
     var funcName = "addShape";
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
@@ -180,6 +196,7 @@ function initialiseButtons() {
     this.getField("currstep").fillColor = color.transparent;
     this.getField("currstep").borderColor = color.transparent;
 
+    % Info field setup
     this.getField("info").fillColor = color.transparent;
     this.getField("info").borderColor = color.transparent;
 
@@ -468,7 +485,6 @@ function printInfoText(text) {
             \section*{Game of Life}
         \columnbreak
             \begin{flushright}%
-            \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
             \PushButton[name=tooltipbtn, bordercolor=white]{%
                 \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                     \centering
@@ -559,5 +575,9 @@ function printInfoText(text) {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+
     \end{Form}
+
 \end{document}

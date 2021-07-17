@@ -10,6 +10,7 @@
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
+\usepackage{multicol}
 
 \usepackage{xinttools}
 \usepackage[nomessages]{fp}
@@ -34,10 +35,23 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{DBTI}
 
-var fieldWidth = AFMakeNumber(\fieldWidth);
-var fieldHeight = AFMakeNumber(\fieldHeight);
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
 
+% Outside variables
+const fieldWidth = AFMakeNumber(\fieldWidth);
+const fieldHeight = AFMakeNumber(\fieldHeight);
+
+% Constants
+% -
+
+% Globals
+% Animation interval variable
 var run;
+% The game field array
 var complField = new Array();
 var freePath = new Array();
 % Lock if the game has ended
@@ -49,7 +63,8 @@ var play = false;
 % Which field was found last
 var currentField = -1;
 
-var colors = new Array(
+% Color data
+const colors = new Array(
     color.black,
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
@@ -57,11 +72,13 @@ var colors = new Array(
     [ "RGB", 0.560, 0.078, 0.533 ]
 );
 
-highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
-
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
@@ -69,6 +86,9 @@ function getRandomInt(max) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
 function initialise() {
     for (var row = 0; row < fieldHeight; row++) {
         var tmp = new Array();
@@ -81,12 +101,18 @@ function initialise() {
     this.getField("winner").fillColor = color.transparent;
     this.getField("winner").borderColor = color.transparent;
 
+    % Init the GUI
     initialiseButtons();
 
     createPath();
 }
 
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
 function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="none";
 
@@ -94,8 +120,48 @@ function initialiseButtons() {
     for (var x = 0; x < fieldWidth; x++) {
         for (var y = 0; y < fieldHeight; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + y).setAction("MouseDown", callbackName);
+            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
         }
+    }
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
     }
 }
 
@@ -111,7 +177,7 @@ function restart() {
         for (var y = 0; y < fieldHeight; y++) {
             complField[y][x] = 0;
 
-            field = this.getField("pos" + x + y);
+            field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             field.borderColor = color.white;
             field.fillColor = color.white;
@@ -347,7 +413,7 @@ function draw() {
     var field;
     for (var x = 0; x < fieldWidth; x++) {
         for (var y = 0; y < fieldHeight; y++) {
-            field = this.getField("pos" + x + y);
+            field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             var value = complField[y][x];
             if (value > 0) {
@@ -381,7 +447,7 @@ function draw() {
                 continue;
             }
 
-            field = this.getField("pos" + newX + newY);
+            field = this.getField("pos" + newX + "-" + newY);
             field.delay = true;
             field.borderColor = colors[2];
             field.delay = false;
@@ -406,23 +472,34 @@ function printWinner(won) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-    \section*{Don't break the ice}
-
-    % Calculate the max width and height of a block
-    \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-    \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
-
-    \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-    \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
-
-    % Define the blocksize via the smaller amount
-    \ifnum\blocksizeW<\blocksizeH
-        \def\blocksize{\blocksizeW}
-    \else
-        \def\blocksize{\blocksizeH}
-    \fi
-
     \begin{Form}
+
+        \begin{multicols}{2}
+            \section*{Don't break the ice}
+        \columnbreak
+            \begin{flushright}%
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
 
         \begin{tcolorbox}
             \centering%
@@ -433,7 +510,7 @@ function printWinner(won) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
                     }\vspace{3pt}
                     \newline%
                 }%
@@ -441,10 +518,11 @@ function printWinner(won) {
             %
             \centering%
             \includegraphics[width=0.25\textwidth]{images/start}
+            \TextField[bordercolor=white, width=0.0cm, name=tooltiptxt, readonly=true]{}
         \end{tcolorbox}
 
         \begin{center}%
-            \begin{tabularx}{\textwidth}{@{} X X @{}}%
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
@@ -456,5 +534,7 @@ function printWinner(won) {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
+
     \end{Form}
+
 \end{document}

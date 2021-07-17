@@ -41,8 +41,9 @@ These mines are distributed randomly. Everytime a field is revealed it shows a c
 of how many mines are in the neighbourhood allowing for logicall deduction where\
 a mine can be.";
 
-var FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-var FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 
 % Constants
 const MINE = -1;
@@ -63,7 +64,8 @@ var fieldsToReveal = FIELD_WIDTH * FIELD_HEIGHT;
 var revealed = 0;
 var mines = 0;
 
-var colors = new Array(
+% Color data
+const colors = new Array(
     color.white, % Mine
     [ "RGB", 0.0, 0.0, 0.0 ], % Empty
     [ "RGB", 0.0, 0.0, 1.0 ], % 1
@@ -79,6 +81,10 @@ var colors = new Array(
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
@@ -86,6 +92,9 @@ function getRandomInt(max) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
 function initialise() {
     % Fill the array with the default content and infos
     for (var row = 0; row < FIELD_HEIGHT; row++) {
@@ -433,7 +442,6 @@ function printInfoText(text) {
             \section*{Minesweeper}
         \columnbreak
             \begin{flushright}%
-            \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
             \PushButton[name=tooltipbtn, bordercolor=white]{%
                 \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                     \centering
@@ -501,5 +509,9 @@ function printInfoText(text) {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+
     \end{Form}
+
 \end{document}
