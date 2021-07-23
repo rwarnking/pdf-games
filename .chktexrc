@@ -13,9 +13,11 @@ WipeArg
     \input:{} \verbatiminput:[]{} \listinginput:[]{}{}
     \verbatimtabinput:[]{} \include:{} \includeonly:{}
     \bibitem:[]{} \texttt:{} \verb:{} \includegraphics:[]{}
+    \OpenAction:{}
 }
 
 # Use this to ignore linter errors of a specific error code.
 # For example, code 24 warns when an index may be misplaced due
 # to spaces (page spillover).
-CmdLine { -n 24 }
+# https://tex.stackexchange.com/questions/552210/
+CmdLine { -n 24 -n 1 }

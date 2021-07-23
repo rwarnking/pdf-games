@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
@@ -65,7 +63,7 @@ var revealed = 0;
 var mines = 0;
 
 % Color data
-const colors = new Array(
+const COLORS = new Array(
     color.white, % Mine
     [ "RGB", 0.0, 0.0, 0.0 ], % Empty
     [ "RGB", 0.0, 0.0, 1.0 ], % 1
@@ -200,6 +198,12 @@ function tooltip(on) {
 %%%%%%%%%%%%%%%%%%%%
 % Fill and restart %
 %%%%%%%%%%%%%%%%%%%%
+/**
+ * Calculates the amount of expected mines using the gui and
+ * distributes them to the field.
+ * Afterwards iterate all non mined fields and check the neighbourhood
+ * to get the mine amount.
+ */
 function fillMines() {
     % Get the amount of mines using the gui-percentage
     mines = (FIELD_WIDTH * FIELD_HEIGHT) / 100 * this.getField("percentage").value;
@@ -363,9 +367,9 @@ function reveal(x, y) {
     draw(x, y);
 }
 
-%%%%%%%%
-% Draw %
-%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
 /**
  * Draws the complete field.
  */
@@ -394,11 +398,11 @@ function draw(x, y) {
         if (val == MINE) {
             field.fillColor = color.black;
             field.borderColor = color.black;
-            field.textColor = colors[val + 1];
+            field.textColor = COLORS[val + 1];
             field.value = "M";
         } else if (val != EMPTY) {
             field.value = val;
-            field.textColor = colors[val + 1];
+            field.textColor = COLORS[val + 1];
         } else {
             field.fillColor = color.transparent;
             field.borderColor = color.transparent;
@@ -438,16 +442,18 @@ function printInfoText(text) {
 
     \begin{Form}
 
+        % Header
         \begin{multicols}{2}
+            % Title
             \section*{Minesweeper}
         \columnbreak
+            % Tooltip object
             \begin{flushright}%
-            \PushButton[name=tooltipbtn, bordercolor=white]{%
-                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                    \centering
-                    ?\strut
-                \end{tcolorbox}%
-            }
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
             \end{flushright}%
         \end{multicols}
 
@@ -465,6 +471,7 @@ function printInfoText(text) {
             \def\blocksize{\blocksizeH}
         \fi
 
+        % The gamefield
         \begin{tcolorbox}
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
@@ -478,6 +485,7 @@ function printInfoText(text) {
             \end{flushright}%
         \end{tcolorbox}
 
+        % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=reveal, bordercolor=white]{

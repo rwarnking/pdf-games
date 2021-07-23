@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
@@ -39,11 +37,11 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Memory}
 
-const GAME_DESC = "Text.\
-Text.\
-Text.\
-Text.\
-Text.";
+const GAME_DESC = "In this game multiple player compete to get the most pair.\
+Each pair contains two cards with the same symbol on it. At the beginning all\
+cards are hidden and each player can reveal two of them when it is their turn.\
+After the reveal both are hidden again if they do not math or they are remove if they do.\
+In that case the reveiling player gets another turn.";
 
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
@@ -67,7 +65,7 @@ var pairsFound = 0;
 var playerPoints = [];
 
 % Symbol array
-const memorySymbols = [
+const MEMORY_SYMBOLS = [
     0x260E, % telefon
     0x261E, % hand white
     0x261B, % hand black
@@ -88,15 +86,6 @@ const memorySymbols = [
     0x271C
 ];
 
-% Color data
-const colors = new Array(
-    [ "RGB", 0.843, 0.078, 0.058 ],
-    [ "RGB", 0.203, 0.603, 0.054 ],
-    [ "RGB", 0.078, 0.305, 0.560 ],
-    [ "RGB", 0.560, 0.078, 0.533 ],
-    color.black
-);
-
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
@@ -115,12 +104,14 @@ function getRandomInt(max) {
  * Initialise the default game state.
  */
 function initialise() {
+    % Create an array that contains all symbols twice
     var symbols = [];
     for (var i = 0; i < MAX_PAIRS; i++) {
-        symbols.push(String.fromCharCode(memorySymbols[i]));
-        symbols.push(String.fromCharCode(memorySymbols[i]));
+        symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i]));
+        symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i]));
     }
 
+    % Create the field by removing one element for each slot
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         var tmp = new Array();
         for (var column = 0; column < FIELD_WIDTH; column++) {
@@ -143,7 +134,7 @@ function initialise() {
 
 /**
  * Initialise all buttons from the GUI.
- * For example add callbacks and set the correct colors.
+ * For example add callbacks.
  */
 function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
@@ -168,6 +159,49 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Your Turn: Player " + playerIdx);
+}
+
+/**
+ * Restarts the game by clearing the field array and redistributing cards.
+ * Resets playerpoints and gamevars.
+ */
+function restart() {
+    % Create an array that contains all symbols twice
+    var symbols = [];
+    for (var i = 0; i < MAX_PAIRS; i++) {
+        symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i]));
+        symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i]));
+    }
+
+    % Create the field by removing one element for each slot
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            var rnd = getRandomInt(symbols.length);
+            var elem = symbols[rnd];
+            symbols.splice(rnd, 1);
+            complField[y][x] = [elem, false];
+
+            var field = this.getField("pos" + x + "-" + y);
+            field.delay = true;
+            field.value = "";
+            field.borderColor = color.white;
+            field.delay = false;
+        }
+    }
+
+    for (var i = 0; i < MAX_PLAYERS; i++) {
+        playerPoints[i] = 0;
+    }
+
+    % Reset field marking
+    beforeLastField = false;
+    lastField = false;
+
+    gameover = false;
+    pairsFound = 0;
+    playerIdx = 1;
 
     printInfoText("Your Turn: Player " + playerIdx);
 }
@@ -207,46 +241,17 @@ function tooltip(on) {
     }
 }
 
-function restart() {
-    var symbols = [];
-    for (var i = 0; i < MAX_PAIRS; i++) {
-        symbols.push(String.fromCharCode(memorySymbols[i]));
-        symbols.push(String.fromCharCode(memorySymbols[i]));
-    }
-
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            var rnd = getRandomInt(symbols.length);
-            var elem = symbols[rnd];
-            symbols.splice(rnd, 1);
-            complField[y][x] = [elem, false];
-
-            var field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
-            field.value = "";
-            field.borderColor = color.white;
-            field.delay = false;
-        }
-    }
-
-    for (var i = 0; i < MAX_PLAYERS; i++) {
-        playerPoints[i] = 0;
-    }
-
-    % Reset field marking
-    beforeLastField = false;
-    lastField = false;
-
-    gameover = false;
-    pairsFound = 0;
-    playerIdx = 1;
-
-    printInfoText("Your Turn: Player " + playerIdx);
-}
-
-%%%%%%%%%%%%%%%%%%%%%
-% Draw and coloring %
-%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+/**
+ * Reveal the card at the given coordinates.
+ * If already two fields are revealed, they are either hidden or removed.
+ * Does not do anything if field is already revealed.
+ *
+ * @param {Number} x The x coordinate.
+ * @param {Number} y The y coordinate.
+ */
 function revealField(x, y) {
     % This removes the cursor and fixes minor bugs
     this.getField("info").setFocus();
@@ -315,6 +320,16 @@ function revealField(x, y) {
     draw(x, y, complField[y][x][0]);
 }
 
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Redraw the given position using the given value.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ * @param {String} value The text value.
+ */
 function draw(x, y, value) {
     var field = this.getField("pos" + x + "-" + y);
     field.delay = true;
@@ -322,6 +337,12 @@ function draw(x, y, value) {
     field.delay = false;
 }
 
+/**
+ * Remove the value at the given position.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
 function remove(x, y) {
     var field = this.getField("pos" + x + "-" + y);
     field.delay = true;
@@ -361,35 +382,38 @@ function printInfoText(text) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-    \begin{multicols}{2}
-        \section*{Memory}
-    \columnbreak
-        \begin{flushright}%
-        \PushButton[name=tooltipbtn, bordercolor=white]{%
-            \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                \centering
-                ?\strut
-            \end{tcolorbox}%
-        }
-        \end{flushright}%
-    \end{multicols}
-
-    % Calculate the max width and height of a block
-    \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-    \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
-
-    \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-    \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
-
-    % Define the blocksize via the smaller amount
-    \ifnum\blocksizeW<\blocksizeH
-        \def\blocksize{\blocksizeW}
-    \else
-        \def\blocksize{\blocksizeH}
-    \fi
-
     \begin{Form}
 
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Memory}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
+
+        % The gamefield
         \begin{tcolorbox}
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
@@ -403,6 +427,7 @@ function printInfoText(text) {
             \end{flushright}%
         \end{tcolorbox}
 
+        % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=restart, bordercolor=white]{

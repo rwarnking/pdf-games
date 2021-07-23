@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
@@ -35,11 +33,8 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{TicTacToe}
 
-const GAME_DESC = "Text.\
-Text.\
-Text.\
-Text.\
-Text.";
+const GAME_DESC = "In this application you can see a small particle system.\
+Via the gui it is possible to choose one of the available.";
 
 % Outside variables
 const PARTICLE_COUNT = AFMakeNumber(\particleCount);
@@ -54,6 +49,8 @@ const PARTICLE_SIZE = 10;
 const PARTICLE_SIZE_H = PARTICLE_SIZE / 2;
 % The amount of space that a particle moves each frame
 const STEP_SIZE = 4;
+const DEAD = false;
+const ALIVE = true;
 
 % Globals
 % Animation interval variable
@@ -63,39 +60,28 @@ var particles = new Array();
 var particleType = 0;
 
 % Probabilities for emits
-const probability = [
+const PROBABILITY = [
     98,
     50
 ]
 
 % Particle arrays
-const snowSymbols = [
+const SNOW_SYMBOLS = [
     0x2744,
     0x2745,
     0x2746,
     0x2749
 ]
 
-const flowerSymbols = [
+const FLOWER_SYMBOLS = [
     0x2740
 ];
 
-const circleSymbols = [
+const CIRCLE_SYMBOLS = [
     0x25CF,
     0x25CB,
     0x25CC
 ];
-
-% Color data
-const colors = new Array(
-    [ "RGB", 0.843, 0.078, 0.058 ],
-    [ "RGB", 0.203, 0.603, 0.054 ],
-    [ "RGB", 0.078, 0.305, 0.560 ],
-    [ "RGB", 0.560, 0.078, 0.533 ],
-    color.black
-);
-
-const highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
 
 %%%%%%%%%%
 % Helper %
@@ -117,7 +103,8 @@ function getRandomInt(max) {
 function initialise() {
     % Initialise all particles as dead
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        particles.push([false, [0, 0], 0]);
+        % Lifestate, position, symbolindex
+        particles.push([DEAD, [0, 0], 0]);
 
         field = this.getField("particle" + idx);
         field.delay = true;
@@ -137,7 +124,7 @@ function initialise() {
 
 /**
  * Initialise all buttons from the GUI.
- * For example add callbacks and set the correct colors.
+ * For example add callbacks.
  */
 function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
@@ -152,6 +139,29 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
+}
+
+/**
+ * Restart the particle system and the interval.
+ */
+function restart() {
+    app.clearInterval(run);
+
+    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
+        % Lifestate, position, symbolindex
+        particles[idx] = [DEAD, [0, 0], 0];
+
+        field = this.getField("particle" + idx);
+        field.delay = true;
+        field.rect = [0, 0, 0, 0];
+        field.alignment = "center";
+        field.fillColor = color.transparent;
+        field.borderColor = color.transparent;
+        field.textSize = PARTICLE_SIZE;
+        field.delay = false;
+    }
+
+    run = app.setInterval("runAll()", 100);
 }
 
 /**
@@ -189,34 +199,18 @@ function tooltip(on) {
     }
 }
 
-function restart() {
-    app.clearInterval(run);
-
-    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        particles[idx] = [false, [0, 0], 0];
-
-        field = this.getField("particle" + idx);
-        field.delay = true;
-        field.rect = [0, 0, 0, 0];
-        field.alignment = "center";
-        field.fillColor = color.transparent;
-        field.borderColor = color.transparent;
-        field.textSize = PARTICLE_SIZE;
-        field.delay = false;
-    }
-
-    run = app.setInterval("runAll()", 100);
-}
-
-%%%%%%%%%%%%%%%%%%%%%
-% Draw and coloring %
-%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%
+% Drawing loop %
+%%%%%%%%%%%%%%%%
+/**
+ * Main loop used to emit new particles or move the current ones.
+ */
 function runAll() {
     particleType = this.getField("particleType").currentValueIndices;
 
     % Emit new particle if particle dead and random condition
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        if (particles[idx][0] === false && getRandomInt(100) > probability[particleType]) {
+        if (particles[idx][0] === false && getRandomInt(100) > PROBABILITY[particleType]) {
             emitParticle(idx);
         } else {
             moveParticles(idx);
@@ -225,20 +219,33 @@ function runAll() {
 
 }
 
+/**
+ * Emits a new particle for the given index.
+ * Dependent on the selected particle system.
+ *
+ * @param {Number} idx The index of the particle in the array.
+ */
 function emitParticle(idx) {
     if (particleType == 0) {
         var pos = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
-        var symb = snowSymbols[getRandomInt(snowSymbols.length)];
-
-        particles[idx] = [true, [pos, UPPER_LIMIT - PARTICLE_SIZE_H], symb];
+        % Select a random snow symbol
+        var symb = SNOW_SYMBOLS[getRandomInt(SNOW_SYMBOLS.length)];
+        % Lifestate, position, symbol
+        particles[idx] = [ALIVE, [pos, UPPER_LIMIT - PARTICLE_SIZE_H], symb];
     } else {
         var pos_x = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
         var pos_y = getRandomInt(UPPER_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
-
-        particles[idx] = [true, [pos_x, pos_y], 0];
+        % Lifestate, position, symbolindex
+        particles[idx] = [ALIVE, [pos_x, pos_y], 0];
     }
 }
 
+/**
+ * Move the particle with the given index.
+ * Dependent on the selected particle system.
+ *
+ * @param {Number} idx The index of the particle in the array.
+ */
 function moveParticles(idx) {
     var shift_x = 0;
     var add_x = 0;
@@ -249,24 +256,28 @@ function moveParticles(idx) {
     if (particleType == 0) {
         field.value = String.fromCharCode(particles[idx][2]);
         field.textSize = PARTICLE_SIZE;
+        % Apply shifting motion like waves
         shift_x = Math.cos((particles[idx][1][0] + particles[idx][1][1]) / 40.0) * 20;
 
         particles[idx][1][1] -= STEP_SIZE;
+        % Ending lifecycle when out of render area
         if (particles[idx][1][1] < LOWER_LIMIT) {
-            particles[idx][0] = false;
+            particles[idx][0] = DEAD;
         }
     } else {
-        field.value = String.fromCharCode(circleSymbols[Math.floor(particles[idx][2] / 3)]);
+        field.value = String.fromCharCode(CIRCLE_SYMBOLS[Math.floor(particles[idx][2] / 3)]);
         field.textSize = PARTICLE_SIZE + particles[idx][2] * 2;
 
         particles[idx][2]++;
         add_x = particles[idx][2];
         add_y = particles[idx][2];
-        if (particles[idx][2] >= circleSymbols.length * 3) {
-            particles[idx][0] = false;
+        % Ending lifecycle when all symbols iterated
+        if (particles[idx][2] >= CIRCLE_SYMBOLS.length * 3) {
+            particles[idx][0] = DEAD;
         }
     }
 
+    % Adjust the rect position of the inputfield
     var rect = [
         particles[idx][1][0] - PARTICLE_SIZE_H - add_x + shift_x,
         particles[idx][1][1] + PARTICLE_SIZE_H + add_y,
@@ -287,29 +298,34 @@ function moveParticles(idx) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-    \begin{multicols}{2}
-        \section*{Particles}
-    \columnbreak
-        \begin{flushright}%
-        \PushButton[name=tooltipbtn, bordercolor=white]{%
-            \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                \centering
-                ?\strut
-            \end{tcolorbox}%
-        }
-        \end{flushright}%
-    \end{multicols}
-
-    \vspace*{\fill}
-
     \begin{Form}
 
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Particles}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Fill the page such that the remaining elements get pushed to the bottom
+        \vspace*{\fill}
+
+        % The fields for the particle system
         \xintFor* #1 in {\xintSeq{0}{\particleCount-1}} \do {%
             \TextField[bordercolor=white, name=particle#1, readonly=true]{}%
         }
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}%
 
+        % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=restart, bordercolor=white]{
