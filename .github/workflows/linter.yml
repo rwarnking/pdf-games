@@ -7,6 +7,7 @@ name: Lint Code Base
 
 #
 # Documentation:
+# https://github.com/github/super-linter
 # https://github.com/marketplace/actions/latex-linter-chktex
 #
 
@@ -45,3 +46,14 @@ jobs:
       ################################
       - name: LaTeX linter (chktex)
         uses: j2kun/chktex-action@1.0.3
+
+      ################################
+      # Run Linter against code base #
+      ################################
+      - name: Lint Code Base
+        uses: docker://ghcr.io/github/super-linter:slim-v4
+        env:
+          VALIDATE_ALL_CODEBASE: true
+          VALIDATE_LATEX : true
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

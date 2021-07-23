@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
@@ -85,14 +83,14 @@ var unusedCards = new Array();
 % Symbol array
 % Sadly special symbols using String.fromCharCode() does not work
 % because they cant be visualised in italic/bold
-const symbols = [
+const SYMBOLS = [
     "A",
     "B",
     "C"
 ];
 
 % Color data
-const colors = new Array(
+const COLORS = new Array(
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
     [ "RGB", 0.078, 0.305, 0.560 ]
@@ -114,12 +112,13 @@ function getRandomInt(max) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
  * Initialise the default game state.
+ * Distribute initial cards.
  */
 function initialise() {
     % Create all card combinations and indices
     var idx = 0;
-    for (var s = 0; s < symbols.length; s++) {
-        for (var c = 0; c < colors.length; c++) {
+    for (var s = 0; s < SYMBOLS.length; s++) {
+        for (var c = 0; c < COLORS.length; c++) {
             for (var a = 0; a < APPEARANCES; a++) {
                 for (var n = 1; n <= NUMBER; n++) {
                     cardList.push([s, c, a, n]);
@@ -217,6 +216,45 @@ function initialiseButtons() {
 }
 
 /**
+ * Restart the game and clear everything and redistribute the initial cards.
+ */
+function restart() {
+    % Reset the unused cards - every card is unused now
+    unusedCards = new Array();
+    for (var idx = 0; idx < SYMBOLS.length * COLORS.length * APPEARANCES * NUMBER; idx++) {
+        unusedCards.push(idx++);
+    }
+
+    % Reset field
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            % Get random element from the cardList and remove the card afterwards
+            var rnd = getRandomInt(unusedCards.length);
+            complField[y][x] = unusedCards[rnd];
+            unusedCards.splice(rnd, 1);
+            draw(x, y);
+        }
+    }
+
+    % Set point-fields back to zero
+    for (var p = 1; p <= MAX_PLAYERS; p++) {
+        points[p - 1] = 0;
+        var f = this.getField("points" + p);
+        f.delay = true;
+        f.value = 0;
+        f.delay = false;
+    }
+
+    % Reset game state
+    lastSelections = [];
+    gameover = false;
+
+    playerIdx = -1;
+
+    printInfoText("Please select the player who found a set!");
+}
+
+/**
  * Enable or disable the tooltip
  *
  * @param {Boolean} on Enable or disable tooltip
@@ -268,48 +306,9 @@ function tooltip(on) {
     }
 }
 
-/**
- * Restart the game and clear everything
- */
-function restart() {
-    % Reset the unused cards - every card is unused now
-    unusedCards = new Array();
-    for (var idx = 0; idx < symbols.length * colors.length * APPEARANCES * NUMBER; idx++) {
-        unusedCards.push(idx++);
-    }
-
-    % Reset field
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            % Get random element from the cardList and remove the card afterwards
-            var rnd = getRandomInt(unusedCards.length);
-            complField[y][x] = unusedCards[rnd];
-            unusedCards.splice(rnd, 1);
-            draw(x, y);
-        }
-    }
-
-    % Set point-fields back to zero
-    for (var p = 1; p <= MAX_PLAYERS; p++) {
-        points[p - 1] = 0;
-        var f = this.getField("points" + p);
-        f.delay = true;
-        f.value = 0;
-        f.delay = false;
-    }
-
-    % Reset game state
-    lastSelections = [];
-    gameover = false;
-
-    playerIdx = -1;
-
-    printInfoText("Please select the player who found a set!");
-}
-
-%%%%%%%%%%%%%%%%%%%%%
-% Draw and coloring %
-%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
 /**
  * Selects a player via the given id.
  * @param {Number} idx The player index.
@@ -327,7 +326,10 @@ function selectPlayer(idx) {
 }
 
 /**
- * Set the value of the input field.
+ * Save the given position if there are less then three cards selected.
+ * Otherwise use the three positions to check if they are a set.
+ * Adjusts the points accordingly, end the game when no sets are left
+ * and removes found sets.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
@@ -438,7 +440,7 @@ function hint() {
  * Test if the given positions refer to cards that qualify as a set
  *
  * @param {Array} positions The card positions.
- * @return true if is a set false else.
+ * @return {Boolean} true if is a set false else.
  */
 function isSet(positions) {
     var idx1 = complField[positions[0][1]][positions[0][0]];
@@ -608,6 +610,9 @@ function gameOverCheck() {
     return true;
 }
 
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
 /**
  * Draw all fields.
  */
@@ -632,8 +637,8 @@ function draw(x, y) {
     % Generate the text value that is to be assigned
     var spans = new Array();
     spans[0] = new Object();
-    spans[0].text = symbols[cardList[idx][SYM_P]];
-    spans[0].textColor = colors[cardList[idx][COL_P]];
+    spans[0].text = SYMBOLS[cardList[idx][SYM_P]];
+    spans[0].textColor = COLORS[cardList[idx][COL_P]];
 
     % Select apperance
     if (cardList[idx][APP_P] == ITALIC) {
@@ -712,23 +717,25 @@ function printInfoText(text) {
 
     \begin{Form}
 
+        % Header
         \begin{multicols}{2}
+            % Title
             \section*{Set}
-        \columnbreak
+        \columnbreak{}
+            % Tooltip object
             \begin{flushright}%
-            \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
-            \PushButton[name=tooltipbtn, bordercolor=white]{%
-                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                    \centering
-                    ?\strut
-                \end{tcolorbox}%
-            }
+                \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
             \end{flushright}%
         \end{multicols}
 
         % Calculate the max height of a block
         \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt) / (\fieldHeight * 5) \relax}
 
         \begin{center}
             % Add all card fields
@@ -788,19 +795,19 @@ function printInfoText(text) {
                 \PushButton[name=refill, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        Refill card slots.\strut
+                        Refill card slots.\strut{}
                     \end{tcolorbox}
                 } &
                 \PushButton[name=hint, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        Hint\strut
+                        Hint\strut{}
                     \end{tcolorbox}
                 }\\%
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        Restart game\strut
+                        Restart game\strut{}
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}

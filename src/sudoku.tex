@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
@@ -64,7 +62,7 @@ var original = new Array();
 var customMode = false;
 
 % Color data
-const colors = new Array(
+const COLORS = new Array(
     [ "RGB", 1.0, 1.0, 1.0 ], % white
     [ "RGB", 0.8, 0.8, 0.8 ], % gray
     [ "RGB", 0.203, 0.603, 0.054 ], % green
@@ -104,7 +102,8 @@ function shuffle(a) {
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialise the default game state by clearing everything and
+ * generating a sudoku.
  */
 function initialise() {
     % Initlialise all arrays with a zero array
@@ -331,7 +330,7 @@ function fillQuad(numberArray, offsetX, offsetY) {
  * Algorithm:
  * 1. Make list of all empty spaces
  * 2. For each element in list find all candidates
- * 3. Setup a array to save which combinations where tried
+ * 3. Setup an array to save which combinations where tried
  * 4. Iterate all spaces
  * 4.1. Try a candidate
  * 4.2. If field is still valid continue
@@ -547,15 +546,15 @@ function checkInput(x, y) {
     if (field.value > 0 && field.value < 10) {
         complField[y][x] = field.value;
         if (isFieldValid(x, y)) {
-            field.fillColor = colors[2];
+            field.fillColor = COLORS[2];
         } else {
-            field.fillColor = colors[3];
+            field.fillColor = COLORS[3];
         }
     }
     % Else remove the value from the field
     else {
         field.value = "";
-        field.fillColor = colors[0];
+        field.fillColor = COLORS[0];
     }
 
     field.delay = false;
@@ -571,7 +570,7 @@ function resetSudoku() {
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             complField[y][x] = original[y][x];
-            refreshField(x, y, colors[1]);
+            refreshField(x, y, COLORS[1]);
         }
     }
 }
@@ -590,7 +589,7 @@ function showHint() {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             if (complField[y][x] == EMPTY) {
                 complField[y][x] = solution[y][x];
-                refreshField(x, y, colors[1]);
+                refreshField(x, y, COLORS[1]);
                 return;
             }
         }
@@ -613,7 +612,7 @@ function showSolution() {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             if (complField[y][x] == EMPTY || customMode) {
                 complField[y][x] = solution[y][x];
-                refreshField(x, y, colors[0]);
+                refreshField(x, y, COLORS[0]);
             }
         }
     }
@@ -636,7 +635,7 @@ function refreshField(x, y, color) {
         field.fillColor = color;
     } else {
         field.value = "";
-        field.fillColor = colors[0];
+        field.fillColor = COLORS[0];
     }
     field.delay = false;
 }
@@ -654,12 +653,12 @@ function drawAll(color) {
             if (complField[y][x] > EMPTY) {
                 field.value = complField[y][x];
                 if (color) {
-                    field.fillColor = colors[1];
+                    field.fillColor = COLORS[1];
                     field.readonly = true;
                 }
             } else {
                 field.value = "";
-                field.fillColor = colors[0];
+                field.fillColor = COLORS[0];
                 field.readonly = false;
             }
             field.delay = false;
@@ -688,36 +687,36 @@ function printInfoText(text) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-    \begin{multicols}{2}
-        % Title
-        \section*{Sudoku}
-    \columnbreak
-        % Tooltip object
-        \begin{flushright}%
-        \PushButton[name=tooltipbtn, bordercolor=white]{%
-            \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                \centering
-                ?\strut
-            \end{tcolorbox}%
-        }
-        \end{flushright}%
-    \end{multicols}
-
-    % Calculate the max width and height of a block
-    \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-    \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
-
-    \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-    \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
-
-    % Define the blocksize via the smaller amount
-    \ifnum\blocksizeW<\blocksizeH
-        \def\blocksize{\blocksizeW}
-    \else
-        \def\blocksize{\blocksizeH}
-    \fi
-
     \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Sudoku}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
 
         % Playingfield
         \begin{tcolorbox}

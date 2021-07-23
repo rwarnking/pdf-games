@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
@@ -66,7 +64,7 @@ var playerIdx = 1;
 var lastField = false;
 
 % Symbol array (for each player)
-const playerSymbols = [
+const PLAYER_SYMBOLS = [
     0x2717,
     0x274D,
     0x2730,
@@ -75,7 +73,7 @@ const playerSymbols = [
 ];
 
 % Each player gets a color
-const colors = new Array(
+const COLORS = new Array(
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
     [ "RGB", 0.078, 0.305, 0.560 ],
@@ -83,7 +81,7 @@ const colors = new Array(
     color.black
 );
 
-const highlightcolor = [ "RGB", 0.984, 0.800, 0.176 ];
+const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
@@ -195,9 +193,9 @@ function restart() {
     printCurrentMove();
 }
 
-%%%%%%%%%%%%%%%%%%%%%
-% Draw and coloring %
-%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
 /**
  * Set the value of the input field.
  *
@@ -243,9 +241,9 @@ function markField(x, y) {
     % Print whether the game is over, or whos turn it is
     if (winner > 0) {
         gameover = true;
-        var symbol = String.fromCharCode(playerSymbols[winner - 1]);
+        var symbol = String.fromCharCode(PLAYER_SYMBOLS[winner - 1]);
         var text = "The winner is: Player " + winner + " - (" + symbol + ")";
-        printInfoText(text, colors[winner - 1]);
+        printInfoText(text, COLORS[winner - 1]);
     } else if (full) {
         gameover = true;
         printInfoText("No one did win and the field is full.");
@@ -262,7 +260,7 @@ function markField(x, y) {
  * This is done using the last input that was taken,
  * since the game can only be won when the current
  * move is responsible for that.
- * Therefore all directions are checked wether a line
+ * Therefore all directions are checked whether a line
  * of a set length with the current player symbol can be formed.
  *
  * @param {Number} x The x position.
@@ -304,6 +302,9 @@ function checkForWinner(x, y) {
     return 0;
 }
 
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
 /**
  * Since only one field is updated with each input,
  * only this field needs to be redrawn.
@@ -316,11 +317,11 @@ function draw(x, y) {
     field.delay = true;
     var value = complField[y][x];
 
-    field.textColor = colors[value - 1];
-    field.value = String.fromCharCode(playerSymbols[value - 1]);
+    field.textColor = COLORS[value - 1];
+    field.value = String.fromCharCode(PLAYER_SYMBOLS[value - 1]);
 
     % Highlight the current taken move
-    field.borderColor = highlightcolor;
+    field.borderColor = HIGHLIGHT_COLOR;
     field.delay = false;
 
     % Reset highlight the last taken move
@@ -353,7 +354,7 @@ function resetDraw(x, y) {
  * Print information about which players turn it is.
  */
 function printCurrentMove() {
-    var symbol = String.fromCharCode(playerSymbols[playerIdx - 1]);
+    var symbol = String.fromCharCode(PLAYER_SYMBOLS[playerIdx - 1]);
     var text = "Please make a move: Player " + playerIdx + " - (" + symbol + ")";
     printInfoText(text);
 }
@@ -382,16 +383,18 @@ function printInfoText(text, col=color.black) {
 
     \begin{Form}
 
+        % Header
         \begin{multicols}{2}
+            % Title
             \section*{Tic-Tac-Toe}
         \columnbreak
+            % Tooltip object
             \begin{flushright}%
-            \PushButton[name=tooltipbtn, bordercolor=white]{%
-                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                    \centering
-                    ?\strut
-                \end{tcolorbox}%
-            }
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
             \end{flushright}%
         \end{multicols}
 

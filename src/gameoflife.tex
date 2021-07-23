@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[utf8x]{inputenc}
-\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
@@ -62,7 +60,7 @@ var shapeMode = true;
 var animate = false;
 
 % Color data
-const colors = new Array(
+const COLORS = new Array(
     color.black,
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
@@ -71,7 +69,7 @@ const colors = new Array(
 );
 
 % Shape array that can be added to the field
-const shapes = new Array(
+const SHAPES = new Array(
     % Still lifes
     [[0, 0]], % One
     [[0, 0], [1, 0], [0, 1], [1, 1]], % Block
@@ -244,6 +242,10 @@ function tooltip(on) {
 %%%%%%%%%%%%%%%%%
 % Toggle states %
 %%%%%%%%%%%%%%%%%
+/**
+ * Start or stop the field animation.
+ * Automatically disables the shapemode on switch.
+ */
 function toggleAnimation() {
     animate = !animate;
 
@@ -269,6 +271,11 @@ function toggleAnimation() {
 
 }
 
+/**
+ * Enable or disable shapemode.
+ * If the shapemode is enabled the user can add shapes to the field.
+ * Automatically disables the animation on switch.
+ */
 function toggleMode() {
     shapeMode = !shapeMode;
 
@@ -292,6 +299,9 @@ function toggleMode() {
 %%%%%%%%%%%%%%%%%%%%%%%
 % Loop and processing %
 %%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Main loop used for animation.
+ */
 function runAll() {
     process();
 
@@ -299,13 +309,19 @@ function runAll() {
     currStep++;
     this.getField("currstep").value = "Current step: " + currStep + ".";
 
-    draw(fieldIdx);
+    drawAll(fieldIdx);
 }
 
+/**
+ * Calculates the next state of the gamefield, by locking at each spot
+ * and writing the new state (determined by the neighbourhood) in the
+ * next array.
+ */
 function process() {
     var state = DEAD;
     var result = DEAD;
     var n = 0;
+    % Iterate all fields
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             if (fieldIdx == 1) {
@@ -315,6 +331,7 @@ function process() {
             }
 
             var n = getNeighbourCount(x, y);
+            % Rules for when a slot is dead or alive
             if (state == DEAD && n == 3) {
                 % Repopulation
                 result = ALIVE;
@@ -341,6 +358,12 @@ function process() {
     }
 }
 
+/**
+ * Calculates the amount of neighbours that are alive for the given slot x, y.
+ *
+ * @param {Number} pX The x coordinate.
+ * @param {Number} pY The y coordinate.
+ */
 function getNeighbourCount(pX, pY) {
     var counter = 0;
     for (var x = pX - 1; x <= pX + 1; x++) {
@@ -360,9 +383,11 @@ function getNeighbourCount(pX, pY) {
 %%%%%%%%%%%%%%%%%%
 % Fill and clear %
 %%%%%%%%%%%%%%%%%%
+/**
+ * Clears both field arrays and stops animation.
+ */
 function clear() {
     currStep = 0;
-    this.getField("currstep").value = "Current step: " + currStep + ".";
 
     if (animate) {
         animate = false;
@@ -378,27 +403,38 @@ function clear() {
         printInfoText("Clear field.");
     }
 
+    % Clear all to dead
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             complField1[y][x] = DEAD;
             complField2[y][x] = DEAD;
         }
     }
-    draw(fieldIdx);
+    drawAll(fieldIdx);
 }
 
+/**
+ * Adds the selected shape to the given coordinates, with its top left corner at
+ * that position.
+ *
+ * @param {Number} x The x coordinate.
+ * @param {Number} y The y coordinate.
+ */
 function addShape(x, y) {
+    % Warning when shapemode is disabled
     if (!shapeMode) {
         printInfoText("Enable shape mode to add shapes.");
         return;
     }
 
+    % Get the shape
     currentShape = this.getField("shapeidx").currentValueIndices;
 
-    for (var pos = 0; pos < shapes[currentShape].length; pos++) {
-        var eX = shapes[currentShape][pos][0] + x;
-        var eY = shapes[currentShape][pos][1] + y;
+    for (var pos = 0; pos < SHAPES[currentShape].length; pos++) {
+        var eX = SHAPES[currentShape][pos][0] + x;
+        var eY = SHAPES[currentShape][pos][1] + y;
 
+        % Border check
         if (eX < 0 || eY < 0 || eX >= FIELD_WIDTH || eY >= FIELD_HEIGHT) {
             continue;
         }
@@ -411,9 +447,13 @@ function addShape(x, y) {
     };
 
     printInfoText("Added shape " + currentShape + ".");
-    draw((fieldIdx + 1) \% 2);
+    drawAll((fieldIdx + 1) \% 2);
 }
 
+/**
+ * Randomise the content of the complete field given the
+ * percentage specified in the gui.
+ */
 function fillRandom() {
     var percentage = this.getField("percentage").value;
     for (var x = 0; x < FIELD_WIDTH; x++) {
@@ -427,18 +467,21 @@ function fillRandom() {
             }
         }
     }
-    draw((fieldIdx + 1) \% 2);
-    %this.getField("info").setFocus();
+    drawAll((fieldIdx + 1) \% 2);
 }
 
 %%%%%%%%
 % Draw %
 %%%%%%%%
-function draw(idx) {
+/**
+ * Redraw all fields.
+ *
+ * @param {Number} idx The index of the array to draw.
+ */
+function drawAll(idx) {
     var field;
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
-            % TODO this needs to be changed everywhere
             field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             var value = DEAD;
@@ -449,8 +492,8 @@ function draw(idx) {
             }
 
             if (value > DEAD) {
-                field.fillColor = colors[0];
-                field.borderColor = colors[0];
+                field.fillColor = COLORS[0];
+                field.borderColor = COLORS[0];
             } else {
                 field.fillColor = color.transparent;
                 field.borderColor = color.transparent;
@@ -481,16 +524,18 @@ function printInfoText(text) {
 
     \begin{Form}
 
+        % Header
         \begin{multicols}{2}
+            % Title
             \section*{Game of Life}
         \columnbreak
+            % Tooltip object
             \begin{flushright}%
-            \PushButton[name=tooltipbtn, bordercolor=white]{%
-                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                    \centering
-                    ?\strut
-                \end{tcolorbox}%
-            }
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
             \end{flushright}%
         \end{multicols}
 
@@ -508,6 +553,7 @@ function printInfoText(text) {
             \def\blocksize{\blocksizeH}
         \fi
 
+        % The gamefield
         \begin{tcolorbox}
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
@@ -521,6 +567,7 @@ function printInfoText(text) {
             \end{flushright}%
         \end{tcolorbox}
 
+        % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=animate, bordercolor=white]{
