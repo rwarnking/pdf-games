@@ -169,8 +169,6 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
-
-    printInfoText("Please fill the sudoku.");
 }
 
 /**
@@ -270,7 +268,9 @@ function generateSudoku() {
     % Fill rest of the non-diagonal matrices.
     % For every cell to be filled, try all numbers until
     % a safe number is found.
-    solveSudoku();
+    if (!solveSudoku()) {
+        return;
+    }
 
     % Remove K elements randomly
     % Get all possible position combinations
@@ -299,6 +299,8 @@ function generateSudoku() {
     }
 
     drawAll(true);
+
+    printInfoText("Please fill the sudoku.");
 }
 
 /**
@@ -318,7 +320,7 @@ function fillQuad(numberArray, offsetX, offsetY) {
     % Assign each number to a field
     for (var idx = 0; idx < numberArray.length; idx++) {
         % Wrap to next line - expects the lines to be 3 in length
-        x = (offsetX + idx) \% BOX_WIDTH;
+        x = offsetX + (idx \% BOX_WIDTH);
         y = offsetY + Math.floor(idx / BOX_WIDTH);
         complField[y][x] = numberArray[idx];
     }
@@ -335,6 +337,8 @@ function fillQuad(numberArray, offsetX, offsetY) {
  * 4.1. Try a candidate
  * 4.2. If field is still valid continue
  * 4.3. Else increase iteration counter and reset spaceiterator
+ *
+ * @return { Boolean } true if sucessfull, else false
  */
 function solveSudoku() {
     % Make list of all empty spaces
@@ -343,10 +347,11 @@ function solveSudoku() {
     % For each element in list find all candidates
     var candidates = getCandidates(spaces);
 
-    % TODO this should not happen
+    % This should not happen
     for (var idx = 0; idx < spaces.length; idx++) {
         if (candidates[idx].length == 0) {
             printInfoText("An error occurred in solveSudoku candidates.");
+            return false;
         }
     }
 
@@ -357,36 +362,37 @@ function solveSudoku() {
     }
 
     % Apply candidates
-    var apple = 0; % TODO remove
-    for (var idx = 0; idx < spaces.length && apple < 500000; idx++) {
-        apple++;
+    for (var idx = 0; idx < spaces.length; idx++) {
         complField[spaces[idx][1]][spaces[idx][0]] = candidates[idx][indices[idx]];
 
         % When the field is not valid increase indices and reset complField and idx
         if (!isFieldValid(spaces[idx][0], spaces[idx][1])) {
 
             var tmpIdx = idx;
-            % For each index that is bigger than the candidates length
-            % the next cell should be increased and the last one should
-            % be reset to zero. This allows for checking all combinations
-            for (; indices[tmpIdx] + 1 >= candidates[tmpIdx].length; tmpIdx--) {
+            % Increment the current index
+            indices[tmpIdx]++;
+            % This allows for checking all combinations:
+            % If there is an overflow for the current index it is reset
+            % and the idx - 1 is increased until a combination without
+            % overflow is found
+            for (; indices[tmpIdx] >= candidates[tmpIdx].length; tmpIdx--) {
                 indices[tmpIdx] = 0;
 
-                % TODO this should not happen
                 if (tmpIdx - 1 < 0) {
                     printInfoText("An error occurred in solveSudoku comb-check.");
-                    break;
+                    return false;
+                } else {
+                    indices[tmpIdx - 1]++;
                 }
             }
-            indices[tmpIdx]++;
+
+            % Reverse not valid solution
+            for (var idx2 = 0; idx2 <= idx; idx2++) {
+                complField[spaces[idx2][1]][spaces[idx2][0]] = EMPTY;
+            }
 
             % Restart the idx counter since the solution for the spaces did not work
             idx = -1;
-
-            % Reverse not valid solution
-            for (var idx2 = 0; idx2 < spaces.length; idx2++) {
-                complField[spaces[idx2][1]][spaces[idx2][0]] = EMPTY;
-            }
         }
     }
 
@@ -396,6 +402,8 @@ function solveSudoku() {
             solution[y][x] = complField[y][x];
         }
     }
+
+    return true;
 }
 
 /**
