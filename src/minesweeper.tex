@@ -210,6 +210,7 @@ function fillMines() {
     % Reduce the count of fields to reveal
     fieldsToReveal -= mines;
     % Distribute the mines onto the field
+    % OBACHT: In this loop a mine might be placed at an already taken position.
     var x = 0;
     var y = 0;
     for (var i = 0; i < mines; i++) {
@@ -334,7 +335,7 @@ function reveal(x, y) {
             var elem = stack.pop();
             for (var xx = elem[0] - 1; xx <= elem[0] + 1; xx++) {
                 for (var yy = elem[1] - 1; yy <= elem[1] + 1; yy++) {
-                    % Ignore out of bounds, came field and already visible
+                    % Ignore out of bounds, same field and already visible
                     if (xx < 0 || yy < 0 || xx >= FIELD_WIDTH || yy >= FIELD_HEIGHT ||
                         (xx == elem[0] && yy == elem[1]) || complField[yy][xx][0] == VISIBLE) {
                         continue;
