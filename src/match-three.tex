@@ -347,7 +347,7 @@ function swap(x, y) {
         if (Math.abs(x - currentSlot[0]) + Math.abs(y - currentSlot[1]) == 1) {
             % If the atempted swap leads to removal do it TODO
             if (checkRemoval(x, y)) {
-                printInfoText("Swaped stones!");
+                printInfoText("Swapped stones!");
                 % Swap contents
                 var tmp = complField[currentSlot[1]][currentSlot[0]][0];
                 complField[currentSlot[1]][currentSlot[0]][0] = complField[y][x][0];
@@ -355,17 +355,86 @@ function swap(x, y) {
                 % Redraw
                 draw(x, y);
                 draw(currentSlot[0], currentSlot[1]);
-                % Remove last click and highlight
-                fieldClicked(currentSlot[0], currentSlot[1]);
                 % Start remove stones
                 removeStones(x, y, currentSlot[0], currentSlot[1]);
+            } else {
+                printInfoText("Swap not allowed!");
             }
+            % Remove last click and highlight
+            fieldClicked(currentSlot[0], currentSlot[1]);
         }
     }
 }
 
+/**
+ * Checks if a swap of the currentSlot and the given position
+ * would leed to any matches with atleast 3 elements.
+ * For this the slots are iterated and the symbol occurrences counted.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ * @return {Boolean} true if a match is found false else.
+ */
 function checkRemoval(x, y) {
-    return true;
+    % Save the currentSlot for easier readability
+    var x2 = currentSlot[0];
+    var y2 = currentSlot[1];
+    % There are two directions in which a match can occur, vertical and horizontal
+    var dirs = [
+        1, 0,
+        0, 1
+    ];
+
+    % Iterate both directions
+    for (var i = 0; i < dirs.length; i += 2) {
+        % Get the symbols
+        var symb1 = complField[y][x][0];
+        var symb2 = complField[y2][x2][0];
+        % The count is set to one because the tested slot does contribute one symbol
+        var count1 = 1;
+        var count2 = 1;
+
+        % There need to be 3 succeeding symbols out of 5 positions
+        for (var j = -2; j < 3; j++) {
+            if (j == 0) {
+                continue;
+            }
+            % Calc new position
+            var nX = x2 + j * dirs[i];
+            var nY = y2 + j * dirs[i + 1];
+            % Check for out of bounds and the symbol itself
+            % Test for x,y pos to cut one direction
+            if (nX >= 0 && nX < FIELD_WIDTH &&
+                nY >= 0 && nY < FIELD_HEIGHT &&
+                complField[nY][nX][0] === symb1 && (nX != x || nY != y)
+            ) {
+                count1++;
+            } else {
+                % Reset count since the chain was broken
+                count1 = 1;
+            }
+
+            % Calc new position
+            nX = x + j * dirs[i];
+            nY = y + j * dirs[i + 1];
+            % Check for out of bounds and the symbol itself
+            if (nX >= 0 && nX < FIELD_WIDTH &&
+                nY >= 0 && nY < FIELD_HEIGHT &&
+                complField[nY][nX][0] === symb2 && (nX != x2 || nY != y2)
+            ) {
+                count2++;
+            } else {
+                % Reset count since the chain was broken
+                count2 = 1;
+            }
+
+            if (count1 >= 3 || count2 >= 3) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 function removeStones(x1, y1, x2, y2) {
