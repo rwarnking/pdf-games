@@ -154,6 +154,9 @@ function initialiseButtons() {
             this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
             this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
             this.getField("pos" + x + "-" + y).alignment = "center";
+
+            var swapCallback = "swap" + "(" + x.toString() + "," + y.toString() + ");";
+            this.getField("pos" + x + "-" + y).setAction("MouseEnter", swapCallback);
         }
     }
 
@@ -328,6 +331,46 @@ function fieldClicked(x, y) {
     this.getField("info").setFocus();
 }
 
+/**
+ * Swaps the given position with the currentSlot, if:
+ * 1. There is a currentSlot
+ * 2. The given position is in the 4-neighbourhood
+ * 3. The swap would leed to a stone removal
+ * Lifts highlight after swap.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function swap(x, y) {
+    if (currentSlot !== null) {
+        % Check that only the 4-neighbourhood is valid
+        if (Math.abs(x - currentSlot[0]) + Math.abs(y - currentSlot[1]) == 1) {
+            % If the atempted swap leads to removal do it TODO
+            if (checkRemoval(x, y)) {
+                printInfoText("Swaped stones!");
+                % Swap contents
+                var tmp = complField[currentSlot[1]][currentSlot[0]][0];
+                complField[currentSlot[1]][currentSlot[0]][0] = complField[y][x][0];
+                complField[y][x][0] = tmp;
+                % Redraw
+                draw(x, y);
+                draw(currentSlot[0], currentSlot[1]);
+                % Remove last click and highlight
+                fieldClicked(currentSlot[0], currentSlot[1]);
+                % Start remove stones
+                removeStones(x, y, currentSlot[0], currentSlot[1]);
+            }
+        }
+    }
+}
+
+function checkRemoval(x, y) {
+    return true;
+}
+
+function removeStones(x1, y1, x2, y2) {
+}
+
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
@@ -433,7 +476,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1-#2]{}%
                     }\vspace{3pt}
                     \newline%
                 }%
@@ -455,7 +498,7 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \TextField[bordercolor=white, name=tooltiptxt]{}
 
     \end{Form}
 \end{document}
