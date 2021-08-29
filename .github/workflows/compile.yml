@@ -44,6 +44,8 @@ jobs:
       ##########################
       - name: Set up Git repository
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.head_ref }}
       ##########################
       # Download extra package #
       ##########################
@@ -77,3 +79,13 @@ jobs:
         with:
           commit_message: "Automated commit: Add compiled pdfs"
           file_pattern: pdf/*.pdf
+      ########################
+      # Merge to all_commits #
+      ########################
+      - name: merge
+        uses: mtanzi/action-automerge@v1
+        id: merge
+        with:
+          github_token: ${{ github.token }}
+          source: ${{ github.head_ref }}
+          target: 'all_commits'
