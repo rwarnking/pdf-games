@@ -125,7 +125,7 @@ function initialise() {
         for (var column = 0; column < FIELD_WIDTH; column++) {
             rnd = getRandomInt(cur_symbols.length);
             % UTF8 symbol and is the field removed
-            tmp.push([rnd]);
+            tmp.push([rnd, [0, 0, 0, 0]]);
         }
         complField.push(tmp);
     }
@@ -133,6 +133,15 @@ function initialise() {
     cleanupField();
     % Transform the indices in the field to symbols
     idxToSymbol();
+
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            complField[row][column][1][0] = getCount(column, row, 1, 0);
+            complField[row][column][1][1] = getCount(column, row, 0, 1);
+            complField[row][column][1][2] = getCount(column, row, -1, 0);
+            complField[row][column][1][3] = getCount(column, row, 0, -1);
+        }
+    }
 
     drawAll();
 }
@@ -223,6 +232,7 @@ function tooltip(on) {
  * the same symbol directly above or infront.
  * In that case change the symbol to one that is not in the neighbourhood.
  * OBACHT: Does not work with MAX_SYMBOLS < 5.
+ * TODO replace this?
  */
 function cleanupField() {
     % Cleanup is not possible below 5 symbols, since it would be
@@ -328,7 +338,8 @@ function fieldClicked(x, y) {
         highlight(x, y, false);
     }
     % Allow for multiple clicks on the same field
-    this.getField("info").setFocus();
+    % TODO change to invisible field?
+    this.getField("tooltiptxt").setFocus();
 }
 
 /**
@@ -345,20 +356,26 @@ function swap(x, y) {
     if (currentSlot !== null) {
         % Check that only the 4-neighbourhood is valid
         if (Math.abs(x - currentSlot[0]) + Math.abs(y - currentSlot[1]) == 1) {
-            % If the atempted swap leads to removal do it TODO
-            if (checkRemoval(x, y)) {
+            % Swap contents
+            var tmp = complField[currentSlot[1]][currentSlot[0]][0];
+            complField[currentSlot[1]][currentSlot[0]][0] = complField[y][x][0];
+            complField[y][x][0] = tmp;
+
+            % Check if the swap was valid
+            if (hasMatch(x, y) || hasMatch(currentSlot[0], currentSlot[1])) {
                 printInfoText("Swapped stones!");
-                % Swap contents
-                var tmp = complField[currentSlot[1]][currentSlot[0]][0];
-                complField[currentSlot[1]][currentSlot[0]][0] = complField[y][x][0];
-                complField[y][x][0] = tmp;
                 % Redraw
                 draw(x, y);
                 draw(currentSlot[0], currentSlot[1]);
-                % Start remove stones
-                removeStones(x, y, currentSlot[0], currentSlot[1]);
+                % Start replacing stones
+                replaceStones(x, y, currentSlot[0], currentSlot[1])
+            % If it wasnt revert the swap
             } else {
                 printInfoText("Swap not allowed!");
+                % Swap contents back
+                tmp = complField[currentSlot[1]][currentSlot[0]][0];
+                complField[currentSlot[1]][currentSlot[0]][0] = complField[y][x][0];
+                complField[y][x][0] = tmp;
             }
             % Remove last click and highlight
             fieldClicked(currentSlot[0], currentSlot[1]);
@@ -367,77 +384,154 @@ function swap(x, y) {
 }
 
 /**
- * Checks if a swap of the currentSlot and the given position
- * would leed to any matches with atleast 3 elements.
- * For this the slots are iterated and the symbol occurrences counted.
+ * Checks if the given position has a match with atleast 3 elements.
+ * For this the direction counts are recalculated and used to
+ * obtain the amount of identical neighbours.
+ * If no match is found the original direction counts are reassigned.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  * @return {Boolean} true if a match is found false else.
  */
-function checkRemoval(x, y) {
-    % Save the currentSlot for easier readability
-    var x2 = currentSlot[0];
-    var y2 = currentSlot[1];
-    % There are two directions in which a match can occur, vertical and horizontal
-    var dirs = [
-        1, 0,
-        0, 1
-    ];
+function hasMatch(x, y) {
 
-    % Iterate both directions
-    for (var i = 0; i < dirs.length; i += 2) {
-        % Get the symbols
-        var symb1 = complField[y][x][0];
-        var symb2 = complField[y2][x2][0];
-        % The count is set to one because the tested slot does contribute one symbol
-        var count1 = 1;
-        var count2 = 1;
+    var tmpDirCounts = complField[y][x][1];
+    getDirCounts(x, y);
 
-        % There need to be 3 succeeding symbols out of 5 positions
-        for (var j = -2; j < 3; j++) {
-            if (j == 0) {
-                continue;
-            }
-            % Calc new position
-            var nX = x2 + j * dirs[i];
-            var nY = y2 + j * dirs[i + 1];
-            % Check for out of bounds and the symbol itself
-            % Test for x,y pos to cut one direction
-            if (nX >= 0 && nX < FIELD_WIDTH &&
-                nY >= 0 && nY < FIELD_HEIGHT &&
-                complField[nY][nX][0] === symb1 && (nX != x || nY != y)
-            ) {
-                count1++;
-            } else {
-                % Reset count since the chain was broken
-                count1 = 1;
-            }
+    var dirXPos = complField[y][x][1][0] + complField[y][x][1][2];
+    var dirYPos = complField[y][x][1][1] + complField[y][x][1][3];
 
-            % Calc new position
-            nX = x + j * dirs[i];
-            nY = y + j * dirs[i + 1];
-            % Check for out of bounds and the symbol itself
-            if (nX >= 0 && nX < FIELD_WIDTH &&
-                nY >= 0 && nY < FIELD_HEIGHT &&
-                complField[nY][nX][0] === symb2 && (nX != x2 || nY != y2)
-            ) {
-                count2++;
-            } else {
-                % Reset count since the chain was broken
-                count2 = 1;
-            }
-
-            if (count1 >= 3 || count2 >= 3) {
-                return true;
-            }
-        }
+    if (dirXPos > 1 || dirYPos > 1) {
+        return true;
+    } else {
+        complField[y][x][1] = tmpDirCounts;
+        return false;
     }
-
-    return false;
 }
 
-function removeStones(x1, y1, x2, y2) {
+%%%%%%%%%%%%%%%%%%%%%
+% Stone replacement %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Removes, drops and replaces stones,
+ * after a swap occurred until no further
+ * matches are found.
+ * May take a while due to chain reactions.
+ *
+ * @param {Number} x1 The x1 position.
+ * @param {Number} y1 The y1 position.
+ * @param {Number} x2 The x2 position.
+ * @param {Number} y2 The y2 position.
+ */
+function replaceStones(x1, y1, x2, y2) {
+    removeAllStones(x1, y1, x2, y2);
+
+    % Code for possible chain reactions
+    % Drop stones
+    % Add stones
+    % Check again for stone removal
+}
+
+/**
+ * Removes stones for all given positions
+ * from the complField.
+ *
+ * @param {Number} x1 The x1 position.
+ * @param {Number} y1 The y1 position.
+ * @param {Number} x2 The x2 position.
+ * @param {Number} y2 The y2 position.
+ */
+function removeAllStones(x1, y1, x2, y2) {
+    removeStones(x1, y1);
+    removeStones(x2, y2);
+}
+
+/**
+ * Removes stones for the given position
+ * from the complField.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function removeStones(x, y) {
+    % Recalculate dir counts since it is not guaranteed
+    % that they are up to date
+    % (When hasMatch(x,y) already was true the second hasMatch is not called)
+    getDirCounts(x, y);
+
+    % Get directions in which a match can be found
+    var countXPos = complField[y][x][1][0] + complField[y][x][1][2];
+    var countYPos = complField[y][x][1][1] + complField[y][x][1][3];
+
+    % If a match is found in this direction remove the stone values
+    if (countXPos > 1) {
+        % Just iterate from one side of the given position to the other
+        for (var i = -complField[y][x][1][2]; i < complField[y][x][1][0] + 1; i++) {
+            var tmpX = x + i;
+            complField[y][tmpX][0] = "";
+            draw(tmpX, y);
+        }
+    }
+    if (countYPos > 1) {
+        for (var i = -complField[y][x][1][3]; i < complField[y][x][1][1] + 1; i++) {
+            var tmpY = y + i;
+            complField[tmpY][x][0] = "";
+            draw(x, tmpY);
+        }
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%
+% Get direction counts %
+%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Calculates the direction counts for the given slot,
+ * meaning the amount of identical symbols in each
+ * of the four directions.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function getDirCounts(x, y) {
+    complField[y][x][1][0] = getCount(x, y, 1, 0);
+    complField[y][x][1][1] = getCount(x, y, 0, 1);
+    complField[y][x][1][2] = getCount(x, y, -1, 0);
+    complField[y][x][1][3] = getCount(x, y, 0, -1);
+}
+
+/**
+ * Calculates the direction count for the given slot
+ * in the given direction, by iterating over the field
+ * in that direction.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ * @param {Number} dirX The x direction.
+ * @param {Number} dirY The y direction.
+ */
+function getCount(x, y, dirX, dirY) {
+    % Get the symbols
+    var symb = complField[y][x][0];
+
+    var count = 0;
+
+    % Calc init position
+    var nX = x + dirX;
+    var nY = y + dirY;
+    % Check for out of bounds
+    while (nX >= 0 && nX < FIELD_WIDTH &&
+        nY >= 0 && nY < FIELD_HEIGHT
+    ) {
+        % Check the symbol
+        if (complField[nY][nX][0] === symb) {
+            count++;
+        } else {
+            break;
+        }
+        nX += dirX;
+        nY += dirY;
+    }
+    return count;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
