@@ -5,6 +5,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
@@ -33,19 +35,21 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{ascii_donut}
 
-const GAME_DESC = "This application uses ascii characters to visualise\
-a rotating donut. The idea is to use the different symbols to simulate\
-the different orientations and lighting states.";
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const fieldWidth = AFMakeNumber(\fieldWidth);
+const fieldHeight = AFMakeNumber(\fieldHeight);
 
 % Constants
 const SCALE = 10;
 const INTERVAL = 300;
 
-const CHAR_SET = ".,-~:;=!*#S@";
+const charSet = ".,-~:;=!*#S@";
 
 % Globals
 % Animation interval variable
@@ -58,15 +62,15 @@ var zbuffer = new Array();
 var A = 0;
 var B = 0;
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%
+% Initialisation %
+%%%%%%%%%%%%%%%%%%
 /**
  * Initialise the default donut state.
  */
 function initialise() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
             field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             field.fillColor = color.transparent;
@@ -76,10 +80,10 @@ function initialise() {
         }
     }
 
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    for (var row = 0; row < fieldHeight; row++) {
         var tmp = new Array();
         var tmp2 = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+        for (var column = 0; column < fieldWidth; column++) {
             tmp.push(" ");
             tmp2.push(0);
         }
@@ -140,29 +144,20 @@ function tooltip(on) {
     }
 }
 
-%%%%%%%
+%%%%%%%%%%%%%%%%%%
 % Run %
-%%%%%%%
-/**
- * Render loop that draws the frame.
- */
+%%%%%%%%%%%%%%%%%%
 function runAll() {
     clearBuffer();
-    % Create the data for the current frame
     render_frame(A, B);
-    % Since the complete field changes each frame everyting needs
-    % to be redrawn
     draw();
     A += 0.04 * SCALE;
     B += 0.02 * SCALE;
 }
 
-/**
- * Clear the output and the zbuffer before rendering to it.
- */
 function clearBuffer() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
             output[y][x] = " ";
             zbuffer[y][x] = 0;
         }
@@ -183,15 +178,8 @@ const K2 = 5;
 % which is 3/4th of the way from the center to the side of the screen.
 % fieldWidth*3/8 = K1*(R1+R2)/(K2+0)
 % fieldWidth*K2*3/(8*(R1+R2)) = K1
-const K1 = FIELD_WIDTH * K2 * 3 / (8 * (R1 + R2));
+const K1 = fieldWidth * K2 * 3 / (8 * (R1 + R2));
 
-/**
- * Render the current frame given A and B to the
- * output array and the zbuffer.
- *
- * @param {Number} A
- * @param {Number} B
- */
 function render_frame(A, B) {
     % Precompute sines and cosines of A and B
     var cosA = Math.cos(A);
@@ -226,8 +214,8 @@ function render_frame(A, B) {
 
             % x and y projection.
             % Note that y is negated here, because y goes up in 3D space but down on 2D displays.
-            var xp = Math.floor(FIELD_WIDTH / 2 + K1 * ooz * x);
-            var yp = Math.floor(FIELD_HEIGHT / 2 - K1 * ooz * y);
+            var xp = Math.floor(fieldWidth / 2 + K1 * ooz * x);
+            var yp = Math.floor(fieldHeight / 2 - K1 * ooz * y);
 
             % Calculate luminance.
             var L = cosphi * costheta * sinB - cosA * costheta * sinphi -
@@ -243,24 +231,17 @@ function render_frame(A, B) {
                     % luminanceIndex is now in the range 0..11 (8*sqrt(2) = 11.3)
                     % now we lookup the character corresponding to the
                     % luminance and plot it in our output:
-                    output[yp][xp] = CHAR_SET.charAt(luminanceIndex);
+                    output[yp][xp] = charSet.charAt(luminanceIndex);
                 }
             }
         }
     }
 }
 
-%%%%%%%%%%%%%%%%%%%%%
-% Draw and coloring %
-%%%%%%%%%%%%%%%%%%%%%
-/**
- * Draw the current state of the complete field (output array)
- * to the display elements.
- */
 function draw() {
     % Now, dump output[] to the screen.
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
             field = this.getField("pos" + x + "-" + y);
             field.delay = true;
             field.fillColor = color.transparent;
@@ -282,26 +263,22 @@ function draw() {
 
     \begin{Form}
 
-        % Header
         \begin{multicols}{2}
-            % Title
             \section*{Ascii Donut}
         \columnbreak
-            % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
-                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                        \centering?\strut{}
-                    \end{tcolorbox}%
-                }
+            \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                    \centering
+                    ?\strut
+                \end{tcolorbox}%
+            }
             \end{flushright}%
         \end{multicols}
 
-        % TODO use dynamic dimension for textfield
         \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
-        % The canvas (pixelarray)
         \begin{tcolorbox}[colback=black]
             %\centering
             \begin{flushright}
@@ -314,6 +291,9 @@ function draw() {
             }
             \end{flushright}
         \end{tcolorbox}
+
+        \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
+        \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
 
        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
 

@@ -5,10 +5,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
+\usepackage[utf8x]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
-\usepackage{multicol}
 
 \usepackage{xinttools}
 \usepackage[nomessages]{fp}
@@ -27,7 +28,7 @@
 \def\fieldWidth{8}
 \def\fieldHeight{8}
 % TODO make these selectable in the gui
-\def\playerCount{3}
+\def\playerCount{2}
 \def\winningPieces{4}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -36,28 +37,16 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
 
-const GAME_DESC = "Connect four is a connection board game. The goal is to place a set amount\
-of stones (4) with the given playercolor in such a way that they lie on a strait line.\
-Each turn a player can choose a column in which his stone should be placed.\
-The stones will be placed at the bottom of the column or on top of the current top stone.";
+var fieldWidth = AFMakeNumber(\fieldWidth);
+var fieldHeight = AFMakeNumber(\fieldHeight);
+var playerCount = AFMakeNumber(\playerCount);
+var WINNING_PIECES = AFMakeNumber(\winningPieces);
 
-% Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const PLAYER_COUNT = AFMakeNumber(\playerCount);
-const WINNING_PIECES = AFMakeNumber(\winningPieces);
-
-% Constants
-const EMPTY = 0;
-
-% Globals
-% The game field array
 var complField = new Array();
 var activePlayer = 0;
 var gameover = false;
 
-% Color data
-const COLORS = new Array(
+var colors = new Array(
     color.black,
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
@@ -65,172 +54,127 @@ const COLORS = new Array(
     [ "RGB", 0.560, 0.078, 0.533 ]
 );
 
-const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.960, 0.176 ];
+highlightcolor = [ "RGB", 0.984, 0.960, 0.176 ];
 
 %%%%%%%%%%%%%%%%%%
 % Initialisation %
 %%%%%%%%%%%%%%%%%%
-/**
- * Initialise the default game state.
- */
 function initialise() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    for (var row = 0; row < fieldHeight; row++) {
         var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            tmp.push(EMPTY);
+        for (var column = 0; column < fieldWidth; column++) {
+            tmp.push(0);
         }
         complField.push(tmp);
     }
 
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
+    this.getField("winner").fillColor = color.transparent;
+    this.getField("winner").borderColor = color.transparent;
 
-    printInfoText("Player " + (activePlayer + 1) + ": Please select a column.");
-
-    % Init the GUI
     initialiseButtons();
 
-    drawAll();
+    draw();
 }
 
-/**
- * Initialise all buttons from the GUI.
- * For example add callbacks and set the correct colors.
- */
 function initialiseButtons() {
-    % Assign each button the coresponding function and disable the highlights
+    % for (var x = 0; x < fieldWidth; x++) {
+    %     this.getField("col" + x).setAction("MouseUp", "addToColumn(x);");
+    %     this.getField("col" + x).highlight="invert";
+    % }
+
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="none";
 
-    % Each field needs to be connected to an input function
-    var funcName = "addToColumn";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        var callbackName = funcName + "(" + x.toString() + ");";
-        this.getField("col" + x).setAction("MouseDown", callbackName);
-        this.getField("col" + x).highlight="none";
-        this.getField("col" + x).borderColor = color.transparent;
-    }
-
-    % Tooltip setup
-    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
-    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
+    this.getField("col0").setAction("MouseUp", "addToColumn(0);");
+    this.getField("col0").borderColor = color.transparent;
+    this.getField("col0").highlight="none";
+    this.getField("col1").setAction("MouseUp", "addToColumn(1);");
+    this.getField("col1").borderColor = color.transparent;
+    this.getField("col1").highlight="none";
+    this.getField("col2").setAction("MouseUp", "addToColumn(2);");
+    this.getField("col2").borderColor = color.transparent;
+    this.getField("col2").highlight="none";
+    this.getField("col3").setAction("MouseUp", "addToColumn(3);");
+    this.getField("col3").borderColor = color.transparent;
+    this.getField("col3").highlight="none";
+    this.getField("col4").setAction("MouseUp", "addToColumn(4);");
+    this.getField("col4").borderColor = color.transparent;
+    this.getField("col4").highlight="none";
+    this.getField("col5").setAction("MouseUp", "addToColumn(5);");
+    this.getField("col5").borderColor = color.transparent;
+    this.getField("col5").highlight="none";
+    this.getField("col6").setAction("MouseUp", "addToColumn(6);");
+    this.getField("col6").borderColor = color.transparent;
+    this.getField("col6").highlight="none";
+    this.getField("col7").setAction("MouseUp", "addToColumn(7);");
+    this.getField("col7").borderColor = color.transparent;
+    this.getField("col7").highlight="none";
 }
 
-/**
- * Restarts the game by clearing the field array.
- */
 function restart() {
     % Clear complField and redraw
     var field;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField[y][x] = EMPTY;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            complField[y][x] = 0;
 
-            draw(x, y);
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            field.borderColor = color.white;
+            field.fillColor = color.white;
+            field.delay = false;
         }
     }
 
     activePlayer = 0;
-    printInfoText("Restarted - Player " + (activePlayer + 1) + ": Please select a column.");
     gameover = false;
+    this.getField("winner").value = "";
 }
 
-/**
- * Enable or disable the tooltip
- *
- * @param {Boolean} on Enable or disable tooltip
- */
-function tooltip(on) {
-    if (on) {
-        % Move the tooltip field to the center of the screen
-        % and adjust the size so the text can be displayed
-        var field = this.getField("tooltiptxt");
-        field.delay = true;
-        field.value = GAME_DESC;
-
-        field.multiline = true;
-        field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
-        % upper-left x, upper-left y, lower-right x and lower-right y
-        field.rect = [128, 601, 468, 401];
-
-        field.delay = false;
-    } else {
-        % Remove the field such that it is not visible
-        var field = this.getField("tooltiptxt");
-        field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
-        field.delay = false;
+function draw() {
+    var field;
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            var value = complField[y][x];
+            if (value > 0) {
+                field.fillColor = colors[value - 1];
+            } else {
+                field.fillColor = color.white;
+            }
+            field.delay = false;
+        }
     }
 }
 
-%%%%%%%%%%%%%
-% Gamelogic %
-%%%%%%%%%%%%%
-/**
- * Add a stone to the selected column (x).
- * Also selects new player and redraws.
- *
- * @param {Number} x The column to place the stone in.
- */
 function addToColumn(x) {
     if (gameover) {
         return;
     }
 
     var y = getYFromX(x);
-    % Column is full
-    if (y == -1) {
-        printInfoText("This Column is full. Player " + (activePlayer + 1) + ": Select a valid column.");
-        return;
-    }
     complField[y][x] = activePlayer + 1;
 
     checkGameover(x, y);
 
     activePlayer++;
-    % Reset player count
-    if (activePlayer >= PLAYER_COUNT) {
-        activePlayer -= PLAYER_COUNT;
+    if (activePlayer >= playerCount) {
+        activePlayer -= playerCount;
     }
 
-    if (!gameover) {
-        printInfoText("Player " + (activePlayer + 1) + ": Please select a column.");
-    }
-
-    draw(x, y);
+    draw();
 }
 
-/**
- * Returns the first empty spot for the given column (x).
- *
- * @param {Number} x The column for which the y should be returned.
- */
 function getYFromX(x) {
-    for (var y = 0; y < FIELD_HEIGHT; y++) {
-        if (complField[y][x] != EMPTY) {
+    for (var y = 0; y < fieldHeight; y++) {
+        if (complField[y][x] != 0) {
             return y - 1;
         }
     }
-    return FIELD_HEIGHT - 1;
+    return fieldHeight - 1;
 }
 
-/**
- * Checks whether the current move concludes the game and someone won.
- * The position of the last move is used to check the neighbourhood for
- * potential lines in all possible directions. Sets gameover if
- * a line was found.
- *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
- */
 function checkGameover(x, y) {
     var count = 0;
     var maxCount = 0;
@@ -249,63 +193,22 @@ function checkGameover(x, y) {
         for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
             var nx = x + directions[dirIdx] * wp;
             var ny = y + directions[dirIdx + 1] * wp;
-            if (nx < 0 || nx >= FIELD_WIDTH || ny < 0 || ny >= FIELD_HEIGHT || complField[ny][nx] != activePlayer + 1) {
+            if (nx < 0 || nx >= fieldWidth || ny < 0 || ny >= fieldHeight || complField[ny][nx] != activePlayer + 1) {
                 count = 0;
             } else {
                 count++;
                 maxCount = count;
             }
         }
-        % If there are enough pieces found, color the winning pieces and set gameover
         if (maxCount >= WINNING_PIECES) {
             gameover = true;
             colorWinner(x, y, dirIdx);
-            printInfoText("The winner is: Player " + (activePlayer + 1));
+            printWinner();
         }
     }
 }
 
-%%%%%%%%%%%%%%%%%%%%%
-% Draw and coloring %
-%%%%%%%%%%%%%%%%%%%%%
-/**
- * Draws the complete field.
- */
-function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            draw(x, y);
-        }
-    }
-}
-
-/**
- * Draw the field at the coordinates x, y.
- *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
- */
-function draw(x, y) {
-    field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    var value = complField[y][x];
-    if (value > EMPTY) {
-        field.fillColor = COLORS[value - 1];
-    } else {
-        field.fillColor = color.white;
-        field.borderColor = color.transparent;
-    }
-    field.delay = false;
-}
-
-/**
- * Marks all stones in a line with x, y and the given direction (dirIdx),
- * given the stone has the same player index as the stone at x, y.
- *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
- * @param {Number} dirIdx The direction index
- */
+% TODO improve this
 function colorWinner(x, y, dirIdx) {
     var directions = [
         0, 1,
@@ -313,33 +216,25 @@ function colorWinner(x, y, dirIdx) {
         1, 0,
         1, -1
     ]
-    % Allows for highlighting all stones left and right from the x, y
+    % Allows for highlighting all left and right stones
     for (var mul = -1; mul < 2; mul += 2) {
         for (var wp = 0; wp < WINNING_PIECES; wp++) {
             var nx = x + directions[dirIdx] * wp * mul;
             var ny = y + directions[dirIdx + 1] * wp * mul;
-            if (nx < 0 || nx >= FIELD_WIDTH || ny < 0 || ny >= FIELD_HEIGHT || complField[ny][nx] != activePlayer + 1) {
+            if (nx < 0 || nx >= fieldWidth || ny < 0 || ny >= fieldHeight || complField[ny][nx] != activePlayer + 1) {
                 wp = WINNING_PIECES;
             } else {
-                var field = this.getField("pos" + nx + "-" + ny);
+                var field = this.getField("pos" + nx + ny);
                 field.delay = true;
-                field.borderColor = HIGHLIGHT_COLOR;
+                field.borderColor = highlightcolor;
                 field.delay = false;
             }
         }
     }
 }
 
-/**
- * Print information about the game.
- *
- * @param {String} text Info string
- */
-function printInfoText(text) {
-    var field = this.getField("info");
-    field.delay = true;
-    field.value = text;
-    field.delay = false;
+function printWinner() {
+    this.getField("winner").value = "The winner is: Player " + (activePlayer + 1);
 }
 
 \end{insDLJS}
@@ -351,57 +246,49 @@ function printInfoText(text) {
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
+    \section*{Connectfour}
+
+    \FPeval{\result}{(\fieldWidth * 3 + 3)}
+    \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
+
     \begin{Form}
 
-        % Header
-        \begin{multicols}{2}
-            % Title
-            \section*{Connectfour}
-        \columnbreak
-            % Tooltip object
-            \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
-                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                        \centering?\strut{}
-                    \end{tcolorbox}%
-                }
-            \end{flushright}%
-        \end{multicols}
-
-        \FPeval{\result}{(\fieldWidth * 3 + 3)}
-        \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
-
         \begin{tcolorbox}
-            % Column selection buttons
             \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
                 \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \PushButton[name=col#1, bordercolor=black]{
-                        \begin{tcolorbox}
-                            \centering
-                            Col#1
-                        \end{tcolorbox}
+                    \xintifForLast{
+                        \PushButton[name=col#1, bordercolor=black]{
+                            \begin{tcolorbox}
+                                \centering
+                                Col#1
+                            \end{tcolorbox}
+                        }
                     }
-                    % Have the cell divider for all elements
-                    % that are not the last one
-                    \xintifForLast{}{&}%
+                    {
+                        \PushButton[name=col#1, bordercolor=black]{
+                            \begin{tcolorbox}
+                                \centering
+                                Col#1
+                            \end{tcolorbox}
+                        } &
+                    }%
                 }%
             \end{tabularx}%
-            % The gamefield
+            %
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1#2, readonly=true]{}%
                     }\vspace{3pt}
                     \newline
                 }
             \end{flushright}
         \end{tcolorbox}
 
-        % Game related buttons
         \begin{center}%
-            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+            \begin{tabularx}{\textwidth}{@{} X X @{}}%
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
@@ -409,13 +296,10 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=winner, width=\linewidth, readonly=true]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
-
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
-
     \end{Form}
 
 \end{document}

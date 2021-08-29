@@ -5,10 +5,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
 \usepackage[ngerman]{babel}
 \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
-\usepackage{multicol}
 
 \usepackage{xinttools}
 \usepackage[nomessages]{fp}
@@ -36,24 +37,10 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
 
-const GAME_DESC = "Tetris is a puzzle game where you get stones of a specific shape.\
-These must be placed in such a manner that they build a complete line.\
-A line will be removed to make space for more stones. With increasing amount\
-of removed lines the gamespeed will increase. When the top of the field\
-is reached the game is over.";
+var fieldWidth = AFMakeNumber(\fieldWidth);
+var halfFieldWidth = Math.floor(fieldWidth / 2.0);
+var fieldHeight = AFMakeNumber(\fieldHeight);
 
-% Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const HALF_FIELD_WIDTH = Math.floor(FIELD_WIDTH / 2.0);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-
-% Constants
-const EMPTY = 0;
-
-% Globals
-% Animation interval variable
-var run;
-% The game field
 var complField = new Array();
 
 var focus = true;
@@ -62,62 +49,61 @@ var speed = AFMakeNumber(\GAMESPEED);
 var lineCount = 0;
 
 var stone = new Array();
+var stoneColor = color.black;
 var shouldEmitStone = true;
-const STONES = new Array(
+var stones = new Array(
     % Bar
     new Array(
-        new Array(HALF_FIELD_WIDTH - 2, 0),
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(halfFieldWidth - 2, 0),
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth + 1, 0)
     ),
     % Cube
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1)
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth - 1, 1),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth, 1)
     ),
     % T
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth, 1),
+        new Array(halfFieldWidth + 1, 0)
     ),
     % Z
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH + 1, 1)
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth, 1),
+        new Array(halfFieldWidth + 1, 1)
     ),
     % L
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 1)
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth + 1, 0),
+        new Array(halfFieldWidth + 1, 1)
     ),
     % J
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(halfFieldWidth - 1, 1),
+        new Array(halfFieldWidth - 1, 0),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth + 1, 0)
     ),
     % S
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(halfFieldWidth - 1, 1),
+        new Array(halfFieldWidth, 1),
+        new Array(halfFieldWidth, 0),
+        new Array(halfFieldWidth + 1, 0)
     )
 );
 
-% Color data
-var stoneColor = color.black;
-const COLORS = new Array(
+var colors = new Array(
     color.black,
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
@@ -125,34 +111,29 @@ const COLORS = new Array(
     [ "RGB", 0.560, 0.078, 0.533 ]
 );
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-/**
- * Initialise the default game state.
- */
+% For saving the interval
+var run;
+
+%%%%%%%%%%%%%%%%%%
+% Initialisation %
+%%%%%%%%%%%%%%%%%%
 function initialise() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    for (var row = 0; row < fieldHeight; row++) {
         var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            tmp.push(EMPTY);
+        for (var column = 0; column < fieldWidth; column++) {
+            tmp.push(0);
         }
         complField.push(tmp);
     }
 
-    % Init the GUI
     initialiseButtons();
 
-    % Start the animation interval
     run = app.setInterval("runAll()", 20);
+    %run.count = 0;
+    %var timeout = app.setTimeOut( "app.clearInterval(run);", 3*36*150);
 }
 
-/**
- * Initialise all buttons from the GUI.
- * For example add callbacks and set the correct colors.
- */
 function initialiseButtons() {
-    % Assign each button the coresponding function and disable the highlights
     this.getField("input1").setFocus();
 
     this.getField("left").setAction("MouseUp", "move('a');");
@@ -170,99 +151,32 @@ function initialiseButtons() {
     this.getField("turnRight").setAction("MouseUp", "move('e');");
     this.getField("turnRight").highlight="invert";
 
-    this.getField("start").setAction("MouseUp", "restart();");
-    this.getField("start").highlight="invert";
-
-    % Tooltip setup
-    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
-    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
-}
-
-/**
- * Resets the gamefield to an empty field and restarts the game.
- */
-function restart() {
-    this.getField("points").value = 0;
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            complField[row][column] = EMPTY;
-        }
-    }
-
-    loopTimer = 0;
-    speed = AFMakeNumber(\GAMESPEED);
-    lineCount = 0;
-
-    shouldEmitStone = true;
-}
-
-/**
- * Enable or disable the tooltip
- *
- * @param {Boolean} on Enable or disable tooltip
- */
-function tooltip(on) {
-    if (on) {
-        % Move the tooltip field to the center of the screen
-        % and adjust the size so the text can be displayed
-        var field = this.getField("tooltiptxt");
-        field.delay = true;
-        field.value = GAME_DESC;
-
-        field.multiline = true;
-        field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
-        % upper-left x, upper-left y, lower-right x and lower-right y
-        field.rect = [128, 601, 468, 401];
-
-        field.delay = false;
-    } else {
-        % Remove the field such that it is not visible
-        var field = this.getField("tooltiptxt");
-        field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
-        field.delay = false;
-    }
+    %var aRect = this.getField("left").rect;
+    %aRect[0] -= 30;
+    %aRect[2] += 30;
+    %this.getField("left").rect = aRect;
 }
 
 %%%%%%%%
 % Loop %
 %%%%%%%%
-/**
- * Main loop, responsible for processing the input, updating the field
- * and drawing.
- */
 function runAll() {
     loopTimer++;
     processInput();
     updateField();
     if (!shouldEmitStone) {
-        drawAll();
-        % Stone needs to be removed so the gameover detection does not
-        % misinterpret the current stone as gamelosing.
-        % This is also needed for collision detection.
+        draw();
         removeStone();
     } else if (gameover()) {
         restart();
     }
 }
 
-%%%%%%%%%%%%%
-% Gamelogic %
-%%%%%%%%%%%%%
-/**
- * Checks the top most line if there is a stone there.
- * @return {Boolean} If the game is over true else false.
- */
+%%%%%%%%%
+% Logic %
+%%%%%%%%%
 function gameover() {
-    for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var column = 0; column < fieldWidth; column++) {
         if (complField[0][column] != 0) {
             return true;
         }
@@ -270,18 +184,22 @@ function gameover() {
     return false
 }
 
-/**
- * Emits a new random stone by adding it to the field.
- */
-function emitStone() {
-    % Random color
-    stoneColor = Math.floor(Math.random() * COLORS.length) + 1;
-    % Random shape
-    var stoneIdx = Math.floor(Math.random() * STONES.length);
-    for (var i = 0; i < STONES[stoneIdx].length; i++) {
-        stone[i] = STONES[stoneIdx][i].slice();
+function restart() {
+    this.getField("points").value = 0;
+    for (var row = 0; row < fieldHeight; row++) {
+        for (var column = 0; column < fieldWidth; column++) {
+            complField[row][column] = 0;
+        }
     }
-    % Set the stone
+}
+
+function emitStone() {
+    stoneColor = Math.floor(Math.random() * colors.length) + 1;
+
+    var stoneIdx = Math.floor(Math.random() * stones.length);
+    for (var i = 0; i < stones[stoneIdx].length; i++)
+        stone[i] = stones[stoneIdx][i].slice();
+
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
@@ -290,72 +208,48 @@ function emitStone() {
     shouldEmitStone = false;
 }
 
-/**
- * Check if the stone collides with something below it or if it
- * reached the bottom of the field.
- * @return {Boolean} True when colliding else false
- */
 function collidesOrHeight() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        if (y + 1 >= FIELD_HEIGHT || complField[y + 1][x] != EMPTY) {
+        if (y + 1 >= fieldHeight || complField[y + 1][x] != 0) {
             return true;
         }
     }
     return false;
 }
 
-/**
- * Check if the stone collides with something on the left or if it
- * reached the left border of the field.
- * @return {Boolean} True when colliding else false
- */
 function collidesOrLeft() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        if (x - 1 < 0 || complField[y][x - 1] != EMPTY) {
+        if (x - 1 < 0 || complField[y][x - 1] != 0) {
             return true;
         }
     }
     return false;
 }
 
-/**
- * Check if the stone collides with something on the right or if it
- * reached the right border of the field.
- * @return {Boolean} True when colliding else false
- */
 function collidesOrRight() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        if (x + 1 >= FIELD_WIDTH || complField[y][x + 1] != EMPTY) {
+        if (x + 1 >= fieldWidth || complField[y][x + 1] != 0) {
             return true;
         }
     }
     return false;
 }
 
-/**
- * Removes all full lines of the field if there are any by
- * moving all lines above them down by one.
- * Add a new line at the top.
- */
 function removeLines() {
-    for (var y = FIELD_HEIGHT - 1; y >= 0; y--) {
-        for (var x = 0; x < FIELD_WIDTH; x++) {
-            % Line is not completly full
-            if (complField[y][x] == EMPTY) {
-                x = FIELD_WIDTH;
-            }
-            % Last field of line is reached and it is not empty
-            else if (x == FIELD_WIDTH - 1 && complField[y][x] > EMPTY) {
+    for (var y = fieldHeight - 1; y >= 0; y--) {
+        for (var x = 0; x < fieldWidth; x++) {
+            if (complField[y][x] == 0) {
+                x = fieldWidth;
+            } else if (x == fieldWidth - 1 && complField[y][x] > 0) {
 
                 this.getField("points").value += 1000;
                 lineCount++;
-                % Adjust speed -> increase difficulty
                 if (lineCount == 5 && speed > 1) {
                     lineCount = 0;
                     speed--;
@@ -366,8 +260,8 @@ function removeLines() {
                 }
                 % Override the top line with a new one
                 var tmp = new Array();
-                for (var column = 0; column < FIELD_WIDTH; column++) {
-                    tmp.push(EMPTY);
+                for (var column = 0; column < fieldWidth; column++) {
+                    tmp.push(0);
                 }
                 complField[0] = tmp;
                 % Adjust y such that the shifted line is also tested
@@ -378,17 +272,11 @@ function removeLines() {
     }
 }
 
-/**
- * Emits new stone if needed or moves the current one unless there is a
- * collision then the stone is added to the field as unmoveable.
- */
 function updateField() {
     if (shouldEmitStone) {
         emitStone();
     }
     else {
-        % Move if there is no collision and it is time otherwise
-        % Add without movement
         if (!collidesOrHeight()) {
             if (loopTimer >= speed) {
                 this.getField("points").value++;
@@ -419,26 +307,33 @@ function updateField() {
     }
 }
 
-/**
- * Removes the stone from the field.
- * Should be used temporary.
- */
 function removeStone() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        complField[y][x] = EMPTY;
+        complField[y][x] = 0;
+    }
+}
+
+function draw() {
+    for (var x = 0; x < fieldWidth; x++) {
+        for (var y = 0; y < fieldHeight; y++) {
+            field = this.getField("pos" + x + y);
+            field.delay = true;
+            if (complField[y][x] > 0) {
+                field.fillColor = colors[complField[y][x] - 1];
+            }
+            else {
+                field.fillColor = color.white;
+            }
+            field.delay = false;
+        }
     }
 }
 
 %%%%%%%%%%%%
 % Movement %
 %%%%%%%%%%%%
-/**
- * Process input made by keys of the keyboard.
- * For this multiple input fields are needed for which the focus is shifted.
- * The input is then parsed into actual movement.
- */
 function processInput() {
     var iField1 = this.getField("input1");
     var iField2 = this.getField("input2");
@@ -448,7 +343,6 @@ function processInput() {
     iField2.delay = true;
     oField.delay = true;
 
-    % Get the input from the currently focused input element
     var movementString;
     if (focus) {
         iField1.setFocus();
@@ -457,7 +351,8 @@ function processInput() {
             oField.value = oField.value.slice(movementString.length);
         oField.value += movementString;
         iField2.value = "";
-    } else {
+    }
+    else {
         iField2.setFocus();
         movementString = iField1.value
         if (oField.value.length >= 10)
@@ -467,7 +362,6 @@ function processInput() {
     }
     focus = !focus;
 
-    % Process the input string
     for (var i = 0; i < movementString.length; i++) {
         move(movementString.charAt(i));
     }
@@ -477,42 +371,37 @@ function processInput() {
     oField.delay = false;
 }
 
-/**
- * Move or rotate each part of the current stone in the direction given as
- * parameter unless it does collide.
- * @param {String} dir Expects a one char string that gives the direction.
- */
 function move(dir) {
     switch(dir) {
-        case "s": % One down
+        case "s":
             if (!collidesOrHeight()) {
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][1]++;
                 }
             }
             break;
-        case " ": % Full down
+        case " ":
             while (!collidesOrHeight()) {
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][1]++;
                 }
             }
             break;
-        case "a": % Left
+        case "a":
             if (!collidesOrLeft()) {
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][0]--;
                 }
             }
             break;
-        case "d": % Right
+        case "d":
             if (!collidesOrRight()) {
                 for (pice = 0; pice < stone.length; pice++) {
                     stone[pice][0]++;
                 }
             }
             break;
-        case "q": % Rotate
+        case "q":
             var newPositions = new Array();
             for (var pice = 0; pice < stone.length; pice++) {
                 var res = rotate(stone[0][0], stone[0][1], stone[pice][0], stone[pice][1], 90.0);
@@ -525,7 +414,7 @@ function move(dir) {
                 stone[pice][1] = newPositions[pice][1];
             }
             break;
-        case "e": % Rotate
+        case "e":
             var newPositions = new Array();
             for (var pice = 0; pice < stone.length; pice++) {
                 var res = rotate(stone[0][0], stone[0][1], stone[pice][0], stone[pice][1], -90.0);
@@ -541,34 +430,17 @@ function move(dir) {
     }
 }
 
-/**
- * Check the given position if it is out of bounds or collides.
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
- * @return {Boolean} True if collides else false
- */
 function collidesOrOOB(x, y) {
-    % Collides
-    if (complField[y][x] > EMPTY) {
+    if (complField[y][x] > 0) {
          return true;
     }
-    % Out of bounds
-    if (x < 0 || x >= FIELD_WIDTH || y < 0 || y >= FIELD_HEIGHT) {
+    if (x < 0 || x >= fieldWidth || y < 0 || y >= fieldHeight) {
         return true;
     }
     return false;
 }
 
-/**
- * Rotate the given coordinate around a given center.
- * https://stackoverflow.com/questions/17410809/how-to-calculate-rotation-in-2d-in-javascript
- * @param {Number} cx The center x coordinate.
- * @param {Number} cy The center y coordinate.
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
- * @param {Number} angle The angle at which to rotate.
- * @return {Array} The new position.
- */
+% https://stackoverflow.com/questions/17410809/how-to-calculate-rotation-in-2d-in-javascript
 function rotate(cx, cy, x, y, angle) {
     var radians = (Math.PI / 180) * angle;
     var cos = Math.cos(radians);
@@ -576,38 +448,6 @@ function rotate(cx, cy, x, y, angle) {
     var nx = (cos * (x - cx)) + (sin * (y - cy)) + cx;
     var ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
     return [Math.round(nx), Math.round(ny)];
-}
-
-%%%%%%%%%%%%%%%%%%%%%
-% Draw and coloring %
-%%%%%%%%%%%%%%%%%%%%%
-/**
- * Draw all fields.
- */
-function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            draw(x, y);
-        }
-    }
-}
-
-/**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
- *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
- */
-function draw(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    if (complField[y][x] > 0) {
-        field.fillColor = COLORS[complField[y][x] - 1];
-    } else {
-        field.fillColor = color.white;
-    }
-    field.delay = false;
 }
 
 \end{insDLJS}
@@ -621,42 +461,25 @@ function draw(x, y) {
 
     \begin{Form}
 
-        % Header
-        \begin{multicols}{2}
-            % Title
-            \section*{Tetris}
-        \columnbreak
-            % Tooltip object
-            \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
-                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
-                        \centering?\strut{}
-                    \end{tcolorbox}%
-                }
-            \end{flushright}%
-        \end{multicols}
-
         \FPeval{\result}{(\fieldWidth * 3 + 3)}
         \def\blocksizeW{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
         \FPeval{\result}{(\fieldHeight * 3 + 3)}
         \def\blocksizeH{\dimexpr (0.5\paperheight-\result pt)/\fieldHeight \relax}
 
-        % The gamefield
         \begin{tcolorbox}
             %\centering
             \begin{flushright}
             \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \TextField[width=\blocksizeW, height=\blocksizeH, bordercolor=white, readonly=true, name=pos#1-#2]{}%
+                    \TextField[width=\blocksizeW, height=\blocksizeH, bordercolor=white, readonly=true, name=pos#1#2]{}%
                 }\vspace{3pt}
                 \newline
             }
             \end{flushright}
         \end{tcolorbox}
 
-        % Game related buttons
         \begin{center}%
-            \begin{tabularx}{\textwidth}{@{} *{3}{X} @{}}%
+            \begin{tabularx}{\textwidth}{@{} X X X @{}}%
                 \PushButton[name=start, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
@@ -720,8 +543,6 @@ function draw(x, y) {
 
         \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
-
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
 
     \end{Form}
 
