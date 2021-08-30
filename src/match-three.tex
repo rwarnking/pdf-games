@@ -52,15 +52,26 @@ const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 300;
 
 % Constants
+const ANIMATION_SPEED = 250;
 const MAX_SYMBOLS = 5;
+const UNCHANGED = false;
+const CHANGED = true;
 
 % Globals
+% Animation interval variable
+var run;
 % The game field
 var complField = new Array();
 % Saves the symbols for the current match
 var cur_symbols = [];
 % Saves the last clicked cell
 var currentCell = null;
+% Array marking all columns that got changed
+% during stone removal
+var changedColumns = [];
+% Saves whether stones were removed in this iteration
+% of the chain reaction
+var stonesRemoved = false;
 
 % Symbol array
 const ALL_SYMBOLS = [
@@ -118,6 +129,11 @@ function initialise() {
         cur_symbols.push(String.fromCharCode(ALL_SYMBOLS[i]));
     }
 
+    % Mark all columns as unchanged
+    for (var column = 0; column < FIELD_WIDTH; column++) {
+        changedColumns.push(UNCHANGED);
+    }
+
     % Create the field choosing a random symbol for each field
     var elem, rnd;
     for (var row = 0; row < FIELD_HEIGHT; row++) {
@@ -133,6 +149,10 @@ function initialise() {
     cleanupField();
     % Transform the indices in the field to symbols
     idxToSymbol();
+
+    % Initialise direction counts
+    % Meaning the amount of identical symbols in each direction
+    % saved in a four component array (each dir one entry)
 
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         for (var column = 0; column < FIELD_WIDTH; column++) {
@@ -424,14 +444,68 @@ function hasMatch(x, y) {
  * @param {Number} y2 The y2 position.
  */
 function replaceStones(x1, y1, x2, y2) {
-    var columns = removeAllStones(x1, y1, x2, y2);
+    removeAllStones(x1, y1, x2, y2);
+
+    % Iterate all columns and check if they changed and need a drop
+    for (var c = 0; c < changedColumns.length; c++) {
+        if (changedColumns[c] === CHANGED) {
+            % Drop and add stones
+            dropAddStones(c);
+            changedColumns[c] = UNCHANGED;
+        }
+    }
+
+    % Update direction counts
+    % TODO can this be done more efficient?
+    % As soon as one match is found 19 of all cells
+    % must be updated anyway unclear whether saving these
+    % cells is useful
+    getAllDirCounts();
 
     % Code for possible chain reactions
-    for (var c = 0; c < columns.length; c++) {
-        % Drop and add stones
-        dropAddStones(columns[c]);
+    run = app.setInterval("chainReaction()", ANIMATION_SPEED);
+}
+
+/**
+ * After a match was found the drop might led to new
+ * matches resulting in a chain reaction.
+ * This functions needs to be called with an interval
+ * until no further stones were removed.
+ */
+function chainReaction() {
+    % If no stones were removed in the last iteration
+    % stop the animation
+    if (!stonesRemoved) {
+        app.clearInterval(run);
     }
-    % Check again for stone removal
+
+    stonesRemoved = false;
+    % Check all cells for stone removal
+    checkAllForStoneRemoval();
+
+    % Iterate all columns and check if they changed and need a drop
+    for (var c = 0; c < changedColumns.length; c++) {
+        if (changedColumns[c] === CHANGED) {
+            % Drop and add stones
+            dropAddStones(c);
+            changedColumns[c] = UNCHANGED;
+        }
+    }
+
+    % Update direction counts
+    % TODO can this be done more efficient?
+    % As soon as one match is found 19 of all cells
+    % must be updated anyway unclear whether saving these
+    % cells is useful
+    getAllDirCounts();
+}
+
+function checkAllForStoneRemoval() {
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            removeStones(column, row);
+        }
+    }
 }
 
 /**
@@ -480,9 +554,9 @@ function dropAddStones(x) {
  */
 function removeAllStones(x1, y1, x2, y2) {
     removeStones(x1, y1);
-    return removeStones(x2, y2);
+    removeStones(x2, y2);
 }
-    var columns = [];
+
 /**
  * Removes stones for the given position
  * from the complField.
@@ -508,8 +582,9 @@ function removeStones(x, y) {
             var tmpX = x + i;
             complField[y][tmpX][0] = "";
             draw(tmpX, y);
-            columns.push(tmpX);
+            changedColumns[tmpX] = CHANGED;
         }
+        stonesRemoved = true;
     }
     if (countYPos > 1) {
         for (var i = -complField[y][x][1][3]; i < complField[y][x][1][1] + 1; i++) {
@@ -517,14 +592,30 @@ function removeStones(x, y) {
             complField[tmpY][x][0] = "";
             draw(x, tmpY);
         }
-        columns.push(x);
+        changedColumns[x] = CHANGED;
+        stonesRemoved = true;
     }
-    return columns;
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 % Get direction counts %
 %%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Calculates the direction counts for all cells of the array (complField).
+ * Direction counts are the amount of identical symbols in each
+ * of the four directions.
+ */
+function getAllDirCounts() {
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            complField[row][column][1][0] = getCount(column, row, 1, 0);
+            complField[row][column][1][1] = getCount(column, row, 0, 1);
+            complField[row][column][1][2] = getCount(column, row, -1, 0);
+            complField[row][column][1][3] = getCount(column, row, 0, -1);
+        }
+    }
+}
+
 /**
  * Calculates the direction counts for the given cell,
  * meaning the amount of identical symbols in each
