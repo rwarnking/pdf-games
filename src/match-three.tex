@@ -40,11 +40,11 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Match Three Puzzle}
 
-const GAME_DESC = "Text.\
-Text.\
-Text.\
-Text.\
-Text.";
+const GAME_DESC = "The goal of this game is to generate matches. A match is defined as at least\
+three cells that contain the same symbol. To build a match the player is allowed to swap the\
+symbol of two adjacent cells. If the swap would indeed led to a match, the cells are swaped\
+and the match is removed. The free cells are refilled by the symbols of the cells above it.\
+The topmost cells are filled randomly. Chain reactions are desired.";
 
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
@@ -75,6 +75,8 @@ var changedColumns = [];
 var stonesRemoved = false;
 % Keep track of the chain reaction state
 var chainState = HIGHLIGHT;
+% The point that the player got in the current round
+var points = 0;
 
 % Symbol array
 const ALL_SYMBOLS = [
@@ -150,6 +152,15 @@ function initialise() {
     }
     % Remove matches due to generation
     cleanupField();
+
+    % small Test case
+    % complField[3][3][0] = 1;
+    % complField[4][3][0] = 1;
+    % complField[5][3][0] = 2;
+    % complField[3][4][0] = 2;
+    % complField[4][4][0] = 2;
+    % complField[5][4][0] = 1;
+
     % Transform the indices in the field to symbols
     idxToSymbol();
 
@@ -353,8 +364,7 @@ function fieldClicked(x, y) {
         highlight(x, y, false);
     }
     % Allow for multiple clicks on the same field
-    % TODO change to invisible field?
-    this.getField("tooltiptxt").setFocus();
+    this.getField("points").setFocus();
 }
 
 /**
@@ -466,6 +476,7 @@ function replaceStones(x1, y1, x2, y2) {
  * until no further stones were removed.
  */
 function chainReaction() {
+    updatePoints();
     % If no stones were removed in the last iteration
     % stop the animation
     if (!stonesRemoved) {
@@ -577,6 +588,7 @@ function removeStone(x, y) {
         draw(x, y);
         changedColumns[x] = CHANGED;
         stonesRemoved = true;
+        points++;
     }
 }
 
@@ -600,6 +612,7 @@ function removeStones(x, y) {
             complField[y][tmpX][0] = "";
             draw(tmpX, y);
             changedColumns[tmpX] = CHANGED;
+            points++;
         }
         stonesRemoved = true;
     }
@@ -608,6 +621,7 @@ function removeStones(x, y) {
             var tmpY = y + i;
             complField[tmpY][x][0] = "";
             draw(x, tmpY);
+            points++;
         }
         changedColumns[x] = CHANGED;
         stonesRemoved = true;
@@ -770,7 +784,17 @@ function highlight(x, y, enable) {
 }
 
 /**
- * Print information about the winner and the gamestate.
+ * Print the current points of the player.
+ */
+function updatePoints() {
+    var field = this.getField("points");
+    field.delay = true;
+    field.value = points;
+    field.delay = false;
+}
+
+/**
+ * Print information about the gamestate.
  */
 function printInfoText(text) {
     var field = this.getField("info");
@@ -837,6 +861,8 @@ function printInfoText(text) {
         \begin{center}
             % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \TextField[name=points, width=0.1\textwidth, value=0, bordercolor=white, readonly=true]{Points:} &
+                \\
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
