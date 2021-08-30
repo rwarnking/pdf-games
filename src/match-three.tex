@@ -59,8 +59,8 @@ const MAX_SYMBOLS = 5;
 var complField = new Array();
 % Saves the symbols for the current match
 var cur_symbols = [];
-% Saves the last clicked slot
-var currentSlot = null;
+% Saves the last clicked cell
+var currentCell = null;
 
 % Symbol array
 const ALL_SYMBOLS = [
@@ -228,7 +228,7 @@ function tooltip(on) {
 %%%%%%%%%%%%%%%%%%%%
 /**
  * Remove all matches with three or more elements by iterating
- * the field and checking if there are two slots with
+ * the field and checking if there are two cellss with
  * the same symbol directly above or infront.
  * In that case change the symbol to one that is not in the neighbourhood.
  * OBACHT: Does not work with MAX_SYMBOLS < 5.
@@ -330,11 +330,11 @@ function idxToSymbol() {
  * @param {Number} y The y position.
  */
 function fieldClicked(x, y) {
-    if (currentSlot === null) {
-        currentSlot = [x, y];
+    if (currentCell === null) {
+        currentCell = [x, y];
         highlight(x, y, true);
-    } else if (currentSlot[0] == x && currentSlot[1] == y) {
-        currentSlot = null;
+    } else if (currentCell[0] == x && currentCell[1] == y) {
+        currentCell = null;
         highlight(x, y, false);
     }
     % Allow for multiple clicks on the same field
@@ -343,8 +343,8 @@ function fieldClicked(x, y) {
 }
 
 /**
- * Swaps the given position with the currentSlot, if:
- * 1. There is a currentSlot
+ * Swaps the given position with the currentCell, if:
+ * 1. There is a currentCell
  * 2. The given position is in the 4-neighbourhood
  * 3. The swap would leed to a stone removal
  * Lifts highlight after swap.
@@ -353,32 +353,32 @@ function fieldClicked(x, y) {
  * @param {Number} y The y position.
  */
 function swap(x, y) {
-    if (currentSlot !== null) {
+    if (currentCell !== null) {
         % Check that only the 4-neighbourhood is valid
-        if (Math.abs(x - currentSlot[0]) + Math.abs(y - currentSlot[1]) == 1) {
+        if (Math.abs(x - currentCell[0]) + Math.abs(y - currentCell[1]) == 1) {
             % Swap contents
-            var tmp = complField[currentSlot[1]][currentSlot[0]][0];
-            complField[currentSlot[1]][currentSlot[0]][0] = complField[y][x][0];
+            var tmp = complField[currentCell[1]][currentCell[0]][0];
+            complField[currentCell[1]][currentCell[0]][0] = complField[y][x][0];
             complField[y][x][0] = tmp;
 
             % Check if the swap was valid
-            if (hasMatch(x, y) || hasMatch(currentSlot[0], currentSlot[1])) {
+            if (hasMatch(x, y) || hasMatch(currentCell[0], currentCell[1])) {
                 printInfoText("Swapped stones!");
                 % Redraw
                 draw(x, y);
-                draw(currentSlot[0], currentSlot[1]);
+                draw(currentCell[0], currentCell[1]);
                 % Start replacing stones
-                replaceStones(x, y, currentSlot[0], currentSlot[1])
+                replaceStones(x, y, currentCell[0], currentCell[1])
             % If it wasnt revert the swap
             } else {
                 printInfoText("Swap not allowed!");
                 % Swap contents back
-                tmp = complField[currentSlot[1]][currentSlot[0]][0];
-                complField[currentSlot[1]][currentSlot[0]][0] = complField[y][x][0];
+                tmp = complField[currentCell[1]][currentCell[0]][0];
+                complField[currentCell[1]][currentCell[0]][0] = complField[y][x][0];
                 complField[y][x][0] = tmp;
             }
             % Remove last click and highlight
-            fieldClicked(currentSlot[0], currentSlot[1]);
+            fieldClicked(currentCell[0], currentCell[1]);
         }
     }
 }
@@ -424,12 +424,49 @@ function hasMatch(x, y) {
  * @param {Number} y2 The y2 position.
  */
 function replaceStones(x1, y1, x2, y2) {
-    removeAllStones(x1, y1, x2, y2);
+    var columns = removeAllStones(x1, y1, x2, y2);
 
     % Code for possible chain reactions
-    % Drop stones
-    % Add stones
+    for (var c = 0; c < columns.length; c++) {
+        % Drop and add stones
+        dropAddStones(columns[c]);
+    }
     % Check again for stone removal
+}
+
+/**
+ * Drops all stones inside the given column until there
+ * are no spaces left. Top most spaces are refilled
+ * using a random symbol.
+ *
+ * @param {Number} x The column position.
+ */
+function dropAddStones(x) {
+    % Iterate each field of a column
+    for (var y = FIELD_HEIGHT - 1; y >= 0; y--) {
+        % If there is no symbol in this cell
+        if (complField[y][x][0] === "") {
+            % Check all fields above the current cell
+            var y2 = y - 1;
+            for (; y2 >= 0; y2--) {
+                % If there is a non emtpy cell swap values
+                if (complField[y2][x][0] !== "") {
+                    complField[y][x][0] = complField[y2][x][0];
+                    complField[y2][x][0] = "";
+                    % Cancel loop to prevent override
+                    break;
+                }
+            }
+            % If the loop did not find a symbol a new one is needed
+            if (y2 === -1) {
+                % Generate randomly new stone
+                var rnd = getRandomInt(cur_symbols.length);
+                complField[y][x][0] = cur_symbols[rnd];
+            }
+            % Redraw only fields that changed
+            draw(x, y);
+        }
+    }
 }
 
 /**
@@ -443,9 +480,9 @@ function replaceStones(x1, y1, x2, y2) {
  */
 function removeAllStones(x1, y1, x2, y2) {
     removeStones(x1, y1);
-    removeStones(x2, y2);
+    return removeStones(x2, y2);
 }
-
+    var columns = [];
 /**
  * Removes stones for the given position
  * from the complField.
@@ -454,6 +491,7 @@ function removeAllStones(x1, y1, x2, y2) {
  * @param {Number} y The y position.
  */
 function removeStones(x, y) {
+
     % Recalculate dir counts since it is not guaranteed
     % that they are up to date
     % (When hasMatch(x,y) already was true the second hasMatch is not called)
@@ -470,6 +508,7 @@ function removeStones(x, y) {
             var tmpX = x + i;
             complField[y][tmpX][0] = "";
             draw(tmpX, y);
+            columns.push(tmpX);
         }
     }
     if (countYPos > 1) {
@@ -478,14 +517,16 @@ function removeStones(x, y) {
             complField[tmpY][x][0] = "";
             draw(x, tmpY);
         }
+        columns.push(x);
     }
+    return columns;
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%
 % Get direction counts %
 %%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Calculates the direction counts for the given slot,
+ * Calculates the direction counts for the given cell,
  * meaning the amount of identical symbols in each
  * of the four directions.
  *
@@ -500,7 +541,7 @@ function getDirCounts(x, y) {
 }
 
 /**
- * Calculates the direction count for the given slot
+ * Calculates the direction count for the given cell
  * in the given direction, by iterating over the field
  * in that direction.
  *
