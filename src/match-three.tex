@@ -64,8 +64,18 @@ const EMPTY = -1;
 % Special stone constants
 const NORMAL = 0;
 const UNBREAKABLE = 2;
+const BOMB = 3;
 % Counts
 const UNBREAKABLE_COUNT = 5;
+const BOMB_COUNT = 3;
+% Pobabilities (out of 1000)
+const BOMB_PROBABILITY = 5;
+% Bomb area of effect
+const BOMB_POSITIONS = [
+    [1, -1], [1, 0], [1, 1],
+    [0, -1],          [0, 1],
+    [-1, -1], [-1, 0], [-1, 1]
+];
 
 % Globals
 % Animation interval variable
@@ -88,6 +98,8 @@ var chainState = HIGHLIGHT;
 var points = 0;
 % Used to lock input while chain reaction
 var inChainReaction = false;
+% Should bomb be generated
+var bombEnable = false;
 
 % Symbol array
 const ALL_SYMBOLS = [
@@ -115,6 +127,8 @@ const ALL_SYMBOLS = [
 var colors = new Array();
 
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
+% Bomb background color
+const BOMB_BG_COLOR = [ "RGB", 0.984, 0.0, 0.0 ];
 % Unbreakable background color
 const UBK_BG_COLOR = [ "RGB", 0.0, 0.0, 0.0 ];
 
@@ -300,10 +314,7 @@ function restart() {
     % Initialise direction counts
     calcAllDirCounts();
 
-    var startTime = new Date();
     drawAll();
-    var endTime = new Date();
-    printInfoText(endTime - startTime);
 
     points = 0;
     updatePoints();
@@ -356,6 +367,17 @@ function addSpecialCells() {
             x = getRandomInt(FIELD_WIDTH);
             y = getRandomInt(FIELD_HEIGHT);
             complField[y][x][2] = UNBREAKABLE;
+        }
+    }
+
+    % Select random cells as bomb
+    bombEnable = this.getField("cbBomb").isBoxChecked(0);
+    if (bombEnable) {
+        var x, y;
+        for (var i = 0; i < BOMB_COUNT; i++) {
+            x = getRandomInt(FIELD_WIDTH);
+            y = getRandomInt(FIELD_HEIGHT);
+            complField[y][x][2] = BOMB;
         }
     }
 }
@@ -481,8 +503,12 @@ function swap(x, y) {
     if (currentCell !== null) {
         var x2 = currentCell[0];
         var y2 = currentCell[1];
-        if (complField[y][x][2] == UNBREAKABLE || complField[y2][x2][2] == UNBREAKABLE) {
-            printInfoText("Swap not allowed! Unmoveable stone.");
+        if (complField[y][x][2] !== NORMAL || complField[y2][x2][2] !== NORMAL) {
+            if (complField[y][x][2] === BOMB || complField[y2][x2][2] === BOMB) {
+                printInfoText("Swap not possible! ITS A BOMB!");
+            } else  {
+                printInfoText("Swap not possible! Unmoveable stone.");
+            }
             % Remove last click and highlight
             fieldClicked(x2, y2, true);
             return;
@@ -646,8 +672,8 @@ function dropAndAddStones(x) {
             % Check all fields above the current cell
             var y2 = y - 1;
             for (; y2 >= 0; y2--) {
-                % If there is a non emtpy, removeable cell swap values
-                if (complField[y2][x][0] !== EMPTY && complField[y2][x][2] !== UNBREAKABLE) {
+                % If there is a non emtpy, moveable cell swap values
+                if (complField[y2][x][0] !== EMPTY && complField[y2][x][2] === NORMAL) {
                     complField[y][x][0] = complField[y2][x][0];
                     complField[y2][x][0] = EMPTY;
                     % Cancel loop to prevent override
@@ -659,6 +685,13 @@ function dropAndAddStones(x) {
                 % Generate randomly new stone
                 var rnd = getRandomInt(cur_symbols.length);
                 complField[y][x][0] = rnd;
+                % Respawn bombs
+                if (bombEnable) {
+                    rnd = getRandomInt(1000);
+                    if (rnd <= BOMB_PROBABILITY) {
+                        complField[y][x][2] = BOMB;
+                    }
+                }
             }
             % Redraw only fields that changed
             draw(x, y);
@@ -696,13 +729,9 @@ function removeStone(x, y) {
 
     % If a match is found in this direction remove the stone values
     if (countXPos > 1 || countYPos > 1) {
-        if (complField[y][x][2] !== UNBREAKABLE) {
-            complField[y][x][0] = EMPTY;
-            draw(x, y);
-            changedColumns[x] = CHANGED;
-            stonesRemoved = true;
-        }
-        points++;
+        clearPos(x, y);
+        % Process bombs
+        processIfBomb(x, y);
     }
 }
 
@@ -723,26 +752,59 @@ function removeStones(x, y) {
         % Just iterate from one side of the given position to the other
         for (var i = -complField[y][x][1][2]; i < complField[y][x][1][0] + 1; i++) {
             var tmpX = x + i;
-            if (complField[y][tmpX][2] !== UNBREAKABLE) {
-                complField[y][tmpX][0] = EMPTY;
-                draw(tmpX, y);
-                changedColumns[tmpX] = CHANGED;
-            }
-            points++;
+            clearPos(tmpX, y);
+            % Process bombs
+            processIfBomb(tmpX, y);
         }
-        stonesRemoved = true;
     }
     if (countYPos > 1) {
         for (var i = -complField[y][x][1][3]; i < complField[y][x][1][1] + 1; i++) {
             var tmpY = y + i;
-            if (complField[tmpY][x][2] !== UNBREAKABLE) {
-                complField[tmpY][x][0] = EMPTY;
-                draw(x, tmpY);
-            }
-            points++;
+            clearPos(x, tmpY);
+            % Process bombs
+            processIfBomb(x, tmpY);
         }
+    }
+}
+
+/**
+ * Helperfunction:
+ * Remove symbol and redrawing a cell.
+ * Marks the columns which were removed.
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function clearPos(x, y) {
+    if (complField[y][x][2] !== UNBREAKABLE) {
+        complField[y][x][0] = EMPTY;
+        draw(x, y);
         changedColumns[x] = CHANGED;
         stonesRemoved = true;
+    }
+    % Only cells with content give points
+    if (complField[y][x][0] !== EMPTY) {
+        points++;
+    }
+}
+
+/**
+ * Helperfunction:
+ * If the cell is a bomb delete the surrounding cells.
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function processIfBomb(x, y) {
+    if (complField[y][x][2] == BOMB) {
+        for (var j = 0; j < BOMB_POSITIONS.length; j++) {
+            var nX = x + BOMB_POSITIONS[j][0];
+            var nY = y + BOMB_POSITIONS[j][1];
+            % Border check
+            if (nX >= 0 && nY >= 0 && nX < FIELD_WIDTH && nY < FIELD_HEIGHT) {
+                clearPos(nX, nY);
+            }
+        }
+        % Reset the cell state
+        complField[y][x][2] = NORMAL;
     }
 }
 
@@ -881,12 +943,16 @@ function draw(x, y) {
     var val = complField[y][x][0];
     if (val != EMPTY) {
         field.value = cur_symbols[val];
-        field.textColor = colors[val];
-        field.fillColor = color.white;
 
         if (complField[y][x][2] == UNBREAKABLE) {
             field.fillColor = UBK_BG_COLOR;
             field.textColor = color.white;
+        } else if (complField[y][x][2] == BOMB) {
+            field.fillColor = BOMB_BG_COLOR;
+            field.textColor = color.white;
+        } else {
+            field.textColor = colors[val];
+            field.fillColor = color.white;
         }
     } else {
         field.value = "";
@@ -1007,6 +1073,7 @@ function printInfoText(text) {
         \end{center}
 
         \CheckBox[name=cbUnbreak, checkboxsymbol=5]{Unbreakable}\\
+        \CheckBox[name=cbBomb, checkboxsymbol=5]{Bombs (do not break unbreakable, respawnable):}\\
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
 
