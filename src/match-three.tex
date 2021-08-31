@@ -64,12 +64,14 @@ const EMPTY = -1;
 % Special stone constants
 const NORMAL = 0;
 const BREAKTWICE = 1;
-const UNBREAKABLE = 2;
-const BOMB = 3;
+const BOMB = 2;
+const UNBREAKABLE = 4;
+const OBSTACLE = 8;
 % Counts
 const BREAKTWICE_COUNT = 5;
-const UNBREAKABLE_COUNT = 5;
 const BOMB_COUNT = 3;
+const UNBREAKABLE_COUNT = 5;
+const OBSTACLE_COUNT = 5;
 % Pobabilities (out of 1000)
 const BKTWICE_PROBABILITY = 40;
 const BOMB_PROBABILITY = 10;
@@ -132,12 +134,14 @@ const ALL_SYMBOLS = [
 var colors = new Array();
 
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
-% Bomb background color
-const BOMB_BG_COLOR = [ "RGB", 0.984, 0.0, 0.0 ];
 % Break twice background color
 const BK2_BG_COLOR = [ "G", 0.5 ];
+% Bomb background color
+const BOMB_BG_COLOR = [ "RGB", 0.984, 0.0, 0.0 ];
 % Unbreakable background color
 const UBK_BG_COLOR = [ "G", 0.0 ];
+% Obstacle background color
+const OBS_BG_COLOR = [ "G", 0.75 ];
 
 %%%%%%%%%%
 % Helper %
@@ -380,6 +384,9 @@ function addSpecialCells() {
             x = getRandomInt(FIELD_WIDTH);
             y = getRandomInt(FIELD_HEIGHT);
             complField[y][x][2] = type;
+            if (type == OBSTACLE) {
+                complField[y][x][0] = EMPTY;
+            }
         }
     }
 
@@ -388,15 +395,20 @@ function addSpecialCells() {
     if (bkTwiceEnable) {
         modCell(BREAKTWICE, BREAKTWICE_COUNT);
     }
+    % Modify random cells as bomb
+    bombEnable = this.getField("cbBomb").isBoxChecked(0);
+    if (bombEnable) {
+        modCell(BOMB, BOMB_COUNT);
+    }
     % Modify random cells as unbreakable
     var isbchecked = this.getField("cbUnbreak").isBoxChecked(0);
     if (isbchecked) {
         modCell(UNBREAKABLE, UNBREAKABLE_COUNT);
     }
-    % Modify random cells as bomb
-    bombEnable = this.getField("cbBomb").isBoxChecked(0);
-    if (bombEnable) {
-        modCell(BOMB, BOMB_COUNT);
+    % Modify random cells as obstacle
+    isbchecked = this.getField("cbObstacle").isBoxChecked(0);
+    if (isbchecked) {
+        modCell(OBSTACLE, OBSTACLE_COUNT);
     }
 }
 
@@ -497,6 +509,10 @@ function fieldClicked(x, y, ignore=false) {
         printInfoText("Input not possible while in chain reaction!");
         return;
     }
+    if (complField[y][x][2] === OBSTACLE) {
+        printInfoText("Cant select an obstacle!");
+        return;
+    }
 
     if (currentCell === null) {
         currentCell = [x, y];
@@ -521,9 +537,12 @@ function swap(x, y) {
     if (currentCell !== null) {
         var x2 = currentCell[0];
         var y2 = currentCell[1];
-        if (complField[y][x][2] !== NORMAL || complField[y2][x2][2] !== NORMAL) {
-            if (complField[y][x][2] === BOMB || complField[y2][x2][2] === BOMB) {
+        var type = complField[y][x][2] | complField[y2][x2][2];
+        if (type > NORMAL) {
+            if ((type & BOMB) > 0) {
                 printInfoText("Swap not possible! ITS A BOMB!");
+            } else if ((type & OBSTACLE) > 0) {
+                printInfoText("Swap not possible! Obstacle in the way.");
             } else  {
                 printInfoText("Swap not possible! Unmoveable stone.");
             }
@@ -686,19 +705,17 @@ function dropAndAddStones(x) {
     % Iterate each field of a column
     for (var y = FIELD_HEIGHT - 1; y >= 0; y--) {
         % If there is no symbol in this cell
-        if (complField[y][x][0] === EMPTY) {
+        if (complField[y][x][0] === EMPTY && complField[y][x][2] !== OBSTACLE) {
             % Check all fields above the current cell
             var y2 = y - 1;
             for (; y2 >= 0; y2--) {
                 % If there is a non emtpy, moveable cell swap values
-                if (complField[y2][x][0] !== EMPTY && complField[y2][x][2] !== UNBREAKABLE) {
+                var type = complField[y2][x][2];
+                if (complField[y2][x][0] !== EMPTY && type < UNBREAKABLE) {
                     complField[y][x][0] = complField[y2][x][0];
                     complField[y2][x][0] = EMPTY;
-                    if (complField[y2][x][2] === BOMB) {
-                        complField[y][x][2] = BOMB;
-                        complField[y2][x][2] = NORMAL;
-                    } else if (complField[y2][x][2] === BREAKTWICE) {
-                        complField[y][x][2] = BREAKTWICE;
+                    if (type !== NORMAL) {
+                        complField[y][x][2] = type;
                         complField[y2][x][2] = NORMAL;
                     }
 
@@ -814,7 +831,7 @@ function clearPos(x, y) {
     if (complField[y][x][2] === BREAKTWICE) {
         complField[y][x][2] = NORMAL;
         draw(x, y);
-    } else if (complField[y][x][2] !== UNBREAKABLE) {
+    } else if (complField[y][x][2] < UNBREAKABLE) {
         complField[y][x][0] = EMPTY;
         draw(x, y);
         changedColumns[x] = CHANGED;
@@ -993,6 +1010,9 @@ function draw(x, y) {
             field.fillColor = color.white;
         }
     } else {
+        if (complField[y][x][2] == OBSTACLE) {
+            field.fillColor = OBS_BG_COLOR;
+        }
         field.value = "";
     }
     field.delay = false;
@@ -1113,6 +1133,7 @@ function printInfoText(text) {
         \CheckBox[name=cbTwice, checkboxsymbol=5]{Breakable twice:}\\
         \CheckBox[name=cbUnbreak, checkboxsymbol=5]{Unbreakable}\\
         \CheckBox[name=cbBomb, checkboxsymbol=5]{Bombs (do not break unbreakable, respawnable):}\\
+        \CheckBox[name=cbObstacle, checkboxsymbol=5]{Obstacle:}\\
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
 
