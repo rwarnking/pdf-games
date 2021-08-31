@@ -57,6 +57,7 @@ const MAX_SYMBOLS = 5;
 const UNCHANGED = false;
 const CHANGED = true;
 const HIGHLIGHT = true;
+const EMPTY = -1;
 
 % Globals
 % Animation interval variable
@@ -81,7 +82,6 @@ var points = 0;
 % Symbol array
 const ALL_SYMBOLS = [
     0x260E, % telefon
-    0x261E, % hand white
     0x261B, % hand black
     0x263B, % smilie
     0x266B, % note
@@ -91,21 +91,18 @@ const ALL_SYMBOLS = [
     0x2707, % video
     0x2708, % plane
     0x2709, % mail
-    0x2756, % diamond
     0x271F, % cross
-    0x2717,
-    0x274D,
-    0x2730,
-    0x2752,
-    0x271C
+    0x2756, % diamond
+    0x2717, % ballot x
+    0x274D, % shadowed circle
+    0x2730, % star
+    0x2752, % shadowed quad
+    0x271C % open center cross
+    %0x261E  % hand white (discouraged since coloring is difficult)
 ];
 
 % Color data
-const COLORS = new Array(
-    %[ "RGB", 0.843, 0.078, 0.058 ],
-    %[ "RGB", 0.203, 0.603, 0.054 ],
-    %[ "RGB", 0.078, 0.305, 0.560 ]
-);
+var colors = new Array();
 
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 
@@ -120,6 +117,63 @@ function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
+/**
+ * Converts an HSL color value to RGB. Conversion formula
+ * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+ * Assumes h, s, and l are contained in the set [0, 1] and
+ * returns r, g, and b in the set [0, 1].
+ * https://stackoverflow.com/questions/2353211/hsl-to-rgb-color-conversion
+ *
+ * @param {number} h The hue
+ * @param {number} s The saturation
+ * @param {number} l The lightness
+ * @return {Array} The RGB representation
+ */
+function hslToRgb(h, s, l) {
+    var r, g, b;
+
+    % achromatic
+    if (s == 0) {
+        r = g = b = l;
+    } else {
+        var hue2rgb = function hue2rgb(p, q, t) {
+            if (t < 0) t += 1.0;
+            if (t > 1) t -= 1.0;
+            if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+            if (t < 1.0/2.0) return q;
+            if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+            return p;
+        }
+
+        var q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+        var p = 2.0 * l - q;
+        r = hue2rgb(p, q, h + 1.0/3.0);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1.0/3.0);
+    }
+
+    return [ "RGB", r, g, b ];
+}
+
+/**
+ * Generates the specified amount of colors and pushes
+ * them to the colors array.
+ * For generating the colors are selected using hsl
+ * and afterwards transformed to rgb.
+ *
+ * @param {number} amount The amount of colors to generate
+ * @param {number} saturation The saturation
+ * @param {number} lightness The lightness
+ */
+function generateColors(saturation, lightness, amount) {
+    var huedelta = 1.0 / amount;
+
+    for (var j = 0; j < amount; j++) {
+        var hue = j * huedelta;
+        colors.push(hslToRgb(hue, saturation, lightness));
+    }
+}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -130,6 +184,8 @@ function initialise() {
     % Init the GUI
     initialiseButtons();
 
+    % Generate different colors for each symbol
+    generateColors(1.0, 0.5, MAX_SYMBOLS);
     for (var i = 0; i < MAX_SYMBOLS; i++) {
         cur_symbols.push(String.fromCharCode(ALL_SYMBOLS[i]));
     }
@@ -145,24 +201,13 @@ function initialise() {
         var tmp = new Array();
         for (var column = 0; column < FIELD_WIDTH; column++) {
             rnd = getRandomInt(cur_symbols.length);
-            % UTF8 symbol and is the field removed
+            % Random number and direction counts
             tmp.push([rnd, [0, 0, 0, 0]]);
         }
         complField.push(tmp);
     }
     % Remove matches due to generation
     cleanupField();
-
-    % small Test case
-    % complField[3][3][0] = 1;
-    % complField[4][3][0] = 1;
-    % complField[5][3][0] = 2;
-    % complField[3][4][0] = 2;
-    % complField[4][4][0] = 2;
-    % complField[5][4][0] = 1;
-
-    % Transform the indices in the field to symbols
-    idxToSymbol();
 
     % Initialise direction counts
     % Meaning the amount of identical symbols in each direction
@@ -177,9 +222,12 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
-    % Assign each button the coresponding function and disable the highlights
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the coresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
+    this.getField("restart").highlight="outline";
 
     % Each field needs to be connected to an input function
     var funcName = "fieldClicked";
@@ -212,6 +260,29 @@ function initialiseButtons() {
  */
 function restart() {
     printInfoText("Restart");
+
+    % Mark all columns as unchanged
+    for (var column = 0; column < FIELD_WIDTH; column++) {
+        changedColumns[column] = UNCHANGED;
+    }
+
+    % Create the field choosing a random symbol for each field
+    var rnd;
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            rnd = getRandomInt(cur_symbols.length);
+            complField[row][column][0] = rnd;
+        }
+    }
+    % Remove matches due to generation
+    cleanupField();
+    % Initialise direction counts
+    calcAllDirCounts();
+
+    drawAll();
+
+    points = 0;
+    updatePoints();
 }
 
 /**
@@ -332,19 +403,6 @@ function getReplacementSymbol(row, column) {
     return indices[rnd];
 }
 
-/**
- * Uses the indices in the field array to access the symbol table
- * of the current playthrough and assignes the curresponding symbol
- * to the field array.
- */
-function idxToSymbol() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            complField[row][column][0] = cur_symbols[complField[row][column][0]];
-        }
-    }
-}
-
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
@@ -364,7 +422,7 @@ function fieldClicked(x, y) {
         highlight(x, y, false);
     }
     % Allow for multiple clicks on the same field
-    this.getField("points").setFocus();
+    this.getField("pointstxt").setFocus();
 }
 
 /**
@@ -530,14 +588,14 @@ function dropAndAddStones(x) {
     % Iterate each field of a column
     for (var y = FIELD_HEIGHT - 1; y >= 0; y--) {
         % If there is no symbol in this cell
-        if (complField[y][x][0] === "") {
+        if (complField[y][x][0] === EMPTY) {
             % Check all fields above the current cell
             var y2 = y - 1;
             for (; y2 >= 0; y2--) {
                 % If there is a non emtpy cell swap values
-                if (complField[y2][x][0] !== "") {
+                if (complField[y2][x][0] !== EMPTY) {
                     complField[y][x][0] = complField[y2][x][0];
-                    complField[y2][x][0] = "";
+                    complField[y2][x][0] = EMPTY;
                     % Cancel loop to prevent override
                     break;
                 }
@@ -546,7 +604,7 @@ function dropAndAddStones(x) {
             if (y2 === -1) {
                 % Generate randomly new stone
                 var rnd = getRandomInt(cur_symbols.length);
-                complField[y][x][0] = cur_symbols[rnd];
+                complField[y][x][0] = rnd;
             }
             % Redraw only fields that changed
             draw(x, y);
@@ -584,7 +642,7 @@ function removeStone(x, y) {
 
     % If a match is found in this direction remove the stone values
     if (countXPos > 1 || countYPos > 1) {
-        complField[y][x][0] = "";
+        complField[y][x][0] = EMPTY;
         draw(x, y);
         changedColumns[x] = CHANGED;
         stonesRemoved = true;
@@ -609,7 +667,7 @@ function removeStones(x, y) {
         % Just iterate from one side of the given position to the other
         for (var i = -complField[y][x][1][2]; i < complField[y][x][1][0] + 1; i++) {
             var tmpX = x + i;
-            complField[y][tmpX][0] = "";
+            complField[y][tmpX][0] = EMPTY;
             draw(tmpX, y);
             changedColumns[tmpX] = CHANGED;
             points++;
@@ -619,7 +677,7 @@ function removeStones(x, y) {
     if (countYPos > 1) {
         for (var i = -complField[y][x][1][3]; i < complField[y][x][1][1] + 1; i++) {
             var tmpY = y + i;
-            complField[tmpY][x][0] = "";
+            complField[tmpY][x][0] = EMPTY;
             draw(x, tmpY);
             points++;
         }
@@ -760,7 +818,13 @@ function drawAll() {
 function draw(x, y) {
     var field = this.getField("pos" + x + "-" + y);
     field.delay = true;
-    field.value = complField[y][x][0];
+    var val = complField[y][x][0];
+    if (val != EMPTY) {
+        field.value = cur_symbols[val];
+        field.textColor = colors[val];
+    } else {
+        field.value = "";
+    }
     field.delay = false;
 }
 
@@ -787,7 +851,7 @@ function highlight(x, y, enable) {
  * Print the current points of the player.
  */
 function updatePoints() {
-    var field = this.getField("points");
+    var field = this.getField("pointstxt");
     field.delay = true;
     field.value = points;
     field.delay = false;
@@ -861,8 +925,9 @@ function printInfoText(text) {
         \begin{center}
             % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \TextField[name=points, width=0.1\textwidth, value=0, bordercolor=white, readonly=true]{Points:} &
+                \TextField[name=pointstxt, width=0.1\textwidth, value=0, bordercolor=white, readonly]{Points:} &
                 \\
+                %
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
@@ -875,7 +940,7 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=white, name=tooltiptxt]{}
+        \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
 
     \end{Form}
 \end{document}
