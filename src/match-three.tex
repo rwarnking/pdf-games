@@ -134,6 +134,8 @@ const ALL_SYMBOLS = [
 var colors = new Array();
 
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
+const HIGHLIGHT_BOMB_COLOR = [ "RGB", 0.984, 0.0, 0.0 ];
+
 % Break twice background color
 const BK2_BG_COLOR = [ "G", 0.5 ];
 % Bomb background color
@@ -567,7 +569,7 @@ function swap(x, y) {
                 draw(x, y);
                 draw(x2, y2);
                 % Start replacing stones
-                replaceStones(x, y, x2, y2)
+                replaceStones()
             % If it wasnt revert the swap
             } else {
                 printInfoText("Swap not allowed!");
@@ -614,29 +616,13 @@ function hasMatch(x, y) {
 % Stone replacement %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Removes, drops and replaces stones,
- * after a swap occurred until no further
- * matches are found.
+ * Uses a callback to:
+ * remove, drop and replace stones,
+ * until no further matches are found.
  * May take a while due to chain reactions.
- *
- * @param {Number} x1 The x1 position.
- * @param {Number} y1 The y1 position.
- * @param {Number} x2 The x2 position.
- * @param {Number} y2 The y2 position.
  */
-function replaceStones(x1, y1, x2, y2) {
-    removeStones(x1, y1);
-    removeStones(x2, y2);
-
-    % Iterate all columns and check if they changed and need a drop
-    for (var c = 0; c < changedColumns.length; c++) {
-        if (changedColumns[c] === CHANGED) {
-            % Drop and add stones
-            dropAndAddStones(c);
-            changedColumns[c] = UNCHANGED;
-        }
-    }
-
+function replaceStones() {
+    stonesRemoved = true;
     % Code for possible chain reactions
     inChainReaction = true;
     run = app.setInterval("chainReaction()", ANIMATION_SPEED);
@@ -749,10 +735,8 @@ function dropAndAddStones(x) {
 }
 
 /**
- * Enables or disables the highlight for
- * all matches in the field.
+ * Check all stones if they should be removed.
  *
- * @param {Boolean} enable Enables or disables highlight.
  */
 function checkAllForStoneRemoval() {
     for (var row = 0; row < FIELD_HEIGHT; row++) {
@@ -886,18 +870,40 @@ function highlightStones(x, y, enable) {
     var countXPos = complField[y][x][1][0] + complField[y][x][1][2];
     var countYPos = complField[y][x][1][1] + complField[y][x][1][3];
 
-    % If a match is found in this direction remove the stone values
+    % If a match is found in this direction highlight the stones
     if (countXPos > 1) {
         % Just iterate from one side of the given position to the other
         for (var i = -complField[y][x][1][2]; i < complField[y][x][1][0] + 1; i++) {
             var tmpX = x + i;
             highlight(tmpX, y, enable);
+            highlightBomb(tmpX, y, enable);
         }
     }
     if (countYPos > 1) {
         for (var i = -complField[y][x][1][3]; i < complField[y][x][1][1] + 1; i++) {
             var tmpY = y + i;
             highlight(x, tmpY, enable);
+            highlightBomb(x, tmpY, enable);
+        }
+    }
+}
+
+/**
+ * Helperfunction:
+ * If the cell is a bomb highlight the surrounding cells.
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ * @param {Boolean} enable Enables or disables highlight.
+ */
+function highlightBomb(x, y, enable) {
+    if (complField[y][x][2] == BOMB) {
+        for (var j = 0; j < BOMB_POSITIONS.length; j++) {
+            var nX = x + BOMB_POSITIONS[j][0];
+            var nY = y + BOMB_POSITIONS[j][1];
+            % Border check
+            if (nX >= 0 && nY >= 0 && nX < FIELD_WIDTH && nY < FIELD_HEIGHT) {
+                highlight(nX, nY, enable, true);
+            }
         }
     }
 }
@@ -1019,18 +1025,22 @@ function draw(x, y) {
 }
 
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Enables or disables the highlight of the given cell.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
+ * @param {Boolean} enable If true enables the highlight
+ * @param {Boolean} bomb If true enables the bombhighlight
  */
-function highlight(x, y, enable) {
+function highlight(x, y, enable, bomb=false) {
     var field = this.getField("pos" + x + "-" + y);
     field.delay = true;
     % Highlight the current taken move
     if (enable) {
         field.borderColor = HIGHLIGHT_COLOR;
+        if (bomb) {
+            field.borderColor = HIGHLIGHT_BOMB_COLOR;
+        }
     } else {
         field.borderColor = color.white;
     }
