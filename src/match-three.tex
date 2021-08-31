@@ -63,13 +63,16 @@ const HIGHLIGHT = true;
 const EMPTY = -1;
 % Special stone constants
 const NORMAL = 0;
+const BREAKTWICE = 1;
 const UNBREAKABLE = 2;
 const BOMB = 3;
 % Counts
+const BREAKTWICE_COUNT = 5;
 const UNBREAKABLE_COUNT = 5;
 const BOMB_COUNT = 3;
 % Pobabilities (out of 1000)
-const BOMB_PROBABILITY = 5;
+const BKTWICE_PROBABILITY = 40;
+const BOMB_PROBABILITY = 10;
 % Bomb area of effect
 const BOMB_POSITIONS = [
     [1, -1], [1, 0], [1, 1],
@@ -98,6 +101,8 @@ var chainState = HIGHLIGHT;
 var points = 0;
 % Used to lock input while chain reaction
 var inChainReaction = false;
+% Should cells with break twice be generated
+var bkTwiceEnable = false;
 % Should bomb be generated
 var bombEnable = false;
 
@@ -129,8 +134,10 @@ var colors = new Array();
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 % Bomb background color
 const BOMB_BG_COLOR = [ "RGB", 0.984, 0.0, 0.0 ];
+% Break twice background color
+const BK2_BG_COLOR = [ "G", 0.5 ];
 % Unbreakable background color
-const UBK_BG_COLOR = [ "RGB", 0.0, 0.0, 0.0 ];
+const UBK_BG_COLOR = [ "G", 0.0 ];
 
 %%%%%%%%%%
 % Helper %
@@ -292,6 +299,8 @@ function initialiseButtons() {
 function restart() {
     printInfoText("Restart");
 
+    currentCell = null;
+
     % Mark all columns as unchanged
     for (var column = 0; column < FIELD_WIDTH; column++) {
         changedColumns[column] = UNCHANGED;
@@ -315,6 +324,12 @@ function restart() {
     calcAllDirCounts();
 
     drawAll();
+    % Disable left over highlights
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            highlight(column, row, false);
+        }
+    }
 
     points = 0;
     updatePoints();
@@ -359,26 +374,29 @@ function tooltip(on) {
 % Field Generation %
 %%%%%%%%%%%%%%%%%%%%
 function addSpecialCells() {
-    % Select random cells as unbreakable
-    var isbchecked = this.getField("cbUnbreak").isBoxChecked(0);
-    if (isbchecked) {
+    var modCell = function modCell(type, count) {
         var x, y;
-        for (var i = 0; i < UNBREAKABLE_COUNT; i++) {
+        for (var i = 0; i < count; i++) {
             x = getRandomInt(FIELD_WIDTH);
             y = getRandomInt(FIELD_HEIGHT);
-            complField[y][x][2] = UNBREAKABLE;
+            complField[y][x][2] = type;
         }
     }
 
-    % Select random cells as bomb
+    % Modify random cells as breakable twice
+    bkTwiceEnable = this.getField("cbTwice").isBoxChecked(0);
+    if (bkTwiceEnable) {
+        modCell(BREAKTWICE, BREAKTWICE_COUNT);
+    }
+    % Modify random cells as unbreakable
+    var isbchecked = this.getField("cbUnbreak").isBoxChecked(0);
+    if (isbchecked) {
+        modCell(UNBREAKABLE, UNBREAKABLE_COUNT);
+    }
+    % Modify random cells as bomb
     bombEnable = this.getField("cbBomb").isBoxChecked(0);
     if (bombEnable) {
-        var x, y;
-        for (var i = 0; i < BOMB_COUNT; i++) {
-            x = getRandomInt(FIELD_WIDTH);
-            y = getRandomInt(FIELD_HEIGHT);
-            complField[y][x][2] = BOMB;
-        }
+        modCell(BOMB, BOMB_COUNT);
     }
 }
 
@@ -673,9 +691,17 @@ function dropAndAddStones(x) {
             var y2 = y - 1;
             for (; y2 >= 0; y2--) {
                 % If there is a non emtpy, moveable cell swap values
-                if (complField[y2][x][0] !== EMPTY && complField[y2][x][2] === NORMAL) {
+                if (complField[y2][x][0] !== EMPTY && complField[y2][x][2] !== UNBREAKABLE) {
                     complField[y][x][0] = complField[y2][x][0];
                     complField[y2][x][0] = EMPTY;
+                    if (complField[y2][x][2] === BOMB) {
+                        complField[y][x][2] = BOMB;
+                        complField[y2][x][2] = NORMAL;
+                    } else if (complField[y2][x][2] === BREAKTWICE) {
+                        complField[y][x][2] = BREAKTWICE;
+                        complField[y2][x][2] = NORMAL;
+                    }
+
                     % Cancel loop to prevent override
                     break;
                 }
@@ -690,6 +716,12 @@ function dropAndAddStones(x) {
                     rnd = getRandomInt(1000);
                     if (rnd <= BOMB_PROBABILITY) {
                         complField[y][x][2] = BOMB;
+                    }
+                }
+                if (bkTwiceEnable) {
+                    rnd = getRandomInt(1000);
+                    if (rnd <= BKTWICE_PROBABILITY) {
+                        complField[y][x][2] = BREAKTWICE;
                     }
                 }
             }
@@ -775,15 +807,18 @@ function removeStones(x, y) {
  * @param {Number} y The y position.
  */
 function clearPos(x, y) {
-    if (complField[y][x][2] !== UNBREAKABLE) {
+    % Only cells with content give points
+    if (complField[y][x][0] !== EMPTY) {
+        points++;
+    }
+    if (complField[y][x][2] === BREAKTWICE) {
+        complField[y][x][2] = NORMAL;
+        draw(x, y);
+    } else if (complField[y][x][2] !== UNBREAKABLE) {
         complField[y][x][0] = EMPTY;
         draw(x, y);
         changedColumns[x] = CHANGED;
         stonesRemoved = true;
-    }
-    % Only cells with content give points
-    if (complField[y][x][0] !== EMPTY) {
-        points++;
     }
 }
 
@@ -944,7 +979,10 @@ function draw(x, y) {
     if (val != EMPTY) {
         field.value = cur_symbols[val];
 
-        if (complField[y][x][2] == UNBREAKABLE) {
+        if (complField[y][x][2] == BREAKTWICE) {
+            field.fillColor = BK2_BG_COLOR;
+            field.textColor = colors[val];
+        } else if (complField[y][x][2] == UNBREAKABLE) {
             field.fillColor = UBK_BG_COLOR;
             field.textColor = color.white;
         } else if (complField[y][x][2] == BOMB) {
@@ -1072,6 +1110,7 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
+        \CheckBox[name=cbTwice, checkboxsymbol=5]{Breakable twice:}\\
         \CheckBox[name=cbUnbreak, checkboxsymbol=5]{Unbreakable}\\
         \CheckBox[name=cbBomb, checkboxsymbol=5]{Bombs (do not break unbreakable, respawnable):}\\
 
