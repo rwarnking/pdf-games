@@ -78,6 +78,8 @@ var stonesRemoved = false;
 var chainState = HIGHLIGHT;
 % The point that the player got in the current round
 var points = 0;
+% Used to lock input while chain reaction
+var inChainReaction = false;
 
 % Symbol array
 const ALL_SYMBOLS = [
@@ -325,7 +327,7 @@ function tooltip(on) {
 %%%%%%%%%%%%%%%%%%%%
 /**
  * Remove all matches with three or more elements by iterating
- * the field and checking if there are two cellss with
+ * the field and checking if there are two cells with
  * the same symbol directly above or infront.
  * In that case change the symbol to one that is not in the neighbourhood.
  * OBACHT: Does not work with MAX_SYMBOLS < 5.
@@ -413,7 +415,14 @@ function getReplacementSymbol(row, column) {
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
-function fieldClicked(x, y) {
+function fieldClicked(x, y, ignore=false) {
+    % Allow for multiple clicks on the same field
+    this.getField("pointstxt").setFocus();
+    if (inChainReaction && !ignore) {
+        printInfoText("Input not possible while in chain reaction!");
+        return;
+    }
+
     if (currentCell === null) {
         currentCell = [x, y];
         highlight(x, y, true);
@@ -421,8 +430,6 @@ function fieldClicked(x, y) {
         currentCell = null;
         highlight(x, y, false);
     }
-    % Allow for multiple clicks on the same field
-    this.getField("pointstxt").setFocus();
 }
 
 /**
@@ -463,7 +470,7 @@ function swap(x, y) {
                 complField[y][x][0] = tmp;
             }
             % Remove last click and highlight
-            fieldClicked(currentCell[0], currentCell[1]);
+            fieldClicked(currentCell[0], currentCell[1], true);
         }
     }
 }
@@ -524,6 +531,7 @@ function replaceStones(x1, y1, x2, y2) {
     }
 
     % Code for possible chain reactions
+    inChainReaction = true;
     run = app.setInterval("chainReaction()", ANIMATION_SPEED);
 }
 
@@ -538,6 +546,8 @@ function chainReaction() {
     % If no stones were removed in the last iteration
     % stop the animation
     if (!stonesRemoved) {
+        inChainReaction = false;
+        printInfoText("Make your move!");
         app.clearInterval(run);
         return;
     }
