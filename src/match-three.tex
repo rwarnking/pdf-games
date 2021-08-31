@@ -54,10 +54,18 @@ const SCREEN_TEXT_WIDTH = 300;
 % Constants
 const ANIMATION_SPEED = 500;
 const MAX_SYMBOLS = 5;
+% To mark modified columns
 const UNCHANGED = false;
 const CHANGED = true;
+% For the chain reation state
 const HIGHLIGHT = true;
+% For empty cells
 const EMPTY = -1;
+% Special stone constants
+const NORMAL = 0;
+const UNBREAKABLE = 2;
+% Counts
+const UNBREAKABLE_COUNT = 5;
 
 % Globals
 % Animation interval variable
@@ -107,6 +115,8 @@ const ALL_SYMBOLS = [
 var colors = new Array();
 
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
+% Unbreakable background color
+const UBK_BG_COLOR = [ "RGB", 0.0, 0.0, 0.0 ];
 
 %%%%%%%%%%
 % Helper %
@@ -204,10 +214,15 @@ function initialise() {
         for (var column = 0; column < FIELD_WIDTH; column++) {
             rnd = getRandomInt(cur_symbols.length);
             % Random number and direction counts
-            tmp.push([rnd, [0, 0, 0, 0]]);
+            tmp.push([rnd, [0, 0, 0, 0], NORMAL]);
         }
         complField.push(tmp);
     }
+
+    % Add special cells like unbreakable, ...
+    % Since the checkboxes are not ticked in the beginning
+    % calling this function would not do anything
+    %addSpecialCells();
     % Remove matches due to generation
     cleanupField();
 
@@ -274,14 +289,21 @@ function restart() {
         for (var column = 0; column < FIELD_WIDTH; column++) {
             rnd = getRandomInt(cur_symbols.length);
             complField[row][column][0] = rnd;
+            complField[row][column][2] = NORMAL;
         }
     }
+
+    % Add special cells like unbreakable, ...
+    addSpecialCells();
     % Remove matches due to generation
     cleanupField();
     % Initialise direction counts
     calcAllDirCounts();
 
+    var startTime = new Date();
     drawAll();
+    var endTime = new Date();
+    printInfoText(endTime - startTime);
 
     points = 0;
     updatePoints();
@@ -325,6 +347,19 @@ function tooltip(on) {
 %%%%%%%%%%%%%%%%%%%%
 % Field Generation %
 %%%%%%%%%%%%%%%%%%%%
+function addSpecialCells() {
+    % Select random cells as unbreakable
+    var isbchecked = this.getField("cbUnbreak").isBoxChecked(0);
+    if (isbchecked) {
+        var x, y;
+        for (var i = 0; i < UNBREAKABLE_COUNT; i++) {
+            x = getRandomInt(FIELD_WIDTH);
+            y = getRandomInt(FIELD_HEIGHT);
+            complField[y][x][2] = UNBREAKABLE;
+        }
+    }
+}
+
 /**
  * Remove all matches with three or more elements by iterating
  * the field and checking if there are two cells with
@@ -444,33 +479,42 @@ function fieldClicked(x, y, ignore=false) {
  */
 function swap(x, y) {
     if (currentCell !== null) {
+        var x2 = currentCell[0];
+        var y2 = currentCell[1];
+        if (complField[y][x][2] == UNBREAKABLE || complField[y2][x2][2] == UNBREAKABLE) {
+            printInfoText("Swap not allowed! Unmoveable stone.");
+            % Remove last click and highlight
+            fieldClicked(x2, y2, true);
+            return;
+        }
+
         % Check that only the 4-neighbourhood is valid
-        if (Math.abs(x - currentCell[0]) + Math.abs(y - currentCell[1]) == 1) {
+        if (Math.abs(x - x2) + Math.abs(y - y2) == 1) {
             % Swap contents
-            var tmp = complField[currentCell[1]][currentCell[0]][0];
-            complField[currentCell[1]][currentCell[0]][0] = complField[y][x][0];
+            var tmp = complField[y2][x2][0];
+            complField[y2][x2][0] = complField[y][x][0];
             complField[y][x][0] = tmp;
 
             % Check if the swap was valid
             % Bitwise or so that both methods are executed
             % and the direction counts are updated
-            if (hasMatch(x, y) | hasMatch(currentCell[0], currentCell[1])) {
+            if (hasMatch(x, y) | hasMatch(x2, y2)) {
                 printInfoText("Swapped stones!");
                 % Redraw
                 draw(x, y);
-                draw(currentCell[0], currentCell[1]);
+                draw(x2, y2);
                 % Start replacing stones
-                replaceStones(x, y, currentCell[0], currentCell[1])
+                replaceStones(x, y, x2, y2)
             % If it wasnt revert the swap
             } else {
                 printInfoText("Swap not allowed!");
                 % Swap contents back
-                tmp = complField[currentCell[1]][currentCell[0]][0];
-                complField[currentCell[1]][currentCell[0]][0] = complField[y][x][0];
+                tmp = complField[y2][x2][0];
+                complField[y2][x2][0] = complField[y][x][0];
                 complField[y][x][0] = tmp;
             }
             % Remove last click and highlight
-            fieldClicked(currentCell[0], currentCell[1], true);
+            fieldClicked(x2, y2, true);
         }
     }
 }
@@ -602,8 +646,8 @@ function dropAndAddStones(x) {
             % Check all fields above the current cell
             var y2 = y - 1;
             for (; y2 >= 0; y2--) {
-                % If there is a non emtpy cell swap values
-                if (complField[y2][x][0] !== EMPTY) {
+                % If there is a non emtpy, removeable cell swap values
+                if (complField[y2][x][0] !== EMPTY && complField[y2][x][2] !== UNBREAKABLE) {
                     complField[y][x][0] = complField[y2][x][0];
                     complField[y2][x][0] = EMPTY;
                     % Cancel loop to prevent override
@@ -652,10 +696,12 @@ function removeStone(x, y) {
 
     % If a match is found in this direction remove the stone values
     if (countXPos > 1 || countYPos > 1) {
-        complField[y][x][0] = EMPTY;
-        draw(x, y);
-        changedColumns[x] = CHANGED;
-        stonesRemoved = true;
+        if (complField[y][x][2] !== UNBREAKABLE) {
+            complField[y][x][0] = EMPTY;
+            draw(x, y);
+            changedColumns[x] = CHANGED;
+            stonesRemoved = true;
+        }
         points++;
     }
 }
@@ -677,9 +723,11 @@ function removeStones(x, y) {
         % Just iterate from one side of the given position to the other
         for (var i = -complField[y][x][1][2]; i < complField[y][x][1][0] + 1; i++) {
             var tmpX = x + i;
-            complField[y][tmpX][0] = EMPTY;
-            draw(tmpX, y);
-            changedColumns[tmpX] = CHANGED;
+            if (complField[y][tmpX][2] !== UNBREAKABLE) {
+                complField[y][tmpX][0] = EMPTY;
+                draw(tmpX, y);
+                changedColumns[tmpX] = CHANGED;
+            }
             points++;
         }
         stonesRemoved = true;
@@ -687,8 +735,10 @@ function removeStones(x, y) {
     if (countYPos > 1) {
         for (var i = -complField[y][x][1][3]; i < complField[y][x][1][1] + 1; i++) {
             var tmpY = y + i;
-            complField[tmpY][x][0] = EMPTY;
-            draw(x, tmpY);
+            if (complField[tmpY][x][2] !== UNBREAKABLE) {
+                complField[tmpY][x][0] = EMPTY;
+                draw(x, tmpY);
+            }
             points++;
         }
         changedColumns[x] = CHANGED;
@@ -832,6 +882,12 @@ function draw(x, y) {
     if (val != EMPTY) {
         field.value = cur_symbols[val];
         field.textColor = colors[val];
+        field.fillColor = color.white;
+
+        if (complField[y][x][2] == UNBREAKABLE) {
+            field.fillColor = UBK_BG_COLOR;
+            field.textColor = color.white;
+        }
     } else {
         field.value = "";
     }
@@ -949,6 +1005,8 @@ function printInfoText(text) {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
+
+        \CheckBox[name=cbUnbreak, checkboxsymbol=5]{Unbreakable}\\
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
 
