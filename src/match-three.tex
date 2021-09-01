@@ -266,6 +266,7 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    var field;
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -278,23 +279,28 @@ function initialiseButtons() {
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-            this.getField("pos" + x + "-" + y).alignment = "center";
+            field = this.getField("pos" + x + "-" + y);
+            field.setAction("MouseDown", callbackName);
+            field.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+            field.alignment = "center";
 
             var swapCallback = "swap" + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("MouseEnter", swapCallback);
+            field.setAction("MouseEnter", swapCallback);
         }
     }
 
+    this.getField("pointstxt").textFont = font.Times;
+
+    updatePoints();
+
     % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
+    this.getField("info").textFont = font.Times;
 
     % Tooltip setup
-    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
-    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
+    field = this.getField("tooltipbtn");
+    field.setAction("MouseDown", "tooltip(true);");
+    field.setAction("MouseUp", "tooltip(false);");
+    field.highlight="none";
 
     printInfoText("Init");
 }
@@ -1122,30 +1128,72 @@ function printInfoText(text) {
             \end{flushright}%
         \end{tcolorbox}
 
-        \begin{center}
-            % Game related buttons
-            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \TextField[name=pointstxt, width=0.1\textwidth, value=0, bordercolor=white, readonly]{Points:} &
-                \\
-                %
-                \PushButton[name=restart, bordercolor=white]{
-                    \begin{tcolorbox}
-                        \centering
-                        Restart game\strut
-                    \end{tcolorbox}
-                } &
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \def\DefaultHeightofText{12pt}
+        \renewcommand*{\LayoutTextField}[2]{%
+            \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
+        }
+
+        \renewcommand*{\LayoutCheckField}[2]{#2 #1}
+        \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        \renewcommand*{\LayoutCheckField}[2]{%
+             \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}\enspace%
+             \parbox[c][\DefaultHeightofCheckBox]{0.25\linewidth}{#1}%
+         }
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        \begin{multicols}{2}
+            \begin{tcolorbox}%[valign=center]
+                \TextField[name=pointstxt, charsize=12pt,%
+                    bordercolor=, backgroundcolor=, borderwidth=0,%
+                    value=0, readonly%
+                ]{Points:\strut\enspace}
+            \end{tcolorbox}
+
+            \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \centering
+                    Restart game\strut
                 \end{tcolorbox}
+            }
+
+            \columnbreak
+
+            \begin{tcolorbox}
+                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]{\strut}
+            \end{tcolorbox}
+        \end{multicols}
+
+    \subsection*{Levelmodifier}
+        These can be selected to alter the game experience.\\
+        The game needs to be restarted for the changes to take effect.
+
+        \begin{center}
+            \newcolumntype{s}{>{\hsize=.3\hsize}X}
+            \newcolumntype{t}{>{\hsize=.15\hsize}X}
+            \begin{tabularx}{\textwidth}{@{} s X t @{}}%
+                \CheckBox[name=cbTwice, bordercolor=gray, checkboxsymbol=5]{Breakable twice} &%
+                Cells that need to be matched twice to be removed. &%
+                D,U,R,G,M\\%
+                \CheckBox[name=cbUnbreak, bordercolor=gray, checkboxsymbol=5]{Unbreakable} &%
+                Cells that can be matched unlimited without changing. &%
+                U,M\\%
+                \CheckBox[name=cbBomb, bordercolor=gray, checkboxsymbol=5]{Bombs} &%
+                Deletes the neighborhood when matched. &%
+                D,U,R,G,M\\%
+                \CheckBox[name=cbObstacle, bordercolor=gray, checkboxsymbol=5, bordersep=0]{Obstacle} &%
+                Cell without content and unmatchable/unmoveable. &
+                U%
             \end{tabularx}
         \end{center}
 
-        \CheckBox[name=cbTwice, checkboxsymbol=5]{Breakable twice:}\\
-        \CheckBox[name=cbUnbreak, checkboxsymbol=5]{Unbreakable}\\
-        \CheckBox[name=cbBomb, checkboxsymbol=5]{Bombs (do not break unbreakable, respawnable):}\\
-        \CheckBox[name=cbObstacle, checkboxsymbol=5]{Obstacle:}\\
+        D = removeable, U = unmoveable, R = respanable, G = gravity, M = matchable
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
-
     \end{Form}
 \end{document}
