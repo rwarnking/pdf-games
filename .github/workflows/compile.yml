@@ -19,15 +19,17 @@ name: Create PDFs
 # Start the job on push to dev #
 ################################
 on:
-  push:
+  pull_request_review:
     branches:
       - dev
+    types: [submitted]
 
 ###############
 # Set the Job #
 ###############
 jobs:
   build_latex:
+    if: github.event.review.state == 'approved'
     # Name the Job
     name: Compile PDFs
     # Set the agent to run on
@@ -42,6 +44,8 @@ jobs:
       ##########################
       - name: Set up Git repository
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
       ##########################
       # Download extra package #
       ##########################
@@ -55,20 +59,33 @@ jobs:
       - name: Compile LaTeX document
         uses: xu-cheng/latex-action@v2
         with:
-          root_file: |
-            src/ascii-donut.tex
-            src/connectfour.tex
-            src/set.tex
+          root_file: "src/*.tex"
+          glob_root_file: true
           pre_compile: "tex acrotex/acrotex.ins"
         env:
           TEXINPUTS: ".:./acrotex//:"
       ###################
       # Push pdf commit #
       ###################
-      - name: Commit compiled pdfs
+      - name: Move pdfs
+        env:
+          FILES: ./*.pdf
         run: |
-          mv *.pdf pdf/
-          git config --global user.name 'rwarnking'
-          git config --global user.email 'rwarnking@users.noreply.github.com'
-        # git commit -am "Automated commit: Add compiled pdfs"
-        # git push
+          chmod +x ./.github/workflows/move-changed-files.sh
+          ./.github/workflows/move-changed-files.sh
+        # mv connectfour.pdf pdf/connectfour.pdf
+      - name: Commit compiled pdfs
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Automated commit: Add compiled pdfs"
+          file_pattern: pdf/*.pdf
+      ########################
+      # Merge to all_commits #
+      ########################
+      - name: Merge into all_commits
+        uses: mtanzi/action-automerge@v1
+        id: merge
+        with:
+          github_token: ${{ github.token }}
+          source: ${{ github.event.pull_request.head.ref }}
+          target: 'all_commits'
