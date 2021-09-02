@@ -31,9 +31,6 @@
 \def\fieldWidth{15}
 \def\fieldHeight{10}
 
-% Max playercount is 5
-\def\playerCount{5}
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -53,7 +50,7 @@ const SCREEN_TEXT_WIDTH = 300;
 
 % Constants
 const ANIMATION_SPEED = 500;
-const MAX_SYMBOLS = 5;
+var MAX_SYMBOLS = 5;
 % To mark modified columns
 const UNCHANGED = false;
 const CHANGED = true;
@@ -61,6 +58,9 @@ const CHANGED = true;
 const HIGHLIGHT = true;
 % For empty cells
 const EMPTY = -1;
+% For symbol type
+const UTF8 = 1;
+const ASCII = 2;
 % Special stone constants
 const NORMAL = 0;
 const BREAKTWICE = 1;
@@ -94,15 +94,23 @@ var currentCell = null;
 % Array marking all columns that got changed
 % during stone removal
 var changedColumns = [];
+
+%%%%%%%%%% Game state variables %%%%%%%%%%
 % Saves whether stones were removed in this iteration
 % of the chain reaction
 var stonesRemoved = false;
 % Keep track of the chain reaction state
 var chainState = HIGHLIGHT;
-% The point that the player got in the current round
-var points = 0;
 % Used to lock input while chain reaction
 var inChainReaction = false;
+% The point that the player got in the current round
+var points = 0;
+
+%%%%%%%%%% Game type variables %%%%%%%%%%
+% Which symbol type to show (UTF8, ABC, 123)
+var symbolSelect = 0;
+% Should the symbols be colored
+var colorEnable = true;
 % Should cells with break twice be generated
 var bkTwiceEnable = false;
 % Should bomb be generated
@@ -136,14 +144,16 @@ var colors = new Array();
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 const HIGHLIGHT_BOMB_COLOR = [ "RGB", 0.984, 0.0, 0.0 ];
 
-% Break twice background color
-const BK2_BG_COLOR = [ "G", 0.5 ];
-% Bomb background color
-const BOMB_BG_COLOR = [ "RGB", 0.984, 0.0, 0.0 ];
-% Unbreakable background color
-const UBK_BG_COLOR = [ "G", 0.0 ];
-% Obstacle background color
-const OBS_BG_COLOR = [ "G", 0.75 ];
+% Array with all bg colors, has empty spaces due to indexing vars
+const BACKGROUND_COLORS = [
+    [ "G", 1.0 ], % normal
+    [ "G", 0.5 ], % breaktwice
+    [ "RGB", 0.984, 0.0, 0.0 ], % bomb
+    0, % empty
+    [ "G", 0.0 ], % unbreakable
+    0, 0, 0, % empty
+    [ "G", 0.75 ] % obstacle
+]
 
 %%%%%%%%%%
 % Helper %
@@ -270,6 +280,10 @@ function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
+    this.getField("cbColor").checkThisBox(0);
+    this.getField("cmSymbol").checkThisBox(0);
+    this.getField("cmSymbolC").currentValueIndices = 0;
+
     % Assign each button the coresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="outline";
@@ -316,6 +330,28 @@ function restart() {
     % Mark all columns as unchanged
     for (var column = 0; column < FIELD_WIDTH; column++) {
         changedColumns[column] = UNCHANGED;
+    }
+
+    % Get current color and symbol mode as well as the symbol count
+    MAX_SYMBOLS = this.getField("cmSymbolC").value;
+    colorEnable = this.getField("cbColor").isBoxChecked(0);
+    var field = this.getField("cmSymbol");
+    symbolSelect = field.isBoxChecked(0) * UTF8 + field.isBoxChecked(1) * ASCII;
+
+    % Generate different colors for each symbol
+    colors = [];
+    generateColors(1.0, 0.5, MAX_SYMBOLS);
+
+    % Reset current symbols
+    cur_symbols = [];
+    for (var i = 0; i < MAX_SYMBOLS; i++) {
+        if (symbolSelect == UTF8) {
+            cur_symbols.push(String.fromCharCode(ALL_SYMBOLS[i]));
+        } else if (symbolSelect == ASCII) {
+            cur_symbols.push(String.fromCharCode(0x41 + i));
+        } else {
+            cur_symbols.push(i);
+        }
     }
 
     % Create the field choosing a random symbol for each field
@@ -1004,27 +1040,23 @@ function drawAll() {
 function draw(x, y) {
     var field = this.getField("pos" + x + "-" + y);
     field.delay = true;
+
+    % Get backgroundcolor
+    var cType = complField[y][x][2];
+    field.fillColor = BACKGROUND_COLORS[cType];
+
     var val = complField[y][x][0];
     if (val != EMPTY) {
         field.value = cur_symbols[val];
 
-        if (complField[y][x][2] == BREAKTWICE) {
-            field.fillColor = BK2_BG_COLOR;
+        if (cType == UNBREAKABLE || cType == BOMB) {
+            field.textColor = color.white;
+        } else if (colorEnable) {
             field.textColor = colors[val];
-        } else if (complField[y][x][2] == UNBREAKABLE) {
-            field.fillColor = UBK_BG_COLOR;
-            field.textColor = color.white;
-        } else if (complField[y][x][2] == BOMB) {
-            field.fillColor = BOMB_BG_COLOR;
-            field.textColor = color.white;
         } else {
-            field.textColor = colors[val];
-            field.fillColor = color.white;
+            field.textColor = color.black;
         }
     } else {
-        if (complField[y][x][2] == OBSTACLE) {
-            field.fillColor = OBS_BG_COLOR;
-        }
         field.value = "";
     }
     field.delay = false;
@@ -1130,6 +1162,7 @@ function printInfoText(text) {
 
         %%%%%%%%%%%%%%%%%%%%%%%
         % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
         %%%%%%%%%%%%%%%%%%%%%%%
         \def\DefaultHeightofText{12pt}
         \renewcommand*{\LayoutTextField}[2]{%
@@ -1140,9 +1173,12 @@ function printInfoText(text) {
         \renewcommand*{\DefaultWidthofCheckBox}{2ex}
         \renewcommand*{\DefaultHeightofCheckBox}{2ex}
         \renewcommand*{\LayoutCheckField}[2]{%
-             \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}\enspace%
-             \parbox[c][\DefaultHeightofCheckBox]{0.25\linewidth}{#1}%
-         }
+            \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}\enspace%
+            \parbox[c][\DefaultHeightofCheckBox]{0.25\linewidth}{#1}%
+        }
+
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
 
         %%%%%%%%%%%%%%%%
         % GUI elements %
@@ -1165,18 +1201,28 @@ function printInfoText(text) {
             \columnbreak
 
             \begin{tcolorbox}
-                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]{\strut}
+                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
             \end{tcolorbox}
         \end{multicols}
 
     \subsection*{Levelmodifier}
         These can be selected to alter the game experience.\\
-        The game needs to be restarted for the changes to take effect.
+        The game needs to be restarted for the changes to take effect.\smallskip
 
         \begin{center}
-            \newcolumntype{s}{>{\hsize=.3\hsize}X}
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}
+                \ChoiceMenu[name=cmSymbolC, bordercolor=gray, width=2cm, combo]{Symbol count: }{5, 6, 7, 8} &
+                \ChoiceMenu[name=cmSymbol, bordercolor=gray, radiosymbol=5, radio]{Shown symbols: }{UTF8, ABC, 123}
+            \end{tabularx}
+        \end{center}
+
+        \begin{center}
+            \newcolumntype{s}{>{\hsize=.33\hsize}X}
             \newcolumntype{t}{>{\hsize=.15\hsize}X}
-            \begin{tabularx}{\textwidth}{@{} s X t @{}}%
+            \begin{tabularx}{\textwidth}{@{} s X t @{}}
+                \CheckBox[name=cbColor, bordercolor=gray, checkboxsymbol=5]{Colored} &%
+                Color the cell symbols.&%
+                \\%
                 \CheckBox[name=cbTwice, bordercolor=gray, checkboxsymbol=5]{Breakable twice} &%
                 Cells that need to be matched twice to be removed. &%
                 D,U,R,G,M\\%
@@ -1186,13 +1232,13 @@ function printInfoText(text) {
                 \CheckBox[name=cbBomb, bordercolor=gray, checkboxsymbol=5]{Bombs} &%
                 Deletes the neighborhood when matched. &%
                 D,U,R,G,M\\%
-                \CheckBox[name=cbObstacle, bordercolor=gray, checkboxsymbol=5, bordersep=0]{Obstacle} &%
+                \CheckBox[name=cbObstacle, bordercolor=gray, checkboxsymbol=5]{Obstacle} &%
                 Cell without content and unmatchable/unmoveable. &
                 U%
             \end{tabularx}
         \end{center}
 
-        D = removeable, U = unmoveable, R = respanable, G = gravity, M = matchable
+        D = removeable, U = unmoveable, R = respawnable, G = gravity, M = matchable
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
     \end{Form}

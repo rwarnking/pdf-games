@@ -21,6 +21,8 @@
 \usepackage[pdftex]{insdljs}
 %\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
+\graphicspath{{images/}{src/images/}}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -603,7 +605,7 @@ function printInfoText(text) {
 
         \begin{tcolorbox}
             \centering%
-            \includegraphics[width=0.25\textwidth]{images/end}
+            \includegraphics[width=0.25\textwidth]{end}
             %
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
@@ -617,7 +619,7 @@ function printInfoText(text) {
             \end{flushright}%
             %
             \centering%
-            \includegraphics[width=0.25\textwidth]{images/start}
+            \includegraphics[width=0.25\textwidth]{start}
             \TextField[bordercolor=white, width=0.0cm, name=tooltiptxt, readonly=true]{}
         \end{tcolorbox}
 
