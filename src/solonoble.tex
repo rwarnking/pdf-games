@@ -23,8 +23,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
 % to slow to play
-\def\fieldWidth{5}
-\def\fieldHeight{5}
+\def\fieldWidth{9}
+\def\fieldHeight{9}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -46,8 +46,9 @@ const SCREEN_TEXT_WIDTH = 200;
 % Constants
 const ANIMATION_SPEED = 500;
 % For empty cells
-const EMPTY = false;
-const FULL = true;
+const NONE = -1;
+const EMPTY = 0;
+const FULL = 1;
 
 % Globals
 % Animation interval variable
@@ -59,34 +60,19 @@ var currentCell = null;
 
 %%%%%% Field arrays %%%%
 const FIELD_1 = [
-    [EMPTY, FULL, EMPTY, FULL, FULL],
-    [EMPTY, FULL, EMPTY, FULL, FULL],
-    [EMPTY, FULL, EMPTY, FULL, FULL],
-    [EMPTY, FULL, EMPTY, FULL, FULL],
-    [EMPTY, FULL, EMPTY, FULL, FULL]
+    [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE],
+    [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+    [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+    [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
+    [NONE, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, NONE],
+    [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
+    [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+    [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+    [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE]
 ]
 
 % Symbol array
-const ALL_SYMBOLS = [
-    0x260E, % telefon
-    0x261B, % hand black
-    0x263B, % smilie
-    0x266B, % note
-    0x2702, % scissors
-    0x2712, % pencil
-    0x2706, % telefon2
-    0x2707, % video
-    0x2708, % plane
-    0x2709, % mail
-    0x271F, % cross
-    0x2756, % diamond
-    0x2717, % ballot x
-    0x274D, % shadowed circle
-    0x2730, % star
-    0x2752, % shadowed quad
-    0x271C % open center cross
-    %0x261E  % hand white (discouraged since coloring is difficult)
-];
+const MARBLE_SYMBOL = String.fromCharCode(0x260E);
 
 % Color data
 var colors = new Array();
@@ -180,6 +166,8 @@ function initialise() {
         complField.push(tmp);
     }
 
+    hideCells();
+
     drawAll();
 }
 
@@ -242,6 +230,7 @@ function restart() {
         }
     }
 
+    hideCells();
     drawAll();
 }
 
@@ -291,9 +280,6 @@ function tooltip(on) {
  * @param {Number} y The y position.
  */
 function fieldClicked(x, y, ignore=false) {
-    % Allow for multiple clicks on the same field
-    this.getField("info").setFocus();
-
     if (currentCell === null) {
         if (complField[y][x][0] == FULL) {
             currentCell = [x, y];
@@ -337,7 +323,6 @@ function fieldClicked(x, y, ignore=false) {
  * @param {Number} y The y position.
  */
 function jump(x1, y1) {
-    printInfoText("Jump1.");
     var x2 = currentCell[0];
     var y2 = currentCell[1];
 
@@ -352,12 +337,29 @@ function jump(x1, y1) {
     draw(x1, y1);
     draw(x2, y2);
     draw(x3, y3);
-    printInfoText("Jump2.");
+    printInfoText("Jump successfull.");
 }
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
+/**
+ *
+ */
+function hideCells() {
+    var field;
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            field = this.getField("pos" + x + "-" + y);
+            if (complField[y][x] == NONE) {
+                field.hidden = true;
+            } else {
+                field.hidden = false;
+            }
+        }
+    }
+}
+
 /**
  * Draw all fields.
  */
@@ -382,9 +384,9 @@ function draw(x, y) {
 
     var val = complField[y][x][0];
     if (val != EMPTY) {
-        field.value = "1";
+        field.value = MARBLE_SYMBOL;
     } else {
-        field.value = "2";
+        field.value = "";
     }
     field.delay = false;
 }
@@ -491,7 +493,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2]{}%
+                            bordercolor=white, name=pos#1-#2, readonly]{}%
                     }\vspace{3pt}
                     \newline%
                 }%
