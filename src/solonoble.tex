@@ -1,0 +1,523 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+% Einbindung von Javascript ins PDF
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% to slow to play
+\def\fieldWidth{5}
+\def\fieldHeight{5}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
+\begin{insDLJS}[]{JSDateiname}{Solo Noble}
+
+const GAME_DESC = "The goal of this game is to generate matches. A match is defined as at least\
+three cells that contain the same symbol. To build a match the player is allowed to swap the\
+symbol of two adjacent cells. If the swap would indeed led to a match, the cells are swaped\
+and the match is removed. The free cells are refilled by the symbols of the cells above it.\
+The topmost cells are filled randomly. Chain reactions are desired.";
+
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const SCREEN_TEXT_WIDTH = 200;
+
+% Constants
+const ANIMATION_SPEED = 500;
+% For empty cells
+const EMPTY = false;
+const FULL = true;
+
+% Globals
+% Animation interval variable
+var run;
+% The game field
+var complField = new Array();
+% Saves the last clicked cell
+var currentCell = null;
+
+%%%%%% Field arrays %%%%
+const FIELD_1 = [
+    [EMPTY, FULL, EMPTY, FULL, FULL],
+    [EMPTY, FULL, EMPTY, FULL, FULL],
+    [EMPTY, FULL, EMPTY, FULL, FULL],
+    [EMPTY, FULL, EMPTY, FULL, FULL],
+    [EMPTY, FULL, EMPTY, FULL, FULL]
+]
+
+% Symbol array
+const ALL_SYMBOLS = [
+    0x260E, % telefon
+    0x261B, % hand black
+    0x263B, % smilie
+    0x266B, % note
+    0x2702, % scissors
+    0x2712, % pencil
+    0x2706, % telefon2
+    0x2707, % video
+    0x2708, % plane
+    0x2709, % mail
+    0x271F, % cross
+    0x2756, % diamond
+    0x2717, % ballot x
+    0x274D, % shadowed circle
+    0x2730, % star
+    0x2752, % shadowed quad
+    0x271C % open center cross
+    %0x261E  % hand white (discouraged since coloring is difficult)
+];
+
+% Color data
+var colors = new Array();
+
+const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+/**
+ * Converts an HSL color value to RGB. Conversion formula
+ * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
+ * Assumes h, s, and l are contained in the set [0, 1] and
+ * returns r, g, and b in the set [0, 1].
+ * https://stackoverflow.com/questions/2353211/hsl-to-rgb-color-conversion
+ *
+ * @param {number} h The hue
+ * @param {number} s The saturation
+ * @param {number} l The lightness
+ * @return {Array} The RGB representation
+ */
+function hslToRgb(h, s, l) {
+    var r, g, b;
+
+    % achromatic
+    if (s == 0) {
+        r = g = b = l;
+    } else {
+        var hue2rgb = function hue2rgb(p, q, t) {
+            if (t < 0) t += 1.0;
+            if (t > 1) t -= 1.0;
+            if (t < 1.0/6.0) return p + (q - p) * 6.0 * t;
+            if (t < 1.0/2.0) return q;
+            if (t < 2.0/3.0) return p + (q - p) * (2.0/3.0 - t) * 6.0;
+            return p;
+        }
+
+        var q = l < 0.5 ? l * (1.0 + s) : l + s - l * s;
+        var p = 2.0 * l - q;
+        r = hue2rgb(p, q, h + 1.0/3.0);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1.0/3.0);
+    }
+
+    return [ "RGB", r, g, b ];
+}
+
+/**
+ * Generates the specified amount of colors and pushes
+ * them to the colors array.
+ * For generating the colors are selected using hsl
+ * and afterwards transformed to rgb.
+ *
+ * @param {number} amount The amount of colors to generate
+ * @param {number} saturation The saturation
+ * @param {number} lightness The lightness
+ */
+function generateColors(saturation, lightness, amount) {
+    var huedelta = 1.0 / amount;
+
+    for (var j = 0; j < amount; j++) {
+        var hue = j * huedelta;
+        colors.push(hslToRgb(hue, saturation, lightness));
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Init the GUI
+    initialiseButtons();
+
+    % Create the field choosing a random symbol for each field
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        var tmp = new Array();
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            tmp.push([FIELD_1[row][column]]);
+        }
+        complField.push(tmp);
+    }
+
+    drawAll();
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    var field;
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the coresponding function and set the highlights
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="outline";
+
+    % Each field needs to be connected to an input function
+    var funcName = "fieldClicked";
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
+            field = this.getField("pos" + x + "-" + y);
+            field.setAction("MouseDown", callbackName);
+            field.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+            field.alignment = "center";
+        }
+    }
+
+    % Info field setup
+    this.getField("info").textFont = font.Times;
+
+    % Tooltip setup
+    field = this.getField("tooltipbtn");
+    field.setAction("MouseDown", "tooltip(true);");
+    field.setAction("MouseUp", "tooltip(false);");
+    field.highlight="none";
+
+    printInfoText("Init");
+}
+
+/**
+ * Restart the game and clear everything
+ */
+function restart() {
+    printInfoText("Restart");
+
+    currentCell = null;
+
+    % Create the field choosing a random symbol for each field
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            complField[row][column][0] = FIELD_1[row][column];
+        }
+    }
+
+    % Disable left over highlights
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            highlight(column, row, false);
+        }
+    }
+
+    drawAll();
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % hight 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+/**
+ * Save and highlight the last field the user clicked on.
+ * Selection is only removed after clicking on the same field.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function fieldClicked(x, y, ignore=false) {
+    % Allow for multiple clicks on the same field
+    this.getField("info").setFocus();
+
+    if (currentCell === null) {
+        if (complField[y][x][0] == FULL) {
+            currentCell = [x, y];
+            highlight(x, y, true);
+        } else {
+            printInfoText("Cell empty and not selectable.");
+        }
+    } else if (currentCell[0] == x && currentCell[1] == y) {
+        currentCell = null;
+        highlight(x, y, false);
+    } else {
+        var diffX = currentCell[0] - x;
+        var diffY = currentCell[1] - y;
+        var absX = Math.abs(diffX);
+        var absY = Math.abs(diffY);
+
+        if (absX == 2 && absY == 0 || absX == 0 && absY == 2) {
+            if (complField[y][x][0] == EMPTY) {
+                var x2 = x + diffX / 2;
+                var y2 = y + diffY / 2;
+
+                if (complField[y2][x2][0] == FULL) {
+                    highlight(currentCell[0], currentCell[1], false);
+                    jump(x, y);
+                    currentCell = null;
+                } else {
+                    printInfoText("No cell to jump over.");
+                }
+            } else {
+                printInfoText("Cell occupied, select other cell.");
+            }
+        } else {
+            printInfoText("Not in range, select other cell.");
+        }
+    }
+}
+
+/**
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function jump(x1, y1) {
+    printInfoText("Jump1.");
+    var x2 = currentCell[0];
+    var y2 = currentCell[1];
+
+    var diffX = x2 - x1;
+    var diffY = y2 - y1;
+    var x3 = x1 + diffX / 2;
+    var y3 = y1 + diffY / 2;
+
+    complField[y3][x3][0] = EMPTY;
+    complField[y2][x2][0] = EMPTY;
+    complField[y1][x1][0] = FULL;
+    draw(x1, y1);
+    draw(x2, y2);
+    draw(x3, y3);
+    printInfoText("Jump2.");
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Draw all fields.
+ */
+function drawAll() {
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            draw(x, y);
+        }
+    }
+}
+
+/**
+ * Since only one field is updated with each input,
+ * only this field needs to be redrawn.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function draw(x, y) {
+    var field = this.getField("pos" + x + "-" + y);
+    field.delay = true;
+
+    var val = complField[y][x][0];
+    if (val != EMPTY) {
+        field.value = "1";
+    } else {
+        field.value = "2";
+    }
+    field.delay = false;
+}
+
+/**
+ * Enables or disables the highlight for
+ * all cells in the field.
+ *
+ * @param {Boolean} enable Enables or disables highlight.
+ */
+function highlightAll(enable) {
+    for (var row = 0; row < FIELD_HEIGHT; row++) {
+        for (var column = 0; column < FIELD_WIDTH; column++) {
+            highlight(column, row, enable);
+        }
+    }
+}
+
+/**
+ * Enables or disables the highlight of the given cell.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ * @param {Boolean} enable If true enables the highlight
+ * @param {Boolean} bomb If true enables the bombhighlight
+ */
+function highlight(x, y, enable) {
+    var field = this.getField("pos" + x + "-" + y);
+    field.delay = true;
+    % Highlight the current taken move
+    if (enable) {
+        field.borderColor = HIGHLIGHT_COLOR;
+    } else {
+        field.borderColor = color.white;
+    }
+    field.delay = false;
+}
+
+/**
+ * Print the current points of the player.
+ */
+function updatePoints() {
+    var field = this.getField("pointstxt");
+    field.delay = true;
+    field.value = points;
+    field.delay = false;
+}
+
+/**
+ * Print information about the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+\newdimen\longline
+\longline=\textwidth\advance\longline-6em
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Solo Noble}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
+
+        % The gamefield
+        \begin{tcolorbox}
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1-#2]{}%
+                    }\vspace{3pt}
+                    \newline%
+                }%
+            \end{flushright}%
+        \end{tcolorbox}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        \begin{multicols}{2}
+            \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Restart game\strut
+                \end{tcolorbox}
+            }
+
+            \columnbreak
+
+            \begin{tcolorbox}
+                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
+            \end{tcolorbox}
+        \end{multicols}
+
+        \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{5, 6, 7, 8}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
+    \end{Form}
+\end{document}
