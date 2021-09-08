@@ -60,7 +60,7 @@ var currentCell = null;
 % The index determining which field should be played
 var fieldIdx = 0;
 
-%%%%%% Field arrays %%%%
+%%%%%%%%%% Field arrays %%%%%%%%%%
 const FIELDS = [
     [ % English
         [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE],
@@ -209,27 +209,28 @@ function generateColors(saturation, lightness, amount) {
 function initialise() {
     % Init the GUI
     initialiseButtons();
-
+    % Get the value of the choise menu
     fieldIdx = this.getField("cmLayout").currentValueIndices;
 
-    % Create the field choosing a random symbol for each field
+    % Create the field using the FIELDS array data
     var idx = 0;
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         var tmp = new Array();
         for (var column = 0; column < FIELD_WIDTH; column++) {
-            var cIdx = -1;
+            var colorIdx = -1;
             var cell = FIELDS[fieldIdx][row][column];
             if (cell == FULL) {
-                cIdx = idx;
+                colorIdx = idx;
                 idx++;
             }
-            tmp.push([cell, cIdx]);
+            tmp.push([cell, colorIdx]);
         }
         complField.push(tmp);
     }
 
+    % Hide all cells that are not part of the field
     hideCells();
-
+    % Generate a color for each marble
     generateColors(1.0, 0.5, MARBLE_COUNTS[fieldIdx]);
 
     drawAll();
@@ -247,6 +248,9 @@ function initialiseButtons() {
     % Assign each button the coresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="outline";
+
+    this.getField("solve").setAction("MouseUp", "solve();");
+    this.getField("solve").highlight="outline";
 
     this.getField("cmLayout").currentValueIndices = 0;
 
@@ -285,14 +289,14 @@ function restart() {
     fieldIdx = this.getField("cmLayout").currentValueIndices;
 
     % Create the field choosing a random symbol for each field
-    var idx = 0;
+    var colorIdx = 0;
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         for (var column = 0; column < FIELD_WIDTH; column++) {
             var cell = FIELDS[fieldIdx][row][column];
             complField[row][column][0] = cell;
             if (cell == FULL) {
-                complField[row][column][1] = idx;
-                idx++;
+                complField[row][column][1] = colorIdx;
+                colorIdx++;
             }
         }
     }
@@ -304,8 +308,9 @@ function restart() {
         }
     }
 
+    % Hide all cells that are not part of the field
     hideCells();
-
+    % Generate a color for each marble
     colors = [];
     generateColors(1.0, 0.5, MARBLE_COUNTS[fieldIdx]);
 
@@ -358,6 +363,7 @@ function tooltip(on) {
  * @param {Number} y The y position.
  */
 function fieldClicked(x, y, ignore=false) {
+    % Select cell if none selected
     if (currentCell === null) {
         if (complField[y][x][0] == FULL) {
             currentCell = [x, y];
@@ -365,10 +371,13 @@ function fieldClicked(x, y, ignore=false) {
         } else {
             printInfoText("Cell empty and not selectable.");
         }
-    } else if (currentCell[0] == x && currentCell[1] == y) {
+    } % Deselect cell
+    else if (currentCell[0] == x && currentCell[1] == y) {
         currentCell = null;
         highlight(x, y, false);
     } else {
+        % If a cell if selected the new click is interpreted as the target cell
+        % Calculate wether it is a valid target
         var diffX = currentCell[0] - x;
         var diffY = currentCell[1] - y;
         var absX = Math.abs(diffX);
@@ -396,9 +405,11 @@ function fieldClicked(x, y, ignore=false) {
 }
 
 /**
+ * Place the currentCell content into the new cell
+ * and remove the cell content inbetween.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} x1 The x position.
+ * @param {Number} y1 The y position.
  */
 function jump(x1, y1) {
     var x2 = currentCell[0];
@@ -412,6 +423,7 @@ function jump(x1, y1) {
     complField[y3][x3][0] = EMPTY;
     complField[y2][x2][0] = EMPTY;
     complField[y1][x1][0] = FULL;
+    % Rewrite color information
     complField[y1][x1][1] = complField[y2][x2][1];
     complField[y3][x3][1] = -1;
     complField[y2][x2][1] = -1;
@@ -421,11 +433,174 @@ function jump(x1, y1) {
     printInfoText("Jump successfull.");
 }
 
+/**
+ * Solve the current field by calculating a valid path leading to one marble in the
+ * right spot (depending on start field).
+ * This is done by backtracking and testing possible moves.
+ * https://ece.uwaterloo.ca/~dwharder/aads/Algorithms/Backtracking/Peg_solitaire/
+ */
+function solve() {
+    jasd = 0;
+
+    % Get movesToTry for all marbles and marble count
+    var movesToTry = [];
+    var mCount = 0;
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            if (complField[y][x][0] == FULL) {
+                movesToTry = movesToTry.concat(getMoves([x, y]));
+                mCount++;
+            }
+        }
+    }
+
+    % Start backtracking until a solution is found
+    % or all possibilities where tested.
+    var solution = testSolution(movesToTry, mCount);
+    drawAll();
+}
+
+var jasd = 0;
+
+/**
+ * Use the current list of all valid moves to test each of them.
+ * After a move is made the field is evaluated again until
+ * the solution is either valid or confirmed as wrong.
+ * Should the solution be wrong the move is reversed
+ * and another move is tested.
+ * Should no moves be left the field has no solution.
+ *
+ * @param {Array} movesToTry A list of currently valid moves.
+ * @param {Number} marbleCount The current amount of marbles on the field.
+ */
+function testSolution(movesToTry, marbleCount) {
+    % TODO safety check
+    jasd++;
+    if (jasd == 30000) return [true, []];
+
+    % If there is only one marble check for success
+    if (marbleCount <= 1) {
+        if (complField[4][4][0] == FULL) {
+            return [true, []];
+        } else {
+            return [false, []];
+        }
+    }
+
+    % Try one move after the other
+    var triedMoves = [];
+    while (movesToTry.length > 0) {
+        var move = movesToTry.pop();
+
+        makeMove(move);
+
+        % Get all new possible moves
+        var newMoves = getAllMoves();
+
+        var result = testSolution(newMoves, marbleCount-1);
+        if (result[0]) {
+            % Create finished path
+            triedMoves.push(move);
+            triedMoves = triedMoves.concat(result[1]);
+            return [true, triedMoves];
+        } else {
+            reverseMove(move);
+        }
+    }
+
+    return [false, []];
+}
+
+/**
+ * Iterate all cells and check if there is a marble.
+ * If there is calculate all valid moves for this marble.
+ * @return A list of valid moves.
+ */
+function getAllMoves() {
+    % Get movesToTry for all marbles
+    var movesToTry = [];
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            if (complField[y][x][0] == FULL) {
+                movesToTry = movesToTry.concat(getMoves([x, y]));
+            }
+        }
+    }
+
+    return movesToTry;
+}
+
+/**
+ * Get all moves for the given position.
+ * This is tested by checking in all directions,
+ * if the cell is empty and there is a cell to jump over.
+ * @param {Array} marble The position to check.
+ */
+function getMoves(marble) {
+    var x = marble[0];
+    var y = marble[1];
+    var moves = [];
+
+    if (x + 2 < FIELD_WIDTH && complField[y][x + 2][0] == EMPTY && complField[y][x + 1][0] == FULL) {
+        moves.push([x, y, x + 2, y]);
+    }
+    if (x - 2 >= 0 && complField[y][x - 2][0] == EMPTY && complField[y][x - 1][0] == FULL) {
+        moves.push([x, y, x - 2, y]);
+    }
+    if (y + 2 < FIELD_HEIGHT && complField[y + 2][x][0] == EMPTY && complField[y + 1][x][0] == FULL) {
+        moves.push([x, y, x, y + 2]);
+    }
+    if (y - 2 >= 0 && complField[y - 2][x][0] == EMPTY && complField[y - 1][x][0] == FULL) {
+        moves.push([x, y, x, y - 2]);
+    }
+    return moves;
+}
+
+/**
+ * Execute the given move.
+ * @param {Array} fromToArray Containing the x,y pos for source and target.
+ */
+function makeMove(fromToArray) {
+    var x1 = fromToArray[0];
+    var y1 = fromToArray[1];
+    var x2 = fromToArray[2];
+    var y2 = fromToArray[3];
+
+    var diffX = x2 - x1;
+    var diffY = y2 - y1;
+    var x3 = x1 + diffX / 2;
+    var y3 = y1 + diffY / 2;
+
+    complField[y3][x3][0] = EMPTY;
+    complField[y2][x2][0] = FULL;
+    complField[y1][x1][0] = EMPTY;
+}
+
+/**
+ * Reverse the given move.
+ * @param {Array} fromToArray Containing the x,y pos for source and target.
+ */
+function reverseMove(fromToArray) {
+    var x1 = fromToArray[0];
+    var y1 = fromToArray[1];
+    var x2 = fromToArray[2];
+    var y2 = fromToArray[3];
+
+    var diffX = x2 - x1;
+    var diffY = y2 - y1;
+    var x3 = x1 + diffX / 2;
+    var y3 = y1 + diffY / 2;
+
+    complField[y3][x3][0] = FULL;
+    complField[y2][x2][0] = EMPTY;
+    complField[y1][x1][0] = FULL;
+}
+
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- *
+ * Hide all cells that are of type NONE.
  */
 function hideCells() {
     var field;
@@ -466,7 +641,8 @@ function draw(x, y) {
     var val = complField[y][x][0];
     if (val == FULL) {
         field.value = MARBLE_SYMBOL;
-        field.textColor = colors[complField[y][x][1]];
+        %field.textColor = colors[complField[y][x][1]];
+        field.textColor = color.black;
     } else {
         field.value = "";
         field.textColor = color.black;
@@ -583,27 +759,45 @@ function printInfoText(text) {
             \end{flushright}%
         \end{tcolorbox}
 
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \def\DefaultHeightofText{14pt}
+        \renewcommand*{\LayoutTextField}[2]{%
+            \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
+        }
+
         %%%%%%%%%%%%%%%%
         % GUI elements %
         %%%%%%%%%%%%%%%%
         \begin{multicols}{2}
+            \begin{tcolorbox}
+                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
+                    English (33), European (37), German (45), Asymmetrical (39), Diamond (41)%
+                }
+            \end{tcolorbox}
+
             \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
-                    Restart game\strut
+                    Restart game\strut{}
                 \end{tcolorbox}
             }
 
             \columnbreak
 
+            \PushButton[name=solve, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Solve game\strut
+                \end{tcolorbox}
+            }
+
             \begin{tcolorbox}
                 \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
             \end{tcolorbox}
         \end{multicols}
-
-        \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
-            English (33), European (37), German (45), Asymmetrical (39), Diamond (41)%
-        }
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
     \end{Form}
