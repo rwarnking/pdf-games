@@ -74,6 +74,10 @@ const FIELD_1 = [
 % Symbol array
 const MARBLE_SYMBOL = String.fromCharCode(0x260E);
 
+const MARBLE_COUNTS = [
+    32, 0, 0
+]
+
 % Color data
 var colors = new Array();
 
@@ -158,15 +162,24 @@ function initialise() {
     initialiseButtons();
 
     % Create the field choosing a random symbol for each field
+    var idx = 0;
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         var tmp = new Array();
         for (var column = 0; column < FIELD_WIDTH; column++) {
-            tmp.push([FIELD_1[row][column]]);
+            var cIdx = -1;
+            var cell = FIELD_1[row][column];
+            if (cell == FULL) {
+                cIdx = idx;
+                idx++;
+            }
+            tmp.push([cell, cIdx]);
         }
         complField.push(tmp);
     }
 
     hideCells();
+
+    generateColors(1.0, 0.5, MARBLE_COUNTS[0]);
 
     drawAll();
 }
@@ -217,9 +230,15 @@ function restart() {
     currentCell = null;
 
     % Create the field choosing a random symbol for each field
+    var idx = 0;
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         for (var column = 0; column < FIELD_WIDTH; column++) {
-            complField[row][column][0] = FIELD_1[row][column];
+            var cell = FIELD_1[row][column];
+            complField[row][column][0] = cell;
+            if (cell == FULL) {
+                complField[row][column][1] = idx;
+                idx++;
+            }
         }
     }
 
@@ -231,6 +250,10 @@ function restart() {
     }
 
     hideCells();
+
+    colors = [];
+    generateColors(1.0, 0.5, MARBLE_COUNTS[0]);
+
     drawAll();
 }
 
@@ -334,6 +357,9 @@ function jump(x1, y1) {
     complField[y3][x3][0] = EMPTY;
     complField[y2][x2][0] = EMPTY;
     complField[y1][x1][0] = FULL;
+    complField[y1][x1][1] = complField[y2][x2][1];
+    complField[y3][x3][1] = -1;
+    complField[y2][x2][1] = -1;
     draw(x1, y1);
     draw(x2, y2);
     draw(x3, y3);
@@ -351,7 +377,7 @@ function hideCells() {
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             field = this.getField("pos" + x + "-" + y);
-            if (complField[y][x] == NONE) {
+            if (complField[y][x][0] == NONE) {
                 field.hidden = true;
             } else {
                 field.hidden = false;
@@ -383,10 +409,12 @@ function draw(x, y) {
     field.delay = true;
 
     var val = complField[y][x][0];
-    if (val != EMPTY) {
+    if (val == FULL) {
         field.value = MARBLE_SYMBOL;
+        field.textColor = colors[complField[y][x][1]];
     } else {
         field.value = "";
+        field.textColor = color.black;
     }
     field.delay = false;
 }
