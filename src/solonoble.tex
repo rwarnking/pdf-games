@@ -32,16 +32,16 @@
 % Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Solo Noble}
 
-const GAME_DESC = "The goal of this game is to generate matches. A match is defined as at least\
-three cells that contain the same symbol. To build a match the player is allowed to swap the\
-symbol of two adjacent cells. If the swap would indeed led to a match, the cells are swaped\
-and the match is removed. The free cells are refilled by the symbols of the cells above it.\
-The topmost cells are filled randomly. Chain reactions are desired.";
+const GAME_DESC = "This game consists of a field of cells. On each of these but one a marble\
+is placed. The goal is to reduce the marble count to one while placing this last marble\
+on the one cell which is empty at the beginning of the game.\
+A marble can be moved only by jumping over exactly one other marble onto an empty cell.\
+The jumped over marble is removed and it is not allowed to jump diagonal.";
 
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 200;
+const SCREEN_TEXT_WIDTH = 300;
 
 % Constants
 const ANIMATION_SPEED = 500;
@@ -57,25 +57,74 @@ var run;
 var complField = new Array();
 % Saves the last clicked cell
 var currentCell = null;
+% The index determining which field should be played
+var fieldIdx = 0;
 
 %%%%%% Field arrays %%%%
-const FIELD_1 = [
-    [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE],
-    [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
-    [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
-    [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
-    [NONE, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, NONE],
-    [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
-    [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
-    [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
-    [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE]
+const FIELDS = [
+    [ % English
+        [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
+        [NONE, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, NONE],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE]
+    ],
+    [ % European
+        [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  FULL,  FULL,  FULL,  FULL,  FULL,  NONE, NONE],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
+        [NONE, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, NONE],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
+        [NONE, NONE,  FULL,  FULL,  FULL,  FULL,  FULL,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE]
+    ],
+    [ % German
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [FULL, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, FULL],
+        [FULL, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, FULL],
+        [FULL, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, FULL],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE]
+    ],
+    [ % Asymmetrical
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, FULL],
+        [NONE, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, FULL],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, FULL],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE]
+    ],
+    [ % Diamond
+        [NONE, NONE,  NONE,  NONE,  FULL,  NONE,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  FULL,  FULL,  FULL,  FULL,  FULL,  NONE, NONE],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
+        [FULL, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, FULL],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
+        [NONE, NONE,  FULL,  FULL,  FULL,  FULL,  FULL,  NONE, NONE],
+        [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
+        [NONE, NONE,  NONE,  NONE,  FULL,  NONE,  NONE,  NONE, NONE]
+    ]
 ]
 
 % Symbol array
-const MARBLE_SYMBOL = String.fromCharCode(0x260E);
+const MARBLE_SYMBOL = String.fromCharCode(0x25CF);
 
+% How many marbles need to be placed
 const MARBLE_COUNTS = [
-    32, 0, 0
+    32, 36, 44, 38, 40
 ]
 
 % Color data
@@ -161,13 +210,15 @@ function initialise() {
     % Init the GUI
     initialiseButtons();
 
+    fieldIdx = this.getField("cmLayout").currentValueIndices;
+
     % Create the field choosing a random symbol for each field
     var idx = 0;
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         var tmp = new Array();
         for (var column = 0; column < FIELD_WIDTH; column++) {
             var cIdx = -1;
-            var cell = FIELD_1[row][column];
+            var cell = FIELDS[fieldIdx][row][column];
             if (cell == FULL) {
                 cIdx = idx;
                 idx++;
@@ -179,7 +230,7 @@ function initialise() {
 
     hideCells();
 
-    generateColors(1.0, 0.5, MARBLE_COUNTS[0]);
+    generateColors(1.0, 0.5, MARBLE_COUNTS[fieldIdx]);
 
     drawAll();
 }
@@ -196,6 +247,8 @@ function initialiseButtons() {
     % Assign each button the coresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="outline";
+
+    this.getField("cmLayout").currentValueIndices = 0;
 
     % Each field needs to be connected to an input function
     var funcName = "fieldClicked";
@@ -229,11 +282,13 @@ function restart() {
 
     currentCell = null;
 
+    fieldIdx = this.getField("cmLayout").currentValueIndices;
+
     % Create the field choosing a random symbol for each field
     var idx = 0;
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         for (var column = 0; column < FIELD_WIDTH; column++) {
-            var cell = FIELD_1[row][column];
+            var cell = FIELDS[fieldIdx][row][column];
             complField[row][column][0] = cell;
             if (cell == FULL) {
                 complField[row][column][1] = idx;
@@ -252,7 +307,7 @@ function restart() {
     hideCells();
 
     colors = [];
-    generateColors(1.0, 0.5, MARBLE_COUNTS[0]);
+    generateColors(1.0, 0.5, MARBLE_COUNTS[fieldIdx]);
 
     drawAll();
 }
@@ -546,7 +601,9 @@ function printInfoText(text) {
             \end{tcolorbox}
         \end{multicols}
 
-        \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{5, 6, 7, 8}
+        \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
+            English (33), European (37), German (45), Asymmetrical (39), Diamond (41)%
+        }
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
     \end{Form}
