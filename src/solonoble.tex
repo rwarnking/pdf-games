@@ -252,6 +252,9 @@ function initialiseButtons() {
     this.getField("solve").setAction("MouseUp", "solve();");
     this.getField("solve").highlight="outline";
 
+    this.getField("import").setAction("MouseUp", "importField();");
+    this.getField("export").setAction("MouseUp", "exportField();");
+
     this.getField("cmLayout").currentValueIndices = 0;
 
     % Each field needs to be connected to an input function
@@ -363,6 +366,8 @@ function tooltip(on) {
  * @param {Number} y The y position.
  */
 function fieldClicked(x, y, ignore=false) {
+    this.getField("info").setFocus();
+
     % Select cell if none selected
     if (currentCell === null) {
         if (complField[y][x][0] == FULL) {
@@ -433,6 +438,10 @@ function jump(x1, y1) {
     printInfoText("Jump successfull.");
 }
 
+%%%%%%%%%%
+% Solver %
+%%%%%%%%%%
+var jasd = 0;
 /**
  * Solve the current field by calculating a valid path leading to one marble in the
  * right spot (depending on start field).
@@ -457,10 +466,15 @@ function solve() {
     % Start backtracking until a solution is found
     % or all possibilities where tested.
     var solution = testSolution(movesToTry, mCount);
+
+    if (solution[0]) {
+        printInfoText(diff1 + " Sol: " + solution);
+    } else {
+        printInfoText("No solution found! " + solution[1]);
+    }
+
     drawAll();
 }
-
-var jasd = 0;
 
 /**
  * Use the current list of all valid moves to test each of them.
@@ -476,14 +490,14 @@ var jasd = 0;
 function testSolution(movesToTry, marbleCount) {
     % TODO safety check
     jasd++;
-    if (jasd == 30000) return [true, []];
+    if (jasd == 1000000) return [false, [999]];
 
     % If there is only one marble check for success
     if (marbleCount <= 1) {
         if (complField[4][4][0] == FULL) {
             return [true, []];
         } else {
-            return [false, []];
+            return [false, [111]];
         }
     }
 
@@ -594,6 +608,98 @@ function reverseMove(fromToArray) {
     complField[y3][x3][0] = FULL;
     complField[y2][x2][0] = EMPTY;
     complField[y1][x1][0] = FULL;
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Import and export %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Print a unique number to the gui as field representation.
+ */
+function exportField() {
+    this.getField("exporttxt").value = getUniqueCombination();
+    printInfoText("Exported!");
+}
+
+/**
+ * Get a number as unique field representation.
+ * Each bit representing one cell of the field.
+ * @return {Number} A representor for the field.
+ */
+function getUniqueCombination() {
+    var arrayNum = 0;
+    for (var x = 0; x < FIELD_WIDTH; x++) {
+        for (var y = 0; y < FIELD_HEIGHT; y++) {
+            if (complField[y][x][0] == NONE) {
+                continue;
+            }
+            arrayNum *= 2;
+            if (complField[y][x][0] == FULL) {
+                arrayNum += 1;
+            }
+        }
+    }
+    return arrayNum;
+}
+
+/**
+ * Read the input from the gui to generate a field from a
+ * number representation.
+ * OBACHT: Different layouts are not compatible.
+ */
+function importField() {
+    var fieldIdx = this.getField("cmLayout").currentValueIndices;
+    var combination = this.getField("importtxt").value;
+    if (MARBLE_COUNTS[fieldIdx] <= cellCount(combination)) {
+        printInfoText("Input not compatible with current selected layout.");
+        return;
+    }
+    toField(combination);
+    drawAll();
+    printInfoText("Imported!");
+}
+
+/**
+ * Uses the given field to set the cells of the displayed field.
+ * @param {Number} combination A representation of the field.
+ */
+function toField(combination) {
+    var res = combination;
+    for (var x = FIELD_WIDTH - 1; x >= 0; x--) {
+        for (var y = FIELD_HEIGHT - 1; y >= 0 ; y--) {
+            if (complField[y][x][0] == NONE) {
+                continue;
+            }
+
+            var val = res \% 2;
+            if (val == 1) {
+                complField[y][x][0] = FULL;
+                res -= 1;
+            } else {
+                complField[y][x][0] = EMPTY;
+            }
+            res = res / 2;
+        }
+    }
+}
+
+/**
+ * Get the amount of used cells that are in this field.
+ * For this the amount of ones of the binary form are counted.
+ * @param {Number} combination A number represenation of the field.
+ * @return {Number} The amount of used cells.
+ */
+function cellCount(combination) {
+    var count = 0;
+    while (combination > 0) {
+        var val = combination \% 2;
+        if (val == 1) {
+            count++;
+            combination -= 1;
+        }
+        combination = combination / 2;
+    }
+    return count;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -795,7 +901,31 @@ function printInfoText(text) {
             }
 
             \begin{tcolorbox}
-                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
+                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]{\strut}
+            \end{tcolorbox}
+        \end{multicols}
+
+        \begin{multicols}{4}
+            \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Import\strut
+                \end{tcolorbox}
+            }
+        \columnbreak
+            \begin{tcolorbox}
+                \TextField[name=importtxt, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
+            \end{tcolorbox}
+        \columnbreak
+            \PushButton[name=export, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Export\strut
+                \end{tcolorbox}
+            }
+        \columnbreak
+            \begin{tcolorbox}
+                \TextField[name=exporttxt, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
             \end{tcolorbox}
         \end{multicols}
 
