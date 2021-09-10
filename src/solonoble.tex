@@ -21,8 +21,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
-% to slow to play
 \def\fieldWidth{9}
 \def\fieldHeight{9}
 
@@ -44,7 +42,10 @@ const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 300;
 
 % Constants
-const ANIMATION_SPEED = 500;
+const ANIMATION_SPEED = 33;
+const ANIMATION_OFFSET = 0.05;
+% Index of the animation cell x and y
+const ANIM_POS = FIELD_WIDTH - 1;
 % For empty cells
 const NONE = -1;
 const EMPTY = 0;
@@ -53,12 +54,14 @@ const FULL = 1;
 % Globals
 % Animation interval variable
 var run;
+var timestep = 0.0;
 % The game field
 var complField = new Array();
 % Saves the last clicked cell
 var currentCell = null;
 % The index determining which field should be played
 var fieldIdx = 0;
+var colorEnabled = true;
 
 %%%%%%%%%% Field arrays %%%%%%%%%%
 const FIELDS = [
@@ -119,8 +122,9 @@ const FIELDS = [
     ]
 ]
 
-% Symbol array
+% Symbols
 const MARBLE_SYMBOL = String.fromCharCode(0x25CF);
+const EMPTY_SYMBOL = String.fromCharCode(0x25CB);
 
 % How many marbles need to be placed
 const MARBLE_COUNTS = [
@@ -245,6 +249,8 @@ function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
+    this.getField("cbColor").checkThisBox(0);
+
     % Assign each button the coresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="outline";
@@ -313,9 +319,13 @@ function restart() {
 
     % Hide all cells that are not part of the field
     hideCells();
-    % Generate a color for each marble
-    colors = [];
-    generateColors(1.0, 0.5, MARBLE_COUNTS[fieldIdx]);
+
+    colorEnabled = this.getField("cbColor").isBoxChecked(0);
+    if (colorEnabled) {
+        % Generate a color for each marble
+        colors = [];
+        generateColors(1.0, 0.5, MARBLE_COUNTS[fieldIdx]);
+    }
 
     drawAll();
 }
@@ -432,16 +442,72 @@ function jump(x1, y1) {
     complField[y1][x1][1] = complField[y2][x2][1];
     complField[y3][x3][1] = -1;
     complField[y2][x2][1] = -1;
-    draw(x1, y1);
-    draw(x2, y2);
-    draw(x3, y3);
-    printInfoText("Jump successfull.");
+
+    % Prepare the animation cell
+    complField[ANIM_POS][ANIM_POS][0] = FULL;
+    complField[ANIM_POS][ANIM_POS][1] = complField[y1][x1][1];
+    draw(ANIM_POS, ANIM_POS);
+
+    % Start animation
+    var callback = "jumpAnimation(" + x1 + "," + y1 + "," + x2 + "," + y2 + "," + x3 + "," + y3 + ")";
+    run = app.setInterval(callback, ANIMATION_SPEED);
+}
+
+/**
+ * Function for an animated cell. The cell is moved between two
+ * given positions by linear interpolation.
+ * The startposition and the center position are redrawn at
+ * appropriate times.
+ *
+ * @param {Number} x1 The target x position.
+ * @param {Number} y1 The target y position.
+ * @param {Number} x2 The source x position.
+ * @param {Number} y2 The source y position.
+ * @param {Number} x3 The center x position.
+ * @param {Number} y3 The center y position.
+ */
+function jumpAnimation(x1, y1, x2, y2, x3, y3) {
+    % Get animation cell
+    var field = this.getField("pos" + ANIM_POS + "-" + ANIM_POS);
+
+    % Stop animation and reset if timelimit is reached
+    if (timestep >= 1.0) {
+        timestep = 0.0;
+        draw(x1, y1);
+        field.hidden = true;
+        printInfoText("Jump successfull!");
+        app.clearInterval(run);
+        return;
+    }
+    % If precisely at the center of the line draw pos 3 (remove marble)
+    if (timestep >= 0.5 && timestep <= 0.5 + ANIMATION_OFFSET) {
+        draw(x3, y3);
+    } % Draw (remove) the start marble in the beginning
+    else if (timestep >= 0.0 && timestep <= 0.0 + ANIMATION_OFFSET) {
+        draw(x2, y2);
+    }
+
+    % Show the animation cell
+    field.hidden = false;
+
+    % Get the cells for the rectangle
+    var src = this.getField("pos" + x2 + "-" + y2);
+    var tgt = this.getField("pos" + x1 + "-" + y1);
+    % Move the rectangle
+    var rect = [0, 0, 0, 0];
+    for (var i = 0; i < 4; i++) {
+        rect[i] = tgt.rect[i] * timestep + src.rect[i] * (1.0 - timestep);
+    }
+    field.rect = rect;
+
+    timestep += ANIMATION_OFFSET;
 }
 
 %%%%%%%%%%
 % Solver %
 %%%%%%%%%%
 var jasd = 0;
+
 /**
  * Solve the current field by calculating a valid path leading to one marble in the
  * right spot (depending on start field).
@@ -747,10 +813,13 @@ function draw(x, y) {
     var val = complField[y][x][0];
     if (val == FULL) {
         field.value = MARBLE_SYMBOL;
-        %field.textColor = colors[complField[y][x][1]];
-        field.textColor = color.black;
+        if (colorEnabled) {
+            field.textColor = colors[complField[y][x][1]];
+        } else {
+            field.textColor = color.black;
+        }
     } else {
-        field.value = "";
+        field.value = EMPTY_SYMBOL;
         field.textColor = color.black;
     }
     field.delay = false;
@@ -785,7 +854,7 @@ function highlight(x, y, enable) {
     if (enable) {
         field.borderColor = HIGHLIGHT_COLOR;
     } else {
-        field.borderColor = color.white;
+        field.borderColor = color.transparent;
     }
     field.delay = false;
 }
@@ -858,7 +927,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly]{}%
+                            bordercolor=, backgroundcolor=, name=pos#1-#2, readonly]{}%
                     }\vspace{3pt}
                     \newline%
                 }%
@@ -928,6 +997,8 @@ function printInfoText(text) {
                 \TextField[name=exporttxt, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
             \end{tcolorbox}
         \end{multicols}
+
+        \CheckBox[name=cbColor, bordercolor=gray, checkboxsymbol=5]{Color}
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
     \end{Form}
