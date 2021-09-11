@@ -46,6 +46,8 @@ const ANIMATION_SPEED = 33;
 const ANIMATION_OFFSET = 0.05;
 % Index of the animation cell x and y
 const ANIM_POS = FIELD_WIDTH - 1;
+% Index of the cell that counts as a win
+const W_POS = 4;
 % For empty cells
 const NONE = -1;
 const EMPTY = 0;
@@ -59,6 +61,8 @@ var timestep = 0.0;
 var complField = new Array();
 % Saves the last clicked cell
 var currentCell = null;
+% The amount of taken cells
+var currentMarbleCount = 0;
 % The index determining which field should be played
 var fieldIdx = 0;
 var colorEnabled = true;
@@ -215,6 +219,7 @@ function initialise() {
     initialiseButtons();
     % Get the value of the choise menu
     fieldIdx = this.getField("cmLayout").currentValueIndices;
+    currentMarbleCount = MARBLE_COUNTS[fieldIdx];
 
     % Create the field using the FIELDS array data
     var idx = 0;
@@ -235,7 +240,7 @@ function initialise() {
     % Hide all cells that are not part of the field
     hideCells();
     % Generate a color for each marble
-    generateColors(1.0, 0.5, MARBLE_COUNTS[fieldIdx]);
+    generateColors(1.0, 0.5, currentMarbleCount);
 
     drawAll();
 }
@@ -296,6 +301,7 @@ function restart() {
     currentCell = null;
 
     fieldIdx = this.getField("cmLayout").currentValueIndices;
+    currentMarbleCount = MARBLE_COUNTS[fieldIdx];
 
     % Create the field choosing a random symbol for each field
     var colorIdx = 0;
@@ -324,7 +330,7 @@ function restart() {
     if (colorEnabled) {
         % Generate a color for each marble
         colors = [];
-        generateColors(1.0, 0.5, MARBLE_COUNTS[fieldIdx]);
+        generateColors(1.0, 0.5, currentMarbleCount);
     }
 
     drawAll();
@@ -427,6 +433,8 @@ function fieldClicked(x, y, ignore=false) {
  * @param {Number} y1 The y position.
  */
 function jump(x1, y1) {
+    currentMarbleCount--;
+
     var x2 = currentCell[0];
     var y2 = currentCell[1];
 
@@ -475,7 +483,16 @@ function jumpAnimation(x1, y1, x2, y2, x3, y3) {
         timestep = 0.0;
         draw(x1, y1);
         field.hidden = true;
-        printInfoText("Jump successfull!");
+        complField[ANIM_POS][ANIM_POS][0] = NONE;
+        if (getAllMoves().length > 0) {
+            printInfoText("Jump successfull!");
+        } else {
+            if (currentMarbleCount == 1 && complField[W_POS][W_POS][0] == FULL) {
+                printInfoText("Game over, you won!");
+            } else {
+                printInfoText("Game over, no moves left!");
+            }
+        }
         app.clearInterval(run);
         return;
     }
@@ -518,20 +535,12 @@ function solve() {
     jasd = 0;
 
     % Get movesToTry for all marbles and marble count
-    var movesToTry = [];
-    var mCount = 0;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (complField[y][x][0] == FULL) {
-                movesToTry = movesToTry.concat(getMoves([x, y]));
-                mCount++;
-            }
-        }
-    }
+    var movesToTry = getAllMoves();
+
 
     % Start backtracking until a solution is found
     % or all possibilities where tested.
-    var solution = testSolution(movesToTry, mCount);
+    var solution = testSolution(movesToTry, currentMarbleCount);
 
     if (solution[0]) {
         printInfoText(diff1 + " Sol: " + solution);
@@ -560,7 +569,7 @@ function testSolution(movesToTry, marbleCount) {
 
     % If there is only one marble check for success
     if (marbleCount <= 1) {
-        if (complField[4][4][0] == FULL) {
+        if (complField[W_POS][W_POS][0] == FULL) {
             return [true, []];
         } else {
             return [false, [111]];
@@ -683,6 +692,10 @@ function reverseMove(fromToArray) {
  * Print a unique number to the gui as field representation.
  */
 function exportField() {
+    if (timestep != 0.0) {
+        printInfoText("Can not export while jumping!");
+        return;
+    }
     this.getField("exporttxt").value = getUniqueCombination();
     printInfoText("Exported!");
 }
@@ -716,7 +729,7 @@ function getUniqueCombination() {
 function importField() {
     var fieldIdx = this.getField("cmLayout").currentValueIndices;
     var combination = this.getField("importtxt").value;
-    if (MARBLE_COUNTS[fieldIdx] <= cellCount(combination)) {
+    if (MARBLE_COUNTS[fieldIdx] < cellCount(combination)) {
         printInfoText("Input not compatible with current selected layout.");
         return;
     }
@@ -927,7 +940,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=, backgroundcolor=, name=pos#1-#2, readonly]{}%
+                            bordercolor=, backgroundcolor=, name=pos#1-#2, readonly]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline%
                 }%
