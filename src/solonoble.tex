@@ -54,7 +54,7 @@ const EMPTY = 0;
 const FULL = 1;
 
 % Globals
-% Animation interval variable
+% Animation interval variable for jumping
 var run;
 var timestep = 0.0;
 % The game field
@@ -66,6 +66,12 @@ var currentMarbleCount = 0;
 % The index determining which field should be played
 var fieldIdx = 0;
 var colorEnabled = true;
+% Animation variable for solution
+var runSol;
+% Saving current solving step
+var exeIndex = 0;
+% The array of moves to execute/apply to the field
+var exeMoves = [];
 
 %%%%%%%%%% Field arrays %%%%%%%%%%
 const FIELDS = [
@@ -125,6 +131,19 @@ const FIELDS = [
         [NONE, NONE,  NONE,  NONE,  FULL,  NONE,  NONE,  NONE, NONE]
     ]
 ]
+
+%%%%%%%%%% Solutions %%%%%%%%%%
+%var solString = "ex,lj,ck,Pf,DP,GI,JH,mG,GI,ik,gi,LJ,JH,Hl,lj,jh,CK,pF,AC,CK,Mg,gi,ac,ck,kI,dp,pF,FD,DP,Pp,ox";
+%var solString = "ex,lj,xe/hj,Ki,jh/ai,ca,fd,hj,ai,jh/MK,gM,hL,Fp,MK,pF/CK,DF,AC,JL,CK,LJ/PD,GI,mG,JH,GI,DP/Ox";
+var solMoves = [
+    [6, 4, 4, 4], [5, 6, 5, 4], [7, 5, 5, 5], [7, 3, 7, 5], [5, 4, 5, 6],
+    [5, 7, 5, 5], [5, 3, 7, 3], [5, 1, 5, 3], [4, 5, 6, 5], [7, 5, 5, 5],
+    [4, 7, 4, 5], [4, 5, 6, 5], [4, 3, 4, 5], [4, 1, 4, 3], [4, 3, 6, 3],
+    [7, 3, 5, 3], [3, 5, 5, 5], [6, 5, 4, 5], [3, 7, 3, 5], [3, 4, 3, 6],
+    [2, 3, 4, 3], [3, 1, 3, 3], [1, 5, 3, 5], [4, 5, 2, 5], [1, 3, 1, 5],
+    [1, 5, 3, 5], [3, 6, 3, 4], [3, 4, 3, 2], [5, 3, 3, 3], [3, 2, 3, 4],
+    [2, 4, 4, 4]
+];
 
 % Symbols
 const MARBLE_SYMBOL = String.fromCharCode(0x25CF);
@@ -260,11 +279,13 @@ function initialiseButtons() {
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="outline";
 
-    this.getField("solve").setAction("MouseUp", "solve();");
-    this.getField("solve").highlight="outline";
+    this.getField("showSol").setAction("MouseUp", "showSolution();");
+    this.getField("showSol").highlight="outline";
 
     this.getField("import").setAction("MouseUp", "importField();");
     this.getField("export").setAction("MouseUp", "exportField();");
+
+    this.getField("exmoves").setAction("MouseUp", "executeMoves();");
 
     this.getField("cmLayout").currentValueIndices = 0;
 
@@ -297,6 +318,12 @@ function initialiseButtons() {
  */
 function restart() {
     printInfoText("Restart");
+
+    % Stop showing solution if in process
+    if (exeIndex != 0) {
+        app.clearInterval(runSol);
+        exeIndex = 0;
+    }
 
     currentCell = null;
 
@@ -384,6 +411,11 @@ function tooltip(on) {
 function fieldClicked(x, y, ignore=false) {
     this.getField("info").setFocus();
 
+    if (timestep != 0.0) {
+        printInfoText("Please wait for animation.");
+        return;
+    }
+
     % Select cell if none selected
     if (currentCell === null) {
         if (complField[y][x][0] == FULL) {
@@ -408,7 +440,7 @@ function fieldClicked(x, y, ignore=false) {
             if (complField[y][x][0] == EMPTY) {
                 var x2 = x + diffX / 2;
                 var y2 = y + diffY / 2;
-
+                % Actually do stuff
                 if (complField[y2][x2][0] == FULL) {
                     highlight(currentCell[0], currentCell[1], false);
                     jump(x, y);
@@ -438,6 +470,7 @@ function jump(x1, y1) {
     var x2 = currentCell[0];
     var y2 = currentCell[1];
 
+    % Calculate cell in between
     var diffX = x2 - x1;
     var diffY = y2 - y1;
     var x3 = x1 + diffX / 2;
@@ -520,84 +553,142 @@ function jumpAnimation(x1, y1, x2, y2, x3, y3) {
     timestep += ANIMATION_OFFSET;
 }
 
-%%%%%%%%%%
-% Solver %
-%%%%%%%%%%
-var jasd = 0;
-
+%%%%%%%%%%%%%%%%%
+% Show Solution %
+%%%%%%%%%%%%%%%%%
 /**
- * Solve the current field by calculating a valid path leading to one marble in the
- * right spot (depending on start field).
- * This is done by backtracking and testing possible moves.
+ * Show a predefined solution for the start field.
+ * Checking all possible moves like here
  * https://ece.uwaterloo.ca/~dwharder/aads/Algorithms/Backtracking/Peg_solitaire/
+ * does not work for performance reasons.
  */
-function solve() {
-    jasd = 0;
-
-    % Get movesToTry for all marbles and marble count
-    var movesToTry = getAllMoves();
-
-
-    % Start backtracking until a solution is found
-    % or all possibilities where tested.
-    var solution = testSolution(movesToTry, currentMarbleCount);
-
-    if (solution[0]) {
-        printInfoText(diff1 + " Sol: " + solution);
-    } else {
-        printInfoText("No solution found! " + solution[1]);
+function showSolution() {
+    % Prevent double execution due to multiple clicks on the gui
+    if (exeIndex != 0) {
+        printInfoText("Solution already running!");
+        return;
     }
+    % Restart to ensure all marbles being there
+    restart();
+
+    exeMoves = solMoves;
+    % Start animation
+    var callback = "animateMoves()";
+    runSol = app.setInterval(callback, ANIMATION_SPEED * (1.1 / ANIMATION_OFFSET));
 
     drawAll();
 }
 
 /**
- * Use the current list of all valid moves to test each of them.
- * After a move is made the field is evaluated again until
- * the solution is either valid or confirmed as wrong.
- * Should the solution be wrong the move is reversed
- * and another move is tested.
- * Should no moves be left the field has no solution.
- *
- * @param {Array} movesToTry A list of currently valid moves.
- * @param {Number} marbleCount The current amount of marbles on the field.
+ * Apply a specified sequence of moves to the field.
+ * The moves need to be given via the GUI and need to be
+ * in character-notation. It is possible to give any
+ * number of moves.
  */
-function testSolution(movesToTry, marbleCount) {
-    % TODO safety check
-    jasd++;
-    if (jasd == 1000000) return [false, [999]];
-
-    % If there is only one marble check for success
-    if (marbleCount <= 1) {
-        if (complField[W_POS][W_POS][0] == FULL) {
-            return [true, []];
-        } else {
-            return [false, [111]];
-        }
+function executeMoves() {
+    % Reset focus since the button would yield the txt window inoperative
+    this.getField("exmovestxt").setFocus();
+    % Prevent double execution due to multiple clicks on the gui
+    if (exeIndex != 0) {
+        printInfoText("Moves are already executed!");
+        return;
+    }
+    % Obacht: Does only work for english and european layout!
+    var fieldIdx = this.getField("cmLayout").currentValueIndices;
+    if (fieldIdx > 1) {
+        printInfoText("Cant execute moves for the selected layout!");
+        return;
     }
 
-    % Try one move after the other
-    var triedMoves = [];
-    while (movesToTry.length > 0) {
-        var move = movesToTry.pop();
-
-        makeMove(move);
-
-        % Get all new possible moves
-        var newMoves = getAllMoves();
-
-        var result = testSolution(newMoves, marbleCount-1);
-        if (result[0]) {
-            % Create finished path
-            triedMoves.push(move);
-            triedMoves = triedMoves.concat(result[1]);
-            return [true, triedMoves];
-        } else {
-            reverseMove(move);
-        }
+    % Convert move string
+    var moveSequence = this.getField("exmovestxt").value;
+    exeMoves = stringToSolution(moveSequence);
+    % Check for error
+    if (exeMoves[0][0] == 0) {
+        printInfoText("Moves not parseable!");
+        return;
     }
 
-    return [false, []];
+    var callback = "animateMoves()";
+    runSol = app.setInterval(callback, ANIMATION_SPEED * (1.1 / ANIMATION_OFFSET));
+
+    drawAll();
+}
+
+/**
+ * Animates the current move (exeIndex) from the exeMoves array.
+ * The same function is called as if the cells are would be clicked on.
+ * Clears the intervall after applying all steps.
+ */
+function animateMoves() {
+    % Security measure to ensure no execution while move animation is running
+    if (timestep != 0.0) {
+        return;
+    }
+    % Stop the animation
+    if (exeIndex >= exeMoves.length) {
+        exeIndex = 0;
+        app.clearInterval(runSol);
+        return;
+    }
+    % Execute move by simulate a click on the cells
+    fieldClicked(exeMoves[exeIndex][0], exeMoves[exeIndex][1]);
+    fieldClicked(exeMoves[exeIndex][2], exeMoves[exeIndex][3]);
+    % Reset the cell state if the move was not executable
+    currentCell = null;
+    highlight(exeMoves[exeIndex][0], exeMoves[exeIndex][1], false);
+    highlight(exeMoves[exeIndex][2], exeMoves[exeIndex][3], false);
+    exeIndex++;
+}
+
+/**
+ * Converts a given string into a sequence of array positions.
+ * The string needs to refere to the cells via character notation.
+ * Obacht: Does only work for english and european layout!
+ * @param {String} moveSequence The sequence of moves to convert.
+ * @return {Array} An array of fromTo positions or [[0]] if not parseable.
+ */
+function stringToSolution(moveSequence) {
+    var toIdx = function toIdx(cell) {
+        % The char notation table
+        var charRep = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 'a', 'b', 'c', 0, 0, 0],
+            [0, 0, 'y', 'd', 'e', 'f', 'z', 0, 0],
+            [0, 'g', 'h', 'i', 'j', 'k', 'l', 'm', 0],
+            [0, 'n', 'o', 'p', 'x', 'P', 'O', 'N', 0],
+            [0, 'M', 'L', 'K', 'J', 'I', 'H', 'G', 0],
+            [0, 0, 'Z', 'F', 'E', 'D', 'Y', 0, 0],
+            [0, 0, 0, 'C', 'B', 'A', 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ];
+        % Search for the currently wanted char in the table
+        % and return its coordinates
+        for (var y = 0; y < charRep.length; y++) {
+            for (var x = 0; x < charRep[y].length; x++) {
+                if (cell == charRep[y][x]) {
+                    return [x, y];
+                }
+            }
+        }
+        % Indicate error if not found
+        return [0];
+    }
+
+    var result = [];
+    var moves = moveSequence.split(/[,\/]/);
+    for (var i = 0; i < moves.length; i++) {
+        var from = toIdx(moves[i][0]);
+        var to = toIdx(moves[i][1]);
+        % Indicate error if not found
+        if (from[0] == 0 || to[0] == 0 || moves[i].length != 2) {
+            return [[0]];
+        }
+        % Create a fromTo move array
+        result.push([from[0], from[1], to[0], to[1]]);
+    }
+
+    return result;
 }
 
 /**
@@ -630,6 +721,7 @@ function getMoves(marble) {
     var y = marble[1];
     var moves = [];
 
+    % Check each of the four directions + out of bounds
     if (x + 2 < FIELD_WIDTH && complField[y][x + 2][0] == EMPTY && complField[y][x + 1][0] == FULL) {
         moves.push([x, y, x + 2, y]);
     }
@@ -645,46 +737,6 @@ function getMoves(marble) {
     return moves;
 }
 
-/**
- * Execute the given move.
- * @param {Array} fromToArray Containing the x,y pos for source and target.
- */
-function makeMove(fromToArray) {
-    var x1 = fromToArray[0];
-    var y1 = fromToArray[1];
-    var x2 = fromToArray[2];
-    var y2 = fromToArray[3];
-
-    var diffX = x2 - x1;
-    var diffY = y2 - y1;
-    var x3 = x1 + diffX / 2;
-    var y3 = y1 + diffY / 2;
-
-    complField[y3][x3][0] = EMPTY;
-    complField[y2][x2][0] = FULL;
-    complField[y1][x1][0] = EMPTY;
-}
-
-/**
- * Reverse the given move.
- * @param {Array} fromToArray Containing the x,y pos for source and target.
- */
-function reverseMove(fromToArray) {
-    var x1 = fromToArray[0];
-    var y1 = fromToArray[1];
-    var x2 = fromToArray[2];
-    var y2 = fromToArray[3];
-
-    var diffX = x2 - x1;
-    var diffY = y2 - y1;
-    var x3 = x1 + diffX / 2;
-    var y3 = y1 + diffY / 2;
-
-    complField[y3][x3][0] = FULL;
-    complField[y2][x2][0] = EMPTY;
-    complField[y1][x1][0] = FULL;
-}
-
 %%%%%%%%%%%%%%%%%%%%%
 % Import and export %
 %%%%%%%%%%%%%%%%%%%%%
@@ -692,6 +744,8 @@ function reverseMove(fromToArray) {
  * Print a unique number to the gui as field representation.
  */
 function exportField() {
+    % Reset focus since the button would yield the txt window inoperative
+    this.getField("exporttxt").setFocus();
     if (timestep != 0.0) {
         printInfoText("Can not export while jumping!");
         return;
@@ -712,6 +766,7 @@ function getUniqueCombination() {
             if (complField[y][x][0] == NONE) {
                 continue;
             }
+            % Shift operation do not work - to many bits needed
             arrayNum *= 2;
             if (complField[y][x][0] == FULL) {
                 arrayNum += 1;
@@ -727,6 +782,14 @@ function getUniqueCombination() {
  * OBACHT: Different layouts are not compatible.
  */
 function importField() {
+    % Stop showing solution if in process
+    if (exeIndex != 0) {
+        app.clearInterval(runSol);
+        exeIndex = 0;
+    }
+
+    % Reset focus since the button would yield the txt window inoperative
+    this.getField("importtxt").setFocus();
     var fieldIdx = this.getField("cmLayout").currentValueIndices;
     var combination = this.getField("importtxt").value;
     if (MARBLE_COUNTS[fieldIdx] < cellCount(combination)) {
@@ -744,6 +807,7 @@ function importField() {
  */
 function toField(combination) {
     var res = combination;
+    % Iterate from back to front because of leading zeros
     for (var x = FIELD_WIDTH - 1; x >= 0; x--) {
         for (var y = FIELD_HEIGHT - 1; y >= 0 ; y--) {
             if (complField[y][x][0] == NONE) {
@@ -770,6 +834,7 @@ function toField(combination) {
  */
 function cellCount(combination) {
     var count = 0;
+    % Get one bit after the other
     while (combination > 0) {
         var val = combination \% 2;
         if (val == 1) {
@@ -956,62 +1021,78 @@ function printInfoText(text) {
             \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
         }
 
+        \renewcommand*{\LayoutCheckField}[2]{#1 #2}
+        \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        \renewcommand*{\LayoutCheckField}[2]{%
+            \parbox[c][\DefaultHeightofCheckBox]{0.12\linewidth}{#1}\enspace%
+            \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}%
+        }
+
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+
         %%%%%%%%%%%%%%%%
         % GUI elements %
         %%%%%%%%%%%%%%%%
         \begin{multicols}{2}
-            \begin{tcolorbox}
-                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
-                    English (33), European (37), German (45), Asymmetrical (39), Diamond (41)%
-                }
-            \end{tcolorbox}
 
             \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
                     Restart game\strut{}
                 \end{tcolorbox}
-            }
+            }\vspace{0.1cm}
 
-            \columnbreak
-
-            \PushButton[name=solve, bordercolor=, backgroundcolor=, borderwidth=0]{
+            \PushButton[name=exmoves, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
-                    Solve game\strut
+                    Execute moves: \strut{}
+                    \TextField[name=exmovestxt, bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
+                \end{tcolorbox}
+            }\vspace{0.1cm}
+
+            \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Import field: \strut{}
+                    \TextField[name=importtxt, bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
+                \end{tcolorbox}
+            }%
+
+            \begin{tcolorbox}
+                \centering
+                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
+                    English (33), European (37), German (45), Asymmetrical (39), Diamond (41)%
+                }
+            \end{tcolorbox}
+
+            \columnbreak%
+
+            \PushButton[name=showSol, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Restart and show full solution\strut{}
                 \end{tcolorbox}
             }
 
             \begin{tcolorbox}
                 \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]{\strut}
             \end{tcolorbox}
-        \end{multicols}
 
-        \begin{multicols}{4}
-            \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
-                \begin{tcolorbox}
-                    \centering
-                    Import\strut
-                \end{tcolorbox}
-            }
-        \columnbreak
-            \begin{tcolorbox}
-                \TextField[name=importtxt, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
-            \end{tcolorbox}
-        \columnbreak
             \PushButton[name=export, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
-                    Export\strut
+                    Export field: \strut{}
+                    \TextField[name=exporttxt, bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }
-        \columnbreak
-            \begin{tcolorbox}
-                \TextField[name=exporttxt, width=2\linewidth, bordercolor=, backgroundcolor=]{\strut}
-            \end{tcolorbox}
-        \end{multicols}
 
-        \CheckBox[name=cbColor, bordercolor=gray, checkboxsymbol=5]{Color}
+            \begin{tcolorbox}
+                \CheckBox[name=cbColor, bordercolor=gray, checkboxsymbol=5]{Color}
+            \end{tcolorbox}
+
+        \end{multicols}
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
     \end{Form}
