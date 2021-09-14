@@ -47,7 +47,8 @@ const ANIMATION_OFFSET = 0.05;
 % Index of the animation cell x and y
 const ANIM_POS = FIELD_WIDTH - 1;
 % Index of the cell that counts as a win
-const W_POS = 4;
+const W_POS_X = [4, 4, 4, 4, 4];
+const W_POS_Y = [4, 2, 4, 4, 4];
 % For empty cells
 const NONE = -1;
 const EMPTY = 0;
@@ -90,8 +91,8 @@ const FIELDS = [
         [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE],
         [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
         [NONE, NONE,  FULL,  FULL,  FULL,  FULL,  FULL,  NONE, NONE],
-        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
         [NONE, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, NONE],
+        [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
         [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
         [NONE, NONE,  FULL,  FULL,  FULL,  FULL,  FULL,  NONE, NONE],
         [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
@@ -124,7 +125,7 @@ const FIELDS = [
         [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
         [NONE, NONE,  FULL,  FULL,  FULL,  FULL,  FULL,  NONE, NONE],
         [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
-        [FULL, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, FULL],
+        [NONE, FULL,  FULL,  FULL, EMPTY,  FULL,  FULL,  FULL, NONE],
         [NONE, FULL,  FULL,  FULL,  FULL,  FULL,  FULL,  FULL, NONE],
         [NONE, NONE,  FULL,  FULL,  FULL,  FULL,  FULL,  NONE, NONE],
         [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
@@ -133,16 +134,56 @@ const FIELDS = [
 ]
 
 %%%%%%%%%% Solutions %%%%%%%%%%
-%var solString = "ex,lj,ck,Pf,DP,GI,JH,mG,GI,ik,gi,LJ,JH,Hl,lj,jh,CK,pF,AC,CK,Mg,gi,ac,ck,kI,dp,pF,FD,DP,Pp,ox";
-%var solString = "ex,lj,xe/hj,Ki,jh/ai,ca,fd,hj,ai,jh/MK,gM,hL,Fp,MK,pF/CK,DF,AC,JL,CK,LJ/PD,GI,mG,JH,GI,DP/Ox";
 var solMoves = [
-    [6, 4, 4, 4], [5, 6, 5, 4], [7, 5, 5, 5], [7, 3, 7, 5], [5, 4, 5, 6],
-    [5, 7, 5, 5], [5, 3, 7, 3], [5, 1, 5, 3], [4, 5, 6, 5], [7, 5, 5, 5],
-    [4, 7, 4, 5], [4, 5, 6, 5], [4, 3, 4, 5], [4, 1, 4, 3], [4, 3, 6, 3],
-    [7, 3, 5, 3], [3, 5, 5, 5], [6, 5, 4, 5], [3, 7, 3, 5], [3, 4, 3, 6],
-    [2, 3, 4, 3], [3, 1, 3, 3], [1, 5, 3, 5], [4, 5, 2, 5], [1, 3, 1, 5],
-    [1, 5, 3, 5], [3, 6, 3, 4], [3, 4, 3, 2], [5, 3, 3, 3], [3, 2, 3, 4],
-    [2, 4, 4, 4]
+    [ % English
+        [6, 4, 4, 4], [5, 6, 5, 4], [7, 5, 5, 5], [7, 3, 7, 5], [5, 4, 5, 6],
+        [5, 7, 5, 5], [5, 3, 7, 3], [5, 1, 5, 3], [4, 5, 6, 5], [7, 5, 5, 5],
+        [4, 7, 4, 5], [4, 5, 6, 5], [4, 3, 4, 5], [4, 1, 4, 3], [4, 3, 6, 3],
+        [7, 3, 5, 3], [3, 5, 5, 5], [6, 5, 4, 5], [3, 7, 3, 5], [3, 4, 3, 6],
+        [2, 3, 4, 3], [3, 1, 3, 3], [1, 5, 3, 5], [4, 5, 2, 5], [1, 3, 1, 5],
+        [1, 5, 3, 5], [3, 6, 3, 4], [3, 4, 3, 2], [5, 3, 3, 3], [3, 2, 3, 4],
+        [2, 4, 4, 4]
+    ],
+    [ % European
+        [2, 3, 4, 3], [3, 1, 3, 3], [2, 5, 2, 3], [4, 5, 2, 5], [4, 3, 4, 5],
+        [5, 2, 3, 2], [2, 3, 4, 3], [5, 1, 3, 1], [5, 5, 3, 5], [5, 4, 5, 2],
+        [4, 7, 4, 5], [2, 2, 4, 2], [7, 5, 5, 5], [2, 6, 2, 4], [7, 3, 5, 3],
+        [5, 2, 3, 2], [3, 1, 3, 3], [7, 4, 5, 4], [4, 5, 2, 5], [3, 7, 3, 5],
+        [4, 3, 2, 3], [2, 5, 4, 5], [6, 6, 4, 6], [1, 3, 3, 3], [3, 3, 3, 5],
+        [5, 4, 5, 6], [4, 5, 2, 5], [1, 4, 3, 4], [5, 7, 5, 5], [1, 5, 3, 5],
+        [3, 4, 3, 6], [3, 6, 5, 6], [5, 6, 5, 4], [5, 4, 5, 2], [6, 2, 4, 2]
+    ],
+    [ % German
+        [4, 2, 4, 4], [2, 3, 4, 3], [3, 5, 3, 3], [3, 2, 3, 4], [3, 0, 3, 2],
+        [1, 5, 3, 5], [3, 5, 3, 3], [3, 3, 3, 1], [0, 3, 2, 3], [2, 3, 2, 5],
+        [5, 5, 3, 5], [3, 5, 1, 5], [3, 7, 3, 5], [5, 6, 3, 6], [5, 8, 5, 6],
+        [7, 5, 5, 5], [5, 5, 5, 7], [3, 8, 5, 8], [5, 8, 5, 6], [6, 3, 6, 5],
+        [8, 3, 6, 3], [5, 3, 7, 3], [8, 5, 8, 3], [8, 3, 6, 3], [0, 5, 2, 5],
+        [2, 5, 4, 5], [5, 0, 3, 0], [3, 0, 3, 2], [5, 1, 3, 1], [3, 1, 3, 3],
+        [3, 3, 5, 3], [5, 3, 7, 3], [7, 3, 7, 5], [7, 5, 5, 5], [5, 5, 3, 5],
+        [3, 5, 3, 7], [3, 7, 5, 7], [5, 7, 5, 5], [5, 5, 5, 3], [5, 2, 5, 4],
+        [5, 4, 3, 4], [0, 4, 2, 4], [2, 4, 4, 4]
+    ],
+    [ % Asymmetrical
+        [4, 2, 4, 4], [4, 0, 4, 2], [6, 3, 4, 3], [8, 3, 6, 3], [8, 5, 8, 3],
+        [7, 5, 7, 3], [5, 4, 7, 4], [5, 5, 7, 5], [7, 3, 5, 3], [7, 5, 7, 3],
+        [8, 3, 6, 3], [5, 2, 5, 4], [3, 3, 5, 3], [6, 3, 4, 3], [4, 4, 6, 4],
+        [2, 4, 4, 4], [1, 3, 3, 3], [3, 2, 3, 4], [3, 0, 3, 2], [4, 4, 2, 4],
+        [1, 4, 3, 4], [3, 5, 3, 3], [5, 0, 5, 2], [3, 7, 3, 5], [3, 5, 5, 5],
+        [1, 5, 3, 5], [5, 7, 3, 7], [3, 2, 3, 4], [3, 4, 3, 6], [3, 7, 3, 5],
+        [5, 6, 3, 6], [3, 6, 3, 4], [4, 2, 4, 4], [3, 4, 5, 4], [5, 5, 5, 3],
+        [5, 2, 5, 4], [6, 4, 4, 4]
+    ],
+    [ % Diamond http://recmath.org/pegsolitaire/gif/Hermarys23Move.gif
+        [4, 2, 4, 4], [4, 5, 4, 3], [4, 7, 4, 5], [6, 2, 4, 2], [6, 6, 4, 6],
+        [5, 4, 5, 2], [4, 5, 4, 7], [5, 1, 5, 3], [2, 6, 4, 6], [3, 4, 3, 6],
+        [3, 7, 3, 5], [3, 2, 3, 4], [3, 4, 3, 6], [3, 6, 5, 6], [5, 6, 5, 4],
+        [5, 4, 5, 2], [5, 2, 3, 2], [1, 5, 3, 5], [7, 5, 5, 5], [7, 3, 5, 3],
+        [3, 1, 3, 3], [4, 0, 4, 2], [1, 4, 3, 4], [3, 4, 3, 2], [3, 2, 5, 2],
+        [5, 2, 5, 4], [5, 4, 5, 6], [1, 3, 3, 3], [5, 7, 5, 5], [4, 8, 4, 6],
+        [7, 4, 5, 4], [5, 4, 5, 6], [5, 6, 3, 6], [3, 6, 3, 4], [3, 4, 3, 2],
+        [2, 2, 4, 2], [4, 2, 4, 4]
+    ]
 ];
 
 % Symbols
@@ -520,7 +561,8 @@ function jumpAnimation(x1, y1, x2, y2, x3, y3) {
         if (getAllMoves().length > 0) {
             printInfoText("Jump successfull!");
         } else {
-            if (currentMarbleCount == 1 && complField[W_POS][W_POS][0] == FULL) {
+            var lastPos = complField[W_POS_Y[fieldIdx]][W_POS_X[fieldIdx]][0] == FULL;
+            if (currentMarbleCount == 1 && lastPos) {
                 printInfoText("Game over, you won!");
             } else {
                 printInfoText("Game over, no moves left!");
@@ -571,7 +613,8 @@ function showSolution() {
     % Restart to ensure all marbles being there
     restart();
 
-    exeMoves = solMoves;
+    var fieldIdx = this.getField("cmLayout").currentValueIndices;
+    exeMoves = solMoves[fieldIdx];
     % Start animation
     var callback = "animateMoves()";
     runSol = app.setInterval(callback, ANIMATION_SPEED * (1.1 / ANIMATION_OFFSET));
@@ -1063,7 +1106,7 @@ function printInfoText(text) {
             \begin{tcolorbox}
                 \centering
                 \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
-                    English (33), European (37), German (45), Asymmetrical (39), Diamond (41)%
+                    English (33), European (37), German (45), Asymmetrical (39), Hermary (39)%
                 }
             \end{tcolorbox}
 
