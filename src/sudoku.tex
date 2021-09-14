@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -30,7 +28,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Sudoku}
 
 const GAME_DESC = "Sudoku is a logic-based number-placement puzzle.\
@@ -713,7 +710,7 @@ function printInfoText(text) {
         \end{multicols}
 
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3 + \fieldWidth * 3)}
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
         \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
@@ -730,32 +727,53 @@ function printInfoText(text) {
         \begin{tcolorbox}
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                        \ifnum#2=3%
+                            \vspace{-12pt}%
+                            \noindent\rule[13pt]{\linewidth}{1pt}
+                        \fi%
+                        \ifnum#2=6%
+                            \vspace{-12pt}%
+                            \noindent\rule[13pt]{\linewidth}{1pt}
+                        \fi%
+                    \vspace{1pt}%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
                             bordercolor=white, name=pos#1-#2]{}%
                         %
+                        \hspace{2pt}%
                         \ifnum#1=2%
-                            \vspace{1pt}%
+                            %\vspace{1pt}%
                             \vrule width 1pt%
                         \fi%
                         \ifnum#1=5%
-                            \vspace{1pt}%
+                            %\vspace{1pt}%
                             \vrule width 1pt%
                         \fi%
-                    }\vspace{3pt}
-                    \ifnum#2=2
-                        \noindent\rule{\textwidth}{1pt}
-                    \fi
-                    \ifnum#2=5
-                        \noindent\rule{\textwidth}{1pt}
-                    \fi
+                        \hspace{2pt}%
+                    }\vspace{1pt}%
                     \newline%
                 }%
             \end{flushright}%
         \end{tcolorbox}
         %
-        \ChoiceMenu[name=elemcount, width=50mm, combo]{Fullfield count:}{15, 30, 45, 60, 75}
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \def\DefaultHeightofText{14pt}
+        \renewcommand*{\LayoutTextField}[2]{%
+            \parbox[c][\DefaultHeightofText]{\linewidth}{#1#2}%
+        }
+
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%
+        \ChoiceMenu[name=elemcount, bordercolor=gray, width=50mm, combo]
+            {Fullfield count:}{15, 30, 45, 60, 75}
         \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
         %
         \begin{center}%

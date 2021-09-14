@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -30,7 +28,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{ascii_donut}
 
 const GAME_DESC = "This application uses ascii characters to visualise\
@@ -307,8 +304,9 @@ function draw() {
             \begin{flushright}
             \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    %\TextField[width=\blocksizeW, bordercolor=white, name=pos#1-#2, readonly=true]{}%
-                    \TextField[width=10pt, height=10pt, bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                    \TextField[%
+                        width=10pt, height=10pt, bordercolor=white, name=pos#1-#2, readonly=true%
+                    ]{}\hspace{3pt}%
                 }\vspace{3pt}
                 \newline
             }

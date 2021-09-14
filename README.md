@@ -67,6 +67,9 @@ where not tested and may not be able to run the javascript.
 For more detail on the different games and how the program similar projects,
 take a look into the [wiki](https://github.com/rwarnking/pdf-games/wiki) of this project.
 
+OBACHT: Different compiler might leed to different outputs for example regarding spacing.
+The here used compilter was `pdfLaTeX` with TeX live version 2020.
+
 ## Contributing
 
 I encourage you to contribute to this project, in form of bug reports, feature requests

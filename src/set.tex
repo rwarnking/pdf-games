@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -35,7 +33,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Set}
 
 const GAME_DESC = "In this game you are shown a selection from 81 cards with symbols on them.\
@@ -779,7 +776,8 @@ function printInfoText(text) {
                     \PushButton[name=player#1, bordercolor=white]{
                         \begin{tcolorbox}
                             \centering
-                            \TextField[name=points#1, height=0.35cm, width=0.5cm, readonly=true]{Player #1:}
+                            \TextField[name=points#1, height=0.35cm, width=0.5cm, readonly=true]
+                                {Player #1:}
                         \end{tcolorbox}
                     }
                     % Have the cell divider for all elements
