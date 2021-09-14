@@ -450,7 +450,7 @@ function tooltip(on) {
  * @param {Number} y The y position.
  */
 function fieldClicked(x, y, ignore=false) {
-    this.getField("info").setFocus();
+    this.getField("exporttxt").setFocus();
 
     if (timestep != 0.0) {
         printInfoText("Please wait for animation.");
@@ -625,8 +625,8 @@ function showSolution() {
 /**
  * Apply a specified sequence of moves to the field.
  * The moves need to be given via the GUI and need to be
- * in character-notation. It is possible to give any
- * number of moves.
+ * in character-notation or matrix-notation (m1:n1-m2:n2).
+ * It is possible to give any number of moves.
  */
 function executeMoves() {
     % Reset focus since the button would yield the txt window inoperative
@@ -634,12 +634,6 @@ function executeMoves() {
     % Prevent double execution due to multiple clicks on the gui
     if (exeIndex != 0) {
         printInfoText("Moves are already executed!");
-        return;
-    }
-    % Obacht: Does only work for english and european layout!
-    var fieldIdx = this.getField("cmLayout").currentValueIndices;
-    if (fieldIdx > 1) {
-        printInfoText("Cant execute moves for the selected layout!");
         return;
     }
 
@@ -720,15 +714,43 @@ function stringToSolution(moveSequence) {
 
     var result = [];
     var moves = moveSequence.split(/[,\/]/);
-    for (var i = 0; i < moves.length; i++) {
-        var from = toIdx(moves[i][0]);
-        var to = toIdx(moves[i][1]);
-        % Indicate error if not found
-        if (from[0] == 0 || to[0] == 0 || moves[i].length != 2) {
-            return [[0]];
+
+    % Check for notation type
+    if (moves[0][0] >= '0' && moves[0][0] <= '9') {
+        for (var x = 0; x < moves.length; x++) {
+            % Get both positions
+            var pos = moves[x].split("-");
+            % Indicate error
+            if (pos.length != 2) {
+                return [[0]];
+            }
+            % Get coordinates
+            var from = pos[0].split(":");
+            var to = pos[1].split(":");
+            % Indicate error
+            if (from.length != 2 || to.length != 2) {
+                return [[0]];
+            }
+
+            % Care input x, y are swapped
+            result.push([
+                parseInt(from[1], 10) + 1,
+                parseInt(from[0], 10) + 1,
+                parseInt(to[1], 10) + 1,
+                parseInt(to[0], 10) + 1
+            ]);
         }
-        % Create a fromTo move array
-        result.push([from[0], from[1], to[0], to[1]]);
+    } else {
+        for (var i = 0; i < moves.length; i++) {
+            var from = toIdx(moves[i][0]);
+            var to = toIdx(moves[i][1]);
+            % Indicate error if not found
+            if (from[0] == 0 || to[0] == 0 || moves[i].length != 2) {
+                return [[0]];
+            }
+            % Create a fromTo move array
+            result.push([from[0], from[1], to[0], to[1]]);
+        }
     }
 
     return result;
