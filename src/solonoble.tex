@@ -15,7 +15,6 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -27,7 +26,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Solo Noble}
 
 const GAME_DESC = "This game consists of a field of cells. On each of these but one a marble\
@@ -1113,7 +1111,8 @@ function printInfoText(text) {
                 \begin{tcolorbox}
                     \centering
                     Execute moves: \strut{}
-                    \TextField[name=exmovestxt, bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
+                    \TextField[name=exmovestxt, bordercolor=gray, borderwidth=2pt,
+                        backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }\vspace{0.1cm}
 
@@ -1121,14 +1120,15 @@ function printInfoText(text) {
                 \begin{tcolorbox}
                     \centering
                     Import field: \strut{}
-                    \TextField[name=importtxt, bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
+                    \TextField[name=importtxt, bordercolor=gray, borderwidth=2pt,
+                        backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }%
 
             \begin{tcolorbox}
                 \centering
-                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
-                    English (33), European (37), German (45), Asymmetrical (39), Hermary (39)%
+                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{
+                    English (33), European (37), German (45), Asymmetrical (39), Hermary (39)
                 }
             \end{tcolorbox}
 
@@ -1142,14 +1142,16 @@ function printInfoText(text) {
             }
 
             \begin{tcolorbox}
-                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]{\strut}
+                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]
+                    {\strut}
             \end{tcolorbox}
 
             \PushButton[name=export, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
                     Export field: \strut{}
-                    \TextField[name=exporttxt, bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
+                    \TextField[name=exporttxt,
+                        bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }
 

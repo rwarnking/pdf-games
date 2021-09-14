@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -30,7 +28,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{minesweeper}
 
 const GAME_DESC = "This is a logic based puzzle game.\
@@ -229,7 +226,9 @@ function fillMines() {
             % Check the neighbourhood
             for (var xx = x - 1; xx <= x + 1; xx++) {
                 for (var yy = y - 1; yy <= y + 1; yy++) {
-                    if (xx < 0 || yy < 0 || xx >= FIELD_WIDTH || yy >= FIELD_HEIGHT || (xx == x && yy == y)) {
+                    if (xx < 0 || yy < 0 || xx >= FIELD_WIDTH ||
+                        yy >= FIELD_HEIGHT || (xx == x && yy == y)
+                    ) {
                         continue;
                     }
                     % Adjust count
@@ -282,10 +281,10 @@ function changeMode() {
 }
 
 /**
- * Reveal the field x, y.
- * If the Lockmode is activated the field will be marked and
+ * Reveal the cell x, y.
+ * If the Lockmode is activated the cell will be marked and
  * can not be reveal unless the lock is lifted.
- * If the revealmode is activated the field is revealed and
+ * If the revealmode is activated the cell is revealed and
  * either shows a number, an area of numbers or a mine.
  * If the game is over nothing will happen.
  *
@@ -294,7 +293,7 @@ function changeMode() {
  */
 function reveal(x, y) {
     % Clear output
-    printInfoText("");
+    printInfoText("Clicked on cell.");
     if (gameover) {
         return;
     }
@@ -307,7 +306,7 @@ function reveal(x, y) {
             complField[y][x][2] = !LOCK
         }
         draw(x, y);
-        this.getField("info").setFocus();
+        this.getField("restart").setFocus();
         return;
     }
 
@@ -479,7 +478,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline%
                 }%
@@ -492,21 +491,24 @@ function printInfoText(text) {
                 \PushButton[name=reveal, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=revealtxt, height=0.35cm, width=0.5cm, readonly=true]{Revel mode:}
+                        \TextField[name=revealtxt, height=0.35cm, width=0.5cm, readonly=true]
+                            {Revel mode:}
                         \strut
                     \end{tcolorbox}
                 } &
                 \PushButton[name=lock, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=locktxt, height=0.35cm, width=0.5cm, readonly=true]{Lock mode:}
+                        \TextField[name=locktxt, height=0.35cm, width=0.5cm, readonly=true]
+                            {Lock mode:}
                         \strut
                     \end{tcolorbox}
                 } \\
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \ChoiceMenu[name=percentage, height=0.35cm, width=0.5cm, combo, commitonselchange=true]{
+                        \ChoiceMenu[name=percentage, height=0.35cm, width=0.5cm, combo,
+                            commitonselchange=true]{
                             Restart with mines in \%:}{%
                             10, 13, 17, 20,%
                         }%
