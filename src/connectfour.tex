@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -33,7 +31,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
 
 const GAME_DESC = "Connect four is a connection board game. The goal is to place a set amount\
@@ -188,7 +185,7 @@ function addToColumn(x) {
     var y = getYFromX(x);
     % Column is full
     if (y == -1) {
-        printInfoText("This Column is full. Player " + (activePlayer + 1) + ": Select a valid column.");
+        printInfoText("Column is full. Player " + (activePlayer + 1) + ": Select a valid column.");
         return;
     }
     complField[y][x] = activePlayer + 1;
@@ -249,7 +246,10 @@ function checkGameover(x, y) {
         for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
             var nx = x + directions[dirIdx] * wp;
             var ny = y + directions[dirIdx + 1] * wp;
-            if (nx < 0 || nx >= FIELD_WIDTH || ny < 0 || ny >= FIELD_HEIGHT || complField[ny][nx] != activePlayer + 1) {
+            if (nx < 0 || nx >= FIELD_WIDTH ||
+                ny < 0 || ny >= FIELD_HEIGHT ||
+                complField[ny][nx] != activePlayer + 1
+            ) {
                 count = 0;
             } else {
                 count++;
@@ -318,7 +318,10 @@ function colorWinner(x, y, dirIdx) {
         for (var wp = 0; wp < WINNING_PIECES; wp++) {
             var nx = x + directions[dirIdx] * wp * mul;
             var ny = y + directions[dirIdx + 1] * wp * mul;
-            if (nx < 0 || nx >= FIELD_WIDTH || ny < 0 || ny >= FIELD_HEIGHT || complField[ny][nx] != activePlayer + 1) {
+            if (nx < 0 || nx >= FIELD_WIDTH ||
+                ny < 0 || ny >= FIELD_HEIGHT ||
+                complField[ny][nx] != activePlayer + 1
+            ) {
                 wp = WINNING_PIECES;
             } else {
                 var field = this.getField("pos" + nx + "-" + ny);
@@ -392,7 +395,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline
                 }

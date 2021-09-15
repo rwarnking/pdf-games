@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 \graphicspath{{images/}{src/images/}}
 
@@ -32,7 +30,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{DBTI}
 
 const GAME_DESC = "The goal of this game is to get from the bottom of the field to the top,\
@@ -294,7 +291,9 @@ function createPath() {
 function getPath(start, end, field) {
     var pathList = [start];
     % While the target is not reached search neighbourhood
-    while (pathList[pathList.length - 1][0] !== end[0] || pathList[pathList.length - 1][1] !== end[1]) {
+    while (pathList[pathList.length - 1][0] !== end[0] ||
+        pathList[pathList.length - 1][1] !== end[1]
+    ) {
         var elem = pathList[pathList.length - 1];
     	field[elem[1]][elem[0]] = IS_PATH;
 
@@ -610,10 +609,10 @@ function printInfoText(text) {
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
-                    }\vspace{3pt}
+                        \TextField[width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=pos#1-#2, readonly=true%
+                        ]{}\hspace{3pt}%
+                    }\vspace{3pt}%
                     \newline%
                 }%
             \end{flushright}%

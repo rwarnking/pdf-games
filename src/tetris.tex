@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -33,7 +31,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
 
 const GAME_DESC = "Tetris is a puzzle game where you get stones of a specific shape.\
@@ -647,7 +644,8 @@ function draw(x, y) {
             \begin{flushright}
             \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \TextField[width=\blocksizeW, height=\blocksizeH, bordercolor=white, readonly=true, name=pos#1-#2]{}%
+                    \TextField[width=\blocksizeW, height=\blocksizeH,
+                        bordercolor=white, readonly=true, name=pos#1-#2]{}\hspace{3pt}%
                 }\vspace{3pt}
                 \newline
             }
@@ -664,7 +662,8 @@ function draw(x, y) {
                     \end{tcolorbox}
                 } &
                 \centering
-                \TextField[name=points, width=0.1\textwidth, value=0, bordercolor=white, readonly=true]{Points:} &
+                \TextField[name=points, width=0.1\textwidth, value=0,
+                    bordercolor=white, readonly=true]{Points:} &
                 \PushButton[name=pause, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
@@ -679,7 +678,8 @@ function draw(x, y) {
                 } &
                     \centering
                     % bordercolor={0.650 .790 .94}
-                    \TextField[name=output1, width=0.3\textwidth, height=1.5cm, bordercolor=white, readonly=true]{}
+                    \TextField[name=output1, width=0.3\textwidth, height=1.5cm,
+                        bordercolor=white, readonly=true]{}
                     %\begin{tcolorbox}
                     %\end{tcolorbox}
                 &

@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -35,7 +33,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Tic-Tac-Toe}
 
 const GAME_DESC = "Tic-Tac-Toe is a turnbased multiplayer strategy game.\
@@ -286,7 +283,10 @@ function checkForWinner(x, y) {
             var nx = x + directions[dirIdx] * wp;
             var ny = y + directions[dirIdx + 1] * wp;
             % Border check
-            if (nx < 0 || nx >= FIELD_WIDTH || ny < 0 || ny >= FIELD_HEIGHT || complField[ny][nx] != playerIdx) {
+            if (nx < 0 || nx >= FIELD_WIDTH ||
+                ny < 0 || ny >= FIELD_HEIGHT ||
+                complField[ny][nx] != playerIdx
+            ) {
                 % Reset counter when line is broken
                 count = 0;
             } else {
@@ -399,7 +399,7 @@ function printInfoText(text, col=color.black) {
         \end{multicols}
 
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \FPeval{\resultW}{(\fieldWidth * 15)}
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
         \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
@@ -418,8 +418,8 @@ function printInfoText(text, col=color.black) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
-                    }\vspace{3pt}
+                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{5pt}%
+                    }\vspace{3pt}%
                     \newline%
                 }%
             \end{flushright}%

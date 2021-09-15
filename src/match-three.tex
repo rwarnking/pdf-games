@@ -5,10 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-% \usepackage[utf8x]{inputenc}
-% \usepackage[T1]{fontenc}
-% \usepackage[ngerman]{babel}
-% \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -19,9 +15,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -34,7 +28,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Match Three Puzzle}
 
 const GAME_DESC = "The goal of this game is to generate matches. A match is defined as at least\
@@ -548,7 +541,7 @@ function getReplacementSymbol(row, column) {
  */
 function fieldClicked(x, y, ignore=false) {
     % Allow for multiple clicks on the same field
-    this.getField("pointstxt").setFocus();
+    this.getField("restart").setFocus();
     if (inChainReaction && !ignore) {
         printInfoText("Input not possible while in chain reaction!");
         return;
@@ -641,11 +634,11 @@ function hasMatch(x, y) {
     var tmpDirCounts = complField[y][x][1];
     calcDirCounts(x, y);
 
-    var dirXPos = complField[y][x][1][0] + complField[y][x][1][2];
-    var dirYPos = complField[y][x][1][1] + complField[y][x][1][3];
+    var countXPos = complField[y][x][1][0] + complField[y][x][1][2];
+    var countYPos = complField[y][x][1][1] + complField[y][x][1][3];
 
     % If it is a match ...
-    if (dirXPos > 1 || dirYPos > 1) {
+    if (countXPos > 1 || countYPos > 1) {
         return true;
     } else {
         % Reset the direction counts
@@ -783,8 +776,6 @@ function dropAndAddStones(x) {
 function checkAllForStoneRemoval() {
     for (var row = 0; row < FIELD_HEIGHT; row++) {
         for (var column = 0; column < FIELD_WIDTH; column++) {
-            % Since the complete field is iterated anyway
-            % it is not needed to call removeStones(...)
             removeStone(column, row);
         }
     }
@@ -807,38 +798,6 @@ function removeStone(x, y) {
         clearPos(x, y);
         % Process bombs
         processIfBomb(x, y);
-    }
-}
-
-/**
- * Removes the stone for the given position and its
- * identical neighbors from the field if they build a match.
- *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
- */
-function removeStones(x, y) {
-    % Get directions in which a match can be found
-    var countXPos = complField[y][x][1][0] + complField[y][x][1][2];
-    var countYPos = complField[y][x][1][1] + complField[y][x][1][3];
-
-    % If a match is found in this direction remove the stone values
-    if (countXPos > 1) {
-        % Just iterate from one side of the given position to the other
-        for (var i = -complField[y][x][1][2]; i < complField[y][x][1][0] + 1; i++) {
-            var tmpX = x + i;
-            clearPos(tmpX, y);
-            % Process bombs
-            processIfBomb(tmpX, y);
-        }
-    }
-    if (countYPos > 1) {
-        for (var i = -complField[y][x][1][3]; i < complField[y][x][1][1] + 1; i++) {
-            var tmpY = y + i;
-            clearPos(x, tmpY);
-            % Process bombs
-            processIfBomb(x, tmpY);
-        }
     }
 }
 
@@ -1153,7 +1112,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2]{}%
+                            bordercolor=white, name=pos#1-#2]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline%
                 }%
@@ -1211,8 +1170,10 @@ function printInfoText(text) {
 
         \begin{center}
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}
-                \ChoiceMenu[name=cmSymbolC, bordercolor=gray, width=2cm, combo]{Symbol count: }{5, 6, 7, 8} &
-                \ChoiceMenu[name=cmSymbol, bordercolor=gray, radiosymbol=5, radio]{Shown symbols: }{UTF8, ABC, 123}
+                \ChoiceMenu[name=cmSymbolC, bordercolor=gray, width=2cm, combo]{Symbol count: }%
+                    {5, 6, 7, 8} &
+                \ChoiceMenu[name=cmSymbol, bordercolor=gray, radiosymbol=5, radio]{Shown symbols: }
+                    {UTF8, ABC, 123}
             \end{tabularx}
         \end{center}
 
