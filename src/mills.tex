@@ -1,0 +1,355 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\usepackage{tikz}
+
+\setlength{\parindent}{0pt}
+
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\rows{3}
+\def\columns{8}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{insDLJS}[]{JSDateiname}{Gamename}
+
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
+
+% Outside variables
+const ROWS = AFMakeNumber(\rows);
+const COLUMNS = AFMakeNumber(\columns);
+
+% Constants
+const FULL = 1;
+const EMPTY = 0;
+const PIECE_SYMBOL = String.fromCharCode(0x25CF);
+
+const MAX_WIDTH = 596;
+const MAX_HEIGHT = 842;
+
+const MARGIN_X = 50;
+const MARGIN_Y_TOP = 100;
+const BOX_S = 30;
+const MAX_X_POS = MAX_WIDTH - MARGIN_X;
+const MIN_X_POS = MARGIN_X;
+const MAX_Y_POS = MAX_HEIGHT - MARGIN_Y_TOP;
+const MIN_Y_POS = MAX_Y_POS - MAX_X_POS + MARGIN_X;
+
+const X_POS_H = MIN_X_POS + (MAX_X_POS - MIN_X_POS) * 0.5;
+const Y_POS_H = MIN_Y_POS + (MAX_Y_POS - MIN_Y_POS) * 0.5;
+const X_POS_56 = MIN_X_POS + (MAX_X_POS - MIN_X_POS) * 5/6;
+const Y_POS_56 = MIN_Y_POS + (MAX_Y_POS - MIN_Y_POS) * 5/6;
+const X_POS_16 = MIN_X_POS + (MAX_X_POS - MIN_X_POS) * 1/6;
+const Y_POS_16 = MIN_Y_POS + (MAX_Y_POS - MIN_Y_POS) * 1/6;
+const X_POS_46 = MIN_X_POS + (MAX_X_POS - MIN_X_POS) * 4/6;
+const Y_POS_46 = MIN_Y_POS + (MAX_Y_POS - MIN_Y_POS) * 4/6;
+const X_POS_26 = MIN_X_POS + (MAX_X_POS - MIN_X_POS) * 2/6;
+const Y_POS_26 = MIN_Y_POS + (MAX_Y_POS - MIN_Y_POS) * 2/6;
+const BOX_S_H = BOX_S * 0.5;
+
+% upper-left x, upper-left y, lower-right x and lower-right y
+const BOX_POSITIONS = [
+    % Outer row
+    [[MIN_X_POS - BOX_S_H, MAX_Y_POS + BOX_S_H, MIN_X_POS + BOX_S_H, MAX_Y_POS - BOX_S_H],
+    [X_POS_H - BOX_S_H, MAX_Y_POS + BOX_S_H, X_POS_H + BOX_S_H, MAX_Y_POS - BOX_S_H],
+    [MAX_X_POS - BOX_S_H, MAX_Y_POS + BOX_S_H, MAX_X_POS + BOX_S_H, MAX_Y_POS - BOX_S_H],
+    [MAX_X_POS - BOX_S_H, Y_POS_H + BOX_S_H, MAX_X_POS + BOX_S_H, Y_POS_H - BOX_S_H],
+    [MAX_X_POS - BOX_S_H, MIN_Y_POS + BOX_S_H, MAX_X_POS + BOX_S_H, MIN_Y_POS - BOX_S_H],
+    [X_POS_H - BOX_S_H, MIN_Y_POS + BOX_S_H, X_POS_H + BOX_S_H, MIN_Y_POS - BOX_S_H],
+    [MIN_X_POS - BOX_S_H, MIN_Y_POS + BOX_S_H, MIN_X_POS + BOX_S_H, MIN_Y_POS - BOX_S_H],
+    [MIN_X_POS - BOX_S_H, Y_POS_H + BOX_S_H, MIN_X_POS + BOX_S_H, Y_POS_H - BOX_S_H]],
+    % Middle row
+    [[X_POS_16 - BOX_S_H, Y_POS_56 + BOX_S_H, X_POS_16 + BOX_S_H, Y_POS_56 - BOX_S_H],
+    [X_POS_H - BOX_S_H, Y_POS_56 + BOX_S_H, X_POS_H + BOX_S_H, Y_POS_56 - BOX_S_H],
+    [X_POS_56 - BOX_S_H, Y_POS_56 + BOX_S_H, X_POS_56 + BOX_S_H, Y_POS_56 - BOX_S_H],
+    [X_POS_56 - BOX_S_H, Y_POS_H + BOX_S_H, X_POS_56 + BOX_S_H, Y_POS_H - BOX_S_H],
+    [X_POS_56 - BOX_S_H, Y_POS_16 + BOX_S_H, X_POS_56 + BOX_S_H, Y_POS_16 - BOX_S_H],
+    [X_POS_H - BOX_S_H, Y_POS_16 + BOX_S_H, X_POS_H + BOX_S_H, Y_POS_16 - BOX_S_H],
+    [X_POS_16 - BOX_S_H, Y_POS_16 + BOX_S_H, X_POS_16 + BOX_S_H, Y_POS_16 - BOX_S_H],
+    [X_POS_16 - BOX_S_H, Y_POS_H + BOX_S_H, X_POS_16 + BOX_S_H, Y_POS_H - BOX_S_H]],
+    % Inner row
+    [[X_POS_26 - BOX_S_H, Y_POS_46 + BOX_S_H, X_POS_26 + BOX_S_H, Y_POS_46 - BOX_S_H],
+    [X_POS_H - BOX_S_H, Y_POS_46 + BOX_S_H, X_POS_H + BOX_S_H, Y_POS_46 - BOX_S_H],
+    [X_POS_46 - BOX_S_H, Y_POS_46 + BOX_S_H, X_POS_46 + BOX_S_H, Y_POS_46 - BOX_S_H],
+    [X_POS_46 - BOX_S_H, Y_POS_H + BOX_S_H, X_POS_46 + BOX_S_H, Y_POS_H - BOX_S_H],
+    [X_POS_46 - BOX_S_H, Y_POS_26 + BOX_S_H, X_POS_46 + BOX_S_H, Y_POS_26 - BOX_S_H],
+    [X_POS_H - BOX_S_H, Y_POS_26 + BOX_S_H, X_POS_H + BOX_S_H, Y_POS_26 - BOX_S_H],
+    [X_POS_26 - BOX_S_H, Y_POS_26 + BOX_S_H, X_POS_26 + BOX_S_H, Y_POS_26 - BOX_S_H],
+    [X_POS_26 - BOX_S_H, Y_POS_H + BOX_S_H, X_POS_26 + BOX_S_H, Y_POS_H - BOX_S_H]],
+];
+
+% Globals
+% The game field
+var complField = [
+    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]
+];
+
+% Color data
+const COLORS = new Array(
+    %[ "RGB", 0.843, 0.078, 0.058 ],
+    %[ "RGB", 0.203, 0.603, 0.054 ],
+    %[ "RGB", 0.078, 0.305, 0.560 ]
+);
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Init the GUI
+    initialiseButtons();
+
+    drawAll();
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    % Set the callbacks and attributes of each small field
+    var funcName = "place";
+    for (var m = 0; m < ROWS; m++) {
+        for (var n = 0; n < COLUMNS; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            var f = this.getField("cell" + m + "-" + n);
+            f.setAction("MouseDown", callbackName);
+
+            f.alignment = "center";
+
+            f.rect = BOX_POSITIONS[m][n];
+        }
+    }
+
+    % Info field setup
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Init");
+}
+
+/**
+ * Restart the game and clear everything
+ */
+function restart() {
+    printInfoText("Restart");
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+
+function place(m, n) {
+    if (complField[m][n] == FULL) {
+        printInfoText("Move this stone!");
+        return;
+    }
+
+    printInfoText("Placed a stone!");
+    complField[m][n] = FULL;
+
+    draw(m, n);
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Draw all fields.
+ */
+function drawAll() {
+    for (var m = 0; m < ROWS; m++) {
+        for (var n = 0; n < COLUMNS; n++) {
+            draw(m, n);
+        }
+    }
+}
+
+/**
+ * Since only one field is updated with each input,
+ * only this field needs to be redrawn.
+ *
+ * @param {Number} x The x position.
+ * @param {Number} y The y position.
+ */
+function draw(m, n) {
+    var field = this.getField("cell" + m+ "-" + n);
+    field.delay = true;
+    if (complField[m][n] == FULL) {
+        field.value = PIECE_SYMBOL;
+    } else {
+        field.value = "";
+    }
+    field.delay = false;
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Mills}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        \vspace{0.5cm}
+
+        \begin{center}
+            \begin{tikzpicture}
+                \def\sizeO{8.7}
+                \def\sizeM{6}
+                \def\sizeI{3}
+                \coordinate (AO) at (-\sizeO,\sizeO);
+                \coordinate (BO) at (\sizeO,\sizeO);
+                \coordinate (CO) at (\sizeO,-\sizeO);
+                \coordinate (DO) at (-\sizeO,-\sizeO);
+
+                \coordinate (AM) at (-\sizeM,\sizeM);
+                \coordinate (BM) at (\sizeM,\sizeM);
+                \coordinate (CM) at (\sizeM,-\sizeM);
+                \coordinate (DM) at (-\sizeM,-\sizeM);
+
+                \coordinate (AI) at (-\sizeI,\sizeI);
+                \coordinate (BI) at (\sizeI,\sizeI);
+                \coordinate (CI) at (\sizeI,-\sizeI);
+                \coordinate (DI) at (-\sizeI,-\sizeI);
+
+                \draw (AO) -- (BO) -- (CO) -- (DO) -- (AO);
+                \draw (AM) -- (BM) -- (CM) -- (DM) -- (AM);
+                \draw (AI) -- (BI) -- (CI) -- (DI) -- (AI);
+
+                \draw (0, \sizeO) -- (0, \sizeM) -- (0, \sizeI);
+                \draw (\sizeO, 0) -- (\sizeM, 0) -- (\sizeI, 0);
+                \draw (-\sizeO, 0) -- (-\sizeM, 0) -- (-\sizeI, 0);
+                \draw (0, -\sizeO) -- (0, -\sizeM) -- (0, -\sizeI);
+
+            \end{tikzpicture}
+        \end{center}
+
+        % The cells for the field
+        \xintFor* #1 in {\xintSeq{0}{\rows-1}} \do {%
+            \xintFor* #2 in {\xintSeq{0}{\columns-1}} \do {%
+                \TextField[name=cell#1-#2, backgroundcolor=, bordercolor=gray,
+                    width=1.0cm, height=1.0cm, readonly=true]{}%
+            }
+            \newline%
+        }%
+
+        \begin{center}
+            % Game related buttons
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+
+    \end{Form}
+\end{document}
