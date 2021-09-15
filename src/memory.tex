@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -34,7 +32,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{Memory}
 
 const GAME_DESC = "In this game multiple player compete to collect the most pairs.\
@@ -254,7 +251,7 @@ function tooltip(on) {
  */
 function revealField(x, y) {
     % This removes the cursor and fixes minor bugs
-    this.getField("info").setFocus();
+    this.getField("restart").setFocus();
 
     if (gameover) {
         return;
@@ -264,7 +261,8 @@ function revealField(x, y) {
     if (beforeLastField != false && lastField != false) {
 
         % Test if symbols match
-        var match = complField[lastField[1]][lastField[0]][0] == complField[beforeLastField[1]][beforeLastField[0]][0]
+        var match = complField[lastField[1]][lastField[0]][0] ==
+            complField[beforeLastField[1]][beforeLastField[0]][0];
         if (match) {
             % Remove both symbols
             remove(lastField[0], lastField[1]);
@@ -301,7 +299,8 @@ function revealField(x, y) {
         lastField = [x, y];
 
         % Test if symbols match
-        var match = complField[lastField[1]][lastField[0]][0] == complField[beforeLastField[1]][beforeLastField[0]][0]
+        var match = complField[lastField[1]][lastField[0]][0] ==
+            complField[beforeLastField[1]][beforeLastField[0]][0];
         if (!match) {
             % Advance player
             playerIdx++;
@@ -420,7 +419,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline%
                 }%

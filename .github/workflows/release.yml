@@ -33,9 +33,9 @@ jobs:
           fetch-depth: 0
       # Get last commit message
       - name: Show commit message
-        run: echo "${{ github.event.commits[0].message }}"
+        run: echo "${{ github.event.head_commit.message }}"
       - name: Set commit message to var
-        run: echo "commitmsg=${{ github.event.commits[0].message }}" >> $GITHUB_ENV
+        run: echo "commitmsg=${{ github.event.head_commit.message }}" >> $GITHUB_ENV
       - name: Show var
         run: echo "${{ env.commitmsg }}"
       # Get last tag
@@ -44,7 +44,7 @@ jobs:
         id: previoustag
         uses: "WyriHaximus/github-action-get-previous-tag@v1"
         with:
-          fallback: 0.11.0
+          fallback: 0.13.0
       # Create new tag
       - name: 'Get next minor version'
         id: semvers

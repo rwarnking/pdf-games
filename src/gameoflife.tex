@@ -17,9 +17,7 @@
 
 \setlength{\parindent}{0pt}
 
-% Einbindung von Javascript ins PDF
 \usepackage[pdftex]{insdljs}
-%\renewcommand{\MakeTextField}[2]{{\vbox to #2{\vfill\hbox to #1{\hrulefill}}}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
@@ -30,7 +28,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Inhalt der Umgebung wird in JSDateiname.djs gespeichert und steht im PDF zur Verfügung
 \begin{insDLJS}[]{JSDateiname}{gameoflife}
 
 const GAME_DESC = "Conways game of life is a cellular automaton.\
@@ -92,12 +89,16 @@ const SHAPES = new Array(
         [2, 12], [7, 12], [9, 12], [14, 12],
         [4, 14], [5, 14], [6, 14], [10, 14], [11, 14], [12, 14]
     ], % Pulsar
-    [[5, 4], [5, 5], [4, 6], [6, 6], [5, 7], [5, 8], [5, 9], [5, 10], [4, 11], [6, 11], [5, 12], [5, 13]], % Pentadecathlon
+    [[5, 4], [5, 5], [4, 6], [6, 6], [5, 7], [5, 8], [5, 9],
+     [5, 10], [4, 11], [6, 11], [5, 12], [5, 13]], % Pentadecathlon
     % Spaceships
     [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]], % Glider
-    [[0, 0], [3, 0], [4, 1], [0, 2], [4, 2], [1, 3], [2, 3], [3, 3], [4, 3]], % Light-weight spaceship
-    [[2, 0], [0, 1], [4, 1], [5, 2], [0, 3], [5, 3], [1, 4], [2, 4], [3, 4], [4, 4], [5, 4]], % Middle-weight spaceship
-    [[2, 0], [3, 0], [0, 1], [5, 1], [6, 2], [0, 3], [6, 3], [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4]] % Heavy-weight spaceship
+    [[0, 0], [3, 0], [4, 1], [0, 2], [4, 2],
+     [1, 3], [2, 3], [3, 3], [4, 3]], % Light-weight spaceship
+    [[2, 0], [0, 1], [4, 1], [5, 2], [0, 3], [5, 3],
+     [1, 4], [2, 4], [3, 4], [4, 4], [5, 4]], % Middle-weight spaceship
+    [[2, 0], [3, 0], [0, 1], [5, 1], [6, 2], [0, 3], [6, 3],
+     [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4]] % Heavy-weight spaceship
 );
 
 %%%%%%%%%%
@@ -372,7 +373,9 @@ function getNeighbourCount(pX, pY) {
             if ((x == pX && y == pY) || x < 0 || y < 0 || x >= FIELD_WIDTH || y >= FIELD_HEIGHT) {
                 continue;
             }
-            if ((fieldIdx == 1 && complField2[y][x] == ALIVE) || (fieldIdx == 0 && complField1[y][x] == ALIVE)) {
+            if ((fieldIdx == 1 && complField2[y][x] == ALIVE) ||
+                (fieldIdx == 0 && complField1[y][x] == ALIVE)
+            ) {
                 counter++;
             }
         }
@@ -560,7 +563,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}%
+                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline%
                 }%
@@ -573,7 +576,8 @@ function printInfoText(text) {
                 \PushButton[name=animate, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=animatetxt, height=0.35cm, width=0.5cm, readonly=true]{Animation:}
+                        \TextField[name=animatetxt, height=0.35cm, width=0.5cm, readonly=true]%
+                            {Animation:}
                         \strut
                     \end{tcolorbox}
                 } &
@@ -586,23 +590,29 @@ function printInfoText(text) {
                 \PushButton[name=shapemode, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=shapemodetxt, height=0.35cm, width=0.5cm, readonly=true]{Shape mode:}
+                        \TextField[%
+                            name=shapemodetxt, height=0.35cm, width=0.5cm, readonly=true%
+                        ]{Shape mode:}
                         \strut
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
                     \centering
-                    \ChoiceMenu[name=shapeidx, height=0.35cm, width=0.5cm, combo, commitonselchange=true]{Shape name:}{%
+                    \ChoiceMenu[%
+                        name=shapeidx, height=0.35cm, width=0.5cm, combo, commitonselchange=true]%
+                            {Shape name:}{%
                         One, Block, Beehive, Loaf, Boat, Tub,%
                         Blinker, Toad, Beacon, Pulsar, Pentadecathlon,%
-                        Glider, Light-weight spaceship, Middle-weight spaceship, Heavy-weight spaceship%
+                        Glider, Light-weight spaceship, Middle-weight spaceship,%
+                        Heavy-weight spaceship%
                     }%
                     \strut
                 \end{tcolorbox} \\[-0.5cm]% TODO why do we need -0.5 here
                 \PushButton[name=fillrnd, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \ChoiceMenu[name=percentage, height=0.35cm, width=0.5cm, combo, commitonselchange=true]{Fill random with \% alive:}{%
+                        \ChoiceMenu[name=percentage, height=0.35cm, width=0.5cm, combo,%
+                            commitonselchange=true]{Fill random with \% alive:}{%
                             20, 40, 60, 80,%
                         }%
                         \strut
