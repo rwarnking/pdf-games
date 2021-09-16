@@ -38,12 +38,40 @@ Text.";
 % Outside variables
 const ROWS = AFMakeNumber(\rows);
 const COLUMNS = AFMakeNumber(\columns);
+const TEXT_SIZE = 25;
 
 % Constants
-const FULL = 1;
 const EMPTY = 0;
+const PLAYER_1 = 1;
+const PLAYER_2 = 2;
 const PIECE_SYMBOL = String.fromCharCode(0x25CF);
 
+const PLACING = 0;
+const MOVING = 1;
+const REMOVING = 2;
+const P1 = true;
+const P2 = false;
+
+% Globals
+var gamestate = PLACING;
+var gameover = false;
+var turn = P1;
+var lastClick = null;
+var stonesToPlaceP1 = 9;
+var stonesToPlaceP2 = 9;
+var stonesP1 = 0;
+var stonesP2 = 0;
+
+% The game field
+var complField = [
+    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]
+];
+
+%%%%%%%%%%%%%%%
+% Positioning %
+%%%%%%%%%%%%%%%
 const MAX_WIDTH = 596;
 const MAX_HEIGHT = 842;
 
@@ -98,12 +126,22 @@ const BOX_POSITIONS = [
     [X_POS_26 - BOX_S_H, Y_POS_H + BOX_S_H, X_POS_26 + BOX_S_H, Y_POS_H - BOX_S_H]],
 ];
 
-% Globals
-% The game field
-var complField = [
-    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
-    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
-    [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]
+%%%%%%%%%%%%%%
+% NEIGHBOURS %
+%%%%%%%%%%%%%%
+const NEIGHBOURS = [
+    [[[0, 7], [0, 1]], [[0, 0], [1, 1], [0, 2]],
+     [[0, 1], [0, 3]], [[0, 2], [1, 3], [0, 4]],
+     [[0, 3], [0, 5]], [[0, 4], [1, 5], [0, 6]],
+     [[0, 5], [0, 7]], [[0, 6], [1, 7], [0, 0]]],
+    [[[1, 7], [1, 1]], [[1, 0], [0, 1], [2, 1], [1, 2]],
+     [[1, 1], [1, 3]], [[1, 2], [0, 3], [2, 3], [1, 4]],
+     [[1, 3], [1, 5]], [[1, 4], [0, 5], [2, 5], [1, 6]],
+     [[1, 5], [1, 7]], [[1, 6], [0, 7], [2, 7], [1, 0]]],
+    [[[2, 7], [2, 1]], [[2, 0], [1, 1], [2, 2]],
+     [[2, 1], [2, 3]], [[2, 2], [1, 3], [2, 4]],
+     [[2, 3], [2, 5]], [[2, 4], [1, 5], [2, 6]],
+     [[2, 5], [2, 7]], [[2, 6], [1, 7], [2, 0]]]
 ];
 
 % Color data
@@ -144,9 +182,10 @@ function initialiseButtons() {
     for (var m = 0; m < ROWS; m++) {
         for (var n = 0; n < COLUMNS; n++) {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
-            var f = this.getField("cell" + m + "-" + n);
+            var f = this.getField("pos" + m + "-" + n);
             f.setAction("MouseDown", callbackName);
 
+            f.textSize = TEXT_SIZE;
             f.alignment = "center";
 
             f.rect = BOX_POSITIONS[m][n];
@@ -210,17 +249,148 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
-
 function place(m, n) {
-    if (complField[m][n] == FULL) {
-        printInfoText("Move this stone!");
+    if (gameover) {
         return;
     }
 
-    printInfoText("Placed a stone!");
-    complField[m][n] = FULL;
+    if (gamestate == PLACING) {
+        placing(m, n);
+    } else if (gamestate == MOVING) {
+        moving(m, n);
+    } else if (gamestate == REMOVING) {
+        removing(m, n);
+    }
+}
 
+function placing(m, n) {
+    if (turn == P1) {
+        complField[m][n] = PLAYER_1;
+        stonesToPlaceP1--;
+        stonesP1++;
+    } else {
+        complField[m][n] = PLAYER_2;
+        stonesToPlaceP2--;
+        stonesP2--;
+    }
+    if (stonesToPlaceP1 == 0 && stonesToPlaceP2 == 0) {
+        gamestate = MOVING;
+    }
+    if (checkMills(m, n)) {
+        gamestate = REMOVING;
+        printInfoText("You got a mill, remove an enemy piece!");
+    } else {
+        turn = !turn;
+        printInfoText("Placed a stone!");
+    }
     draw(m, n);
+}
+
+function moving(m, n) {
+    if (lastClick != null) {
+        if (complField[m][n] != EMPTY) {
+            printInfoText("Please select an empty position.");
+            return;
+        }
+
+        if (!isNeighbour(m, n)) {
+            printInfoText("Please select a connected position." + m + " " + n + " " + lastClick[0] + " " + lastClick[1] + " " + NEIGHBOURS[m][n]);
+            return;
+        }
+
+        if (turn == P1) {
+            complField[m][n] = PLAYER_1;
+        } else {
+            complField[m][n] = PLAYER_2;
+        }
+        complField[lastClick[0]][lastClick[1]] = EMPTY;
+
+        draw(m, n);
+        draw(lastClick[0], lastClick[1]);
+
+        if (checkMills(m, n)) {
+            gamestate = REMOVING;
+            printInfoText("You got a mill, remove an enemy piece!");
+        } else {
+            turn = !turn;
+            printInfoText("Moved piece!");
+        }
+
+        lastClick = null;
+    } else {
+        if (complField[m][n] == EMPTY) {
+            printInfoText("Please select non empty position.");
+            return;
+        }
+        if (turn == P1 && complField[m][n] == PLAYER_2 ||
+            turn == P2 && complField[m][n] == PLAYER_1
+        ) {
+            printInfoText("Please select one of your own pieces.");
+            return;
+        }
+
+        lastClick = [m, n];
+        printInfoText("Select position to move to!");
+    }
+}
+
+function removing(m, n) {
+    if (turn == P1 && complField[m][n] == PLAYER_2 ||
+        turn == P2 && complField[m][n] == PLAYER_1
+    ) {
+        complField[m][n] = EMPTY;
+        turn = !turn;
+
+        if (stonesToPlaceP1 == 0 && stonesToPlaceP2 == 0) {
+            gamestate = MOVING;
+        } else {
+            gamestate = PLACING;
+        }
+
+        draw(m, n);
+        printInfoText("Removed stone!");
+        if (stonesP1 + stonesToPlaceP1 <= 2) {
+            gameover = true;
+            printInfoText("Game over! Player 2 wins.");
+        } else if (stonesP2 + stonesToPlaceP2 <= 2) {
+            gameover = true;
+            printInfoText("Game over! Player 1 wins.");
+        }
+    } else {
+        printInfoText("Cant remove own stone!");
+    }
+}
+
+function isNeighbour(m, n) {
+    for (var i = 0; i < NEIGHBOURS[m][n].length; i++) {
+        var neighbour = NEIGHBOURS[m][n][i];
+        if (neighbour[0] == lastClick[0] && neighbour[1] == lastClick[1]) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function checkMills(m, n) {
+    var p = complField[m][n];
+    if (n \% 2 == 0) {
+        var n_m2 = (n + 8 - 2) \% 8;
+        if (complField[m][n + 1] == p && complField[m][(n + 2) \% 8] == p ||
+            complField[m][n_m2 + 1] == p && complField[m][n_m2] == p
+        ) {
+            return true;
+        }
+    } else {
+        var m_m1 = (m + 3 - 1) \% 3;
+        var m_p1 = m + 1 \% 3;
+        if (complField[m][n - 1] == p && complField[m][(n + 1) \% 8] == p ||
+            complField[m_m1][n] == p && complField[m_p1][n] == p
+        ) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -245,10 +415,14 @@ function drawAll() {
  * @param {Number} y The y position.
  */
 function draw(m, n) {
-    var field = this.getField("cell" + m+ "-" + n);
+    var field = this.getField("pos" + m + "-" + n);
     field.delay = true;
-    if (complField[m][n] == FULL) {
+    if (complField[m][n] == PLAYER_1) {
         field.value = PIECE_SYMBOL;
+        field.textColor = color.gray;
+    } else if (complField[m][n] == PLAYER_2) {
+        field.value = PIECE_SYMBOL;
+        field.textColor = color.black;
     } else {
         field.value = "";
     }
@@ -325,10 +499,10 @@ function printInfoText(text) {
             \end{tikzpicture}
         \end{center}
 
-        % The cells for the field
+        % The positions of the field
         \xintFor* #1 in {\xintSeq{0}{\rows-1}} \do {%
             \xintFor* #2 in {\xintSeq{0}{\columns-1}} \do {%
-                \TextField[name=cell#1-#2, backgroundcolor=, bordercolor=gray,
+                \TextField[name=pos#1-#2, backgroundcolor=white, bordercolor=gray,
                     width=1.0cm, height=1.0cm, readonly=true]{}%
             }
             \newline%
