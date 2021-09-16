@@ -145,11 +145,7 @@ const NEIGHBOURS = [
 ];
 
 % Color data
-const COLORS = new Array(
-    %[ "RGB", 0.843, 0.078, 0.058 ],
-    %[ "RGB", 0.203, 0.603, 0.054 ],
-    %[ "RGB", 0.078, 0.305, 0.560 ]
-);
+const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 
 %%%%%%%%%%
 % Helper %
@@ -208,6 +204,25 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
+    % Reset array to be empty
+    for (var m = 0; m < ROWS; m++) {
+        for (var n = 0; n < COLUMNS; n++) {
+            complField[m][n] = EMPTY;
+        }
+    }
+
+    % Reset game variables
+    gamestate = PLACING;
+    gameover = false;
+    turn = P1;
+    lastClick = null;
+    stonesToPlaceP1 = 9;
+    stonesToPlaceP2 = 9;
+    stonesP1 = 0;
+    stonesP2 = 0;
+
+    drawAll();
+
     printInfoText("Restart");
 }
 
@@ -249,7 +264,15 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
+/**
+ * Process user input on a cell according to the game rules.
+ * Options are: placing, moving, removing.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ */
 function place(m, n) {
+    this.getField("restart").setFocus();
     if (gameover) {
         return;
     }
@@ -261,9 +284,32 @@ function place(m, n) {
     } else if (gamestate == REMOVING) {
         removing(m, n);
     }
+
+    % Check for gameover due to missing pieces or intercepting
+    if (stonesP1 + stonesToPlaceP1 <= 2 || hasNoMoves(PLAYER_1)) {
+        gameover = true;
+        printInfoText("Game over! Player 2 wins.");
+    } else if (stonesP2 + stonesToPlaceP2 <= 2 || hasNoMoves(PLAYER_2)) {
+        gameover = true;
+        printInfoText("Game over! Player 1 wins.");
+    }
 }
 
+/**
+ * Places a player stone on the given position.
+ * If placeing the stone leads to a mill the removing state
+ * is enabled. If there are no further stones to place the
+ * moving state is enabled.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ */
 function placing(m, n) {
+    if (complField[m][n] != EMPTY) {
+        printInfoText("Select empty cell!");
+        return;
+    }
+    % Alter turns and what is placed
     if (turn == P1) {
         complField[m][n] = PLAYER_1;
         stonesToPlaceP1--;
@@ -271,14 +317,20 @@ function placing(m, n) {
     } else {
         complField[m][n] = PLAYER_2;
         stonesToPlaceP2--;
-        stonesP2--;
+        stonesP2++;
     }
-    if (stonesToPlaceP1 == 0 && stonesToPlaceP2 == 0) {
-        gamestate = MOVING;
-    }
+
+    % Check for mills, if there is one the player is allowed to remove
+    % a piece of the enemy
     if (checkMills(m, n)) {
         gamestate = REMOVING;
         printInfoText("You got a mill, remove an enemy piece!");
+    }
+    % If there are no further stones to place enable next mode
+    else if (stonesToPlaceP1 <= 0 && stonesToPlaceP2 <= 0) {
+        gamestate = MOVING;
+        turn = !turn;
+        printInfoText("Now move your stones!");
     } else {
         turn = !turn;
         printInfoText("Placed a stone!");
@@ -286,28 +338,56 @@ function placing(m, n) {
     draw(m, n);
 }
 
+/**
+ * Processes the given position as a move operation.
+ * Two inputs are needed, the source and the target position.
+ * If the positions are in a neighbourhood or the player has only
+ * three stones left the piece is moved.
+ * The source piece must be of the player type, while the
+ * target position needs to be empty.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ */
 function moving(m, n) {
     if (lastClick != null) {
+        % Unselect if clicked on the same cell again
+        if (m == lastClick[0] && n == lastClick[1]) {
+            % Disable highlight
+            highlight(lastClick[0], lastClick[1], false);
+            lastClick = null;
+            return;
+        }
+        % The selected cell must be an actual stone
         if (complField[m][n] != EMPTY) {
             printInfoText("Please select an empty position.");
             return;
         }
-
-        if (!isNeighbour(m, n)) {
-            printInfoText("Please select a connected position." + m + " " + n + " " + lastClick[0] + " " + lastClick[1] + " " + NEIGHBOURS[m][n]);
+        % Only allow moves to neighbouring cells, unless the player has 3 pieces left
+        if (!isNeighbour(m, n) &&
+            !(
+                ((turn == P1) && (stonesP1 + stonesToPlaceP1 == 3)) ||
+                ((turn == P2) && (stonesP2 + stonesToPlaceP2 == 3))
+            )
+        ) {
+            printInfoText("Please select a connected position.");
             return;
         }
+        % Disable highlight
+        highlight(lastClick[0], lastClick[1], false);
 
+        % Move piece and redraw
         if (turn == P1) {
             complField[m][n] = PLAYER_1;
         } else {
             complField[m][n] = PLAYER_2;
         }
         complField[lastClick[0]][lastClick[1]] = EMPTY;
-
         draw(m, n);
         draw(lastClick[0], lastClick[1]);
 
+        % Check for mills, if there is one the player is allowed to remove
+        % a piece of the enemy
         if (checkMills(m, n)) {
             gamestate = REMOVING;
             printInfoText("You got a mill, remove an enemy piece!");
@@ -318,10 +398,12 @@ function moving(m, n) {
 
         lastClick = null;
     } else {
+        % Ensure selection of an actuall stone
         if (complField[m][n] == EMPTY) {
             printInfoText("Please select non empty position.");
             return;
         }
+        % Ensure selection of enemy piece
         if (turn == P1 && complField[m][n] == PLAYER_2 ||
             turn == P2 && complField[m][n] == PLAYER_1
         ) {
@@ -329,18 +411,33 @@ function moving(m, n) {
             return;
         }
 
+        highlight(m, n, true);
         lastClick = [m, n];
         printInfoText("Select position to move to!");
     }
 }
 
+/**
+ * If the given position contains a piece of the enemy type,
+ * the selected piece is removed and the gamestate is reset
+ * to either moving or placing.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ */
 function removing(m, n) {
     if (turn == P1 && complField[m][n] == PLAYER_2 ||
         turn == P2 && complField[m][n] == PLAYER_1
     ) {
         complField[m][n] = EMPTY;
+        if (turn == P1) {
+            stonesP2--;
+        } else if (turn == P2) {
+            stonesP1--;
+        }
         turn = !turn;
 
+        % Reset to latest gamestate
         if (stonesToPlaceP1 == 0 && stonesToPlaceP2 == 0) {
             gamestate = MOVING;
         } else {
@@ -349,18 +446,19 @@ function removing(m, n) {
 
         draw(m, n);
         printInfoText("Removed stone!");
-        if (stonesP1 + stonesToPlaceP1 <= 2) {
-            gameover = true;
-            printInfoText("Game over! Player 2 wins.");
-        } else if (stonesP2 + stonesToPlaceP2 <= 2) {
-            gameover = true;
-            printInfoText("Game over! Player 1 wins.");
-        }
     } else {
         printInfoText("Cant remove own stone!");
     }
 }
 
+/**
+ * Checks the neighbourhood of a position for
+ * beeing in the vacinity of the lastClick position.
+
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ * @return {Boolen} True if the position is in the vacinity, else false.
+ */
 function isNeighbour(m, n) {
     for (var i = 0; i < NEIGHBOURS[m][n].length; i++) {
         var neighbour = NEIGHBOURS[m][n][i];
@@ -371,9 +469,18 @@ function isNeighbour(m, n) {
     return false;
 }
 
+/**
+ * Checks the given position for beeing part of a mill.
+
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ * @return {Boolen} True if the position is part of a mill, else false.
+ */
 function checkMills(m, n) {
     var p = complField[m][n];
+    % Check differ depending on arrayposition beeing even or odd
     if (n \% 2 == 0) {
+        % Check in a line up and down with m, n beeing at the end of the line
         var n_m2 = (n + 8 - 2) \% 8;
         if (complField[m][n + 1] == p && complField[m][(n + 2) \% 8] == p ||
             complField[m][n_m2 + 1] == p && complField[m][n_m2] == p
@@ -381,6 +488,7 @@ function checkMills(m, n) {
             return true;
         }
     } else {
+        % Check in a line up and down with m, n beeing at the center of the line
         var m_m1 = (m + 3 - 1) \% 3;
         var m_p1 = m + 1 \% 3;
         if (complField[m][n - 1] == p && complField[m][(n + 1) \% 8] == p ||
@@ -393,9 +501,58 @@ function checkMills(m, n) {
     return false;
 }
 
+/**
+ * Checks if a given player has any moves left.
+ * Iterates all cells and checks its neighbourhood for empty cells.
+ * @param {Number} player The player value in the complField.
+ * @return {Boolen} True if no moves are left, else false.
+ */
+function hasNoMoves(player) {
+    % If the gamestate is placing the player always has a move left
+    if (gamestate == PLACING) {
+        return false;
+    }
+
+    for (var m = 0; m < ROWS; m++) {
+        for (var n = 0; n < COLUMNS; n++) {
+            % Check only cells with stones of this player
+            if (complField[m][n] != player) {
+                continue;
+            }
+            % Check all neighbours for beeing empty
+            for (var i = 0; i < NEIGHBOURS[m][n].length; i++) {
+                var neighbour = NEIGHBOURS[m][n][i];
+                if (complField[neighbour[0]][neighbour[1]] == EMPTY) {
+                    return false;
+                }
+            }
+        }
+    }
+    return true;
+}
+
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
+/**
+ * Enables or disables the highlight of the given cell.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ * @param {Boolean} enable If true enables the highlight
+ */
+function highlight(m, n, enable) {
+    var field = this.getField("pos" + m + "-" + n);
+    field.delay = true;
+    % Highlight the current taken move
+    if (enable) {
+        field.borderColor = HIGHLIGHT_COLOR;
+    } else {
+        field.borderColor = color.gray;
+    }
+    field.delay = false;
+}
+
 /**
  * Draw all fields.
  */
@@ -411,8 +568,8 @@ function drawAll() {
  * Since only one field is updated with each input,
  * only this field needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
 function draw(m, n) {
     var field = this.getField("pos" + m + "-" + n);
