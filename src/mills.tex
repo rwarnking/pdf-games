@@ -27,17 +27,21 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Gamename}
+\begin{insDLJS}[]{JSDateiname}{mills}
 
-const GAME_DESC = "Text.\
-Text.\
-Text.\
-Text.\
-Text.";
+const GAME_DESC = "This game has three phases:\
+1. Each player places 9 stones onto the field.\
+2. Each turn a player is allowed to move a stone to an adjacent cell.\
+3. If in step 1 or 2 a mill is constructed, the player removes a stone of the opponent.\
+Three stones on a straight line are a mill. A player with only 3 stones left,\
+can moves his stones on any empty cell. The game is over as soon as one player\
+has only 2 stones left or cant make a valid move.";
 
 % Outside variables
 const ROWS = AFMakeNumber(\rows);
 const COLUMNS = AFMakeNumber(\columns);
+% Obacht: The player count is not really changeable,
+% since not all functions support != 2 player
 const PLAYER_COUNT = 2;
 const TEXT_SIZE = 25;
 
@@ -176,6 +180,7 @@ function initialise() {
     % Init the GUI
     initialiseButtons();
 
+    refreshGUIstoneCounts();
     drawAll();
 }
 
@@ -241,6 +246,7 @@ function restart() {
     stonesToPlace = [P_COUNT, P_COUNT];
     stones = [0, 0];
 
+    refreshGUIstoneCounts();
     drawAll();
 
     printInfoText("Restarted game. " + PLAYER_STR[turn] + " : Your turn!");
@@ -311,6 +317,8 @@ function place(m, n) {
         removing(m, n);
     }
 
+    refreshGUIstoneCounts();
+
     % Check for gameover due to missing pieces or intercepting
     if (stones[P_1] + stonesToPlace[P_1] <= 2 || hasNoMoves(P_1)) {
         gameover = true;
@@ -360,7 +368,7 @@ function placing(m, n) {
 
 /**
  * Processes the given position as a move operation.
- * Two inputs are needed, the source and the target position.
+ * This must be called twice, once for the source and once for the target position.
  * If the positions are in a neighbourhood or the player has only
  * three stones left the piece is moved.
  * The source piece must be of the player type, while the
@@ -384,12 +392,7 @@ function moving(m, n) {
             return;
         }
         % Only allow moves to neighbouring cells, unless the player has 3 pieces left
-        if (!isNeighbour(m, n) &&
-            !(
-                ((turn == P_1) && (stones[P_1] + stonesToPlace[P_1] == 3)) ||
-                ((turn == P_2) && (stones[P_2] + stonesToPlace[P_2] == 3))
-            )
-        ) {
+        if (!isNeighbour(m, n) && (stones[turn] + stonesToPlace[turn] != 3)) {
             printInfoText(PLAYER_STR[turn] + ": Please select a connected position.");
             return;
         }
@@ -397,7 +400,7 @@ function moving(m, n) {
         highlight(lastClick[0], lastClick[1], false);
 
         % Start animation
-        var callback = "moveAnimation(" + lastClick[0] + "," + lastClick[1] + "," + m + "," + n + ")";
+        var callback = "moveAnimation(" + lastClick[0] + "," + lastClick[1] + "," +m+ "," +n+ ")";
         run = app.setInterval(callback, ANIMATION_SPEED);
         lastClick = null;
     } else {
@@ -421,7 +424,8 @@ function moving(m, n) {
 /**
  * Function for an animated cell. The cell is moved between two
  * given positions by linear interpolation.
- * The startposition and the endposition are redrawn.
+ * The startposition and the center position are redrawn at
+ * appropriate times.
  *
  * @param {Number} m1 The source x position.
  * @param {Number} n1 The source y position.
@@ -591,6 +595,24 @@ function nextTurn() {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
+ * Redraws the gui elements responsible for displaying
+ * the current amounts of stones for each player.
+ */
+function refreshGUIstoneCounts() {
+    var field = this.getField("p1stones");
+    field.value = stones[P_1];
+
+    field = this.getField("p1toPlace");
+    field.value = stonesToPlace[P_1];
+
+    var field = this.getField("p2stones");
+    field.value = stones[P_2];
+
+    field = this.getField("p2toPlace");
+    field.value = stonesToPlace[P_2];
+}
+
+/**
  * Enables or disables the highlight of the given cell.
  *
  * @param {Number} m The m position.
@@ -717,9 +739,39 @@ function printInfoText(text) {
             }
         }%
 
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \def\DefaultHeightofText{12pt}
+        \renewcommand*{\LayoutTextField}[2]{%
+            \parbox[c][\DefaultHeightofText]{\DefaultWidthofText}{#1 #2}%
+        }
+
+        % GUI
         \begin{center}
             % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \begin{tcolorbox}
+                    \TextField[name=p1stones, width=0.2\linewidth, charsize=12pt,%
+                        bordercolor=, backgroundcolor=, borderwidth=0,%
+                        value=0, readonly%
+                    ]{P1 stones:\strut}\enspace
+                    \TextField[name=p1toPlace, width=0.2\linewidth, charsize=12pt,%
+                        bordercolor=, backgroundcolor=, borderwidth=0,%
+                        value=0, readonly%
+                    ]{to place:\strut}
+                \end{tcolorbox} &
+                \begin{tcolorbox}
+                    \TextField[name=p2stones, width=0.2\linewidth, charsize=12pt,%
+                        bordercolor=, backgroundcolor=, borderwidth=0,%
+                        value=0, readonly%
+                    ]{P2 stones:\strut}\enspace
+                    \TextField[name=p2toPlace, width=0.2\linewidth, charsize=12pt,%
+                        bordercolor=, backgroundcolor=, borderwidth=0,%
+                        value=0, readonly%
+                    ]{to place:\strut}
+                \end{tcolorbox} \\%
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
@@ -727,7 +779,7 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=2\linewidth, readonly=true]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
