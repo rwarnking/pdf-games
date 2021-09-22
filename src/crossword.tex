@@ -1,0 +1,609 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+% \usepackage[utf8x]{inputenc}
+% \usepackage[T1]{fontenc}
+% \usepackage[ngerman]{babel}
+% \usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{10}
+\def\fieldHeight{10}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{insDLJS}[]{JSDateiname}{Crossword}
+
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
+
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const SCREEN_TEXT_WIDTH = 300;
+var wordCount = 5;
+
+% TODO debugging
+var DEBUG_STRING = "";
+
+% Constants
+const EMPTY = -1;
+const RND = -1;
+
+% For indexing
+const CHAR = 0;
+const M = 0;
+const N = 1;
+const ORI_IDX = 2;
+
+const ORIENTATIONS = [
+    [1, 0], [0, 1]%,
+    %[-1, 0], [0, -1]
+]
+
+% Globals
+% The game field
+var complField = new Array();
+var solution = new Array();
+
+% Color data
+const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
+
+const COLORS = new Array(
+    %[ "RGB", 0.843, 0.078, 0.058 ],
+    %[ "RGB", 0.203, 0.603, 0.054 ],
+    %[ "RGB", 0.078, 0.305, 0.560 ]
+);
+
+% Word data
+const WORD_LIST = [
+    ["WIND", "BEAN", "HOOK", "COAT", "EASY"], % 4
+    ["LEARN", "FAITH", "PROOF", "SOLID", "ALOOF", "PEACE", "BELLY", "ALLOW"], % 5
+    ["MARKET", "PERSON", "PRAISE", "FINISH"], % 6
+    ["FRECKLE", "COMBINE", "ARCHIVE", "INSPIRE"], % 7
+    ["NONSENSE", "HARDWARE"], % 8
+    ["EVOLUTION", "ORCHESTRA", "OPERATION", "POLICEMAN"], % 9
+    ["COMPROMISE"], % 10
+    ["COMPETITION", "ANNIVERSARY"] % 11
+]
+
+var wordList = [];
+
+var charPositions = [
+    [], [], [], [], [], [], [], [], [], [],
+    [], [], [], [], [], [], [], [], [], [],
+    [], [], [], [], [], []
+];
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Init the GUI
+    initialiseButtons();
+
+    % Create the field choosing a random symbol for each cell
+    var rnd;
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        var tmp = new Array();
+        var solRow = new Array();
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            % Random number
+            tmp.push(["", RND]);
+            solRow.push(EMPTY);
+        }
+        complField.push(tmp);
+        solution.push(solRow);
+    }
+
+    for (var i = 0; i < WORD_LIST.length; i++) {
+        var tmp = [];
+        for (var j = 0; j < WORD_LIST[i].length; j++) {
+            tmp.push(WORD_LIST[i][j]);
+        }
+        wordList.push(tmp);
+    }
+
+    createField();
+    % for (var i = 0; i < wordCount; i++) {
+    %     DEBUG_STRING += getWordWithLen(i);
+    % }
+
+    printInfoText(DEBUG_STRING);
+
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            if (solution[m][n] != EMPTY) {
+                complField[m][n][0] = solution[m][n];
+            }
+        }
+    }
+
+    drawAll();
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    var cell;
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the coresponding function and disable the highlights
+    this.getField("restart").setAction("MouseUp", "restart();");
+
+    % Each cell needs to be connected to an input function
+    var funcName = "fieldClicked";
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
+            cell.setAction("MouseDown", callbackName);
+            cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+            cell.alignment = "center";
+        }
+    }
+
+    % Info field setup
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Init");
+}
+
+/**
+ * Restart the game and clear everything
+ */
+function restart() {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            solution[m][n] = EMPTY;
+            complField[m][n][0] = "";
+        }
+    }
+
+    wordList = [];
+    for (var i = 0; i < WORD_LIST.length; i++) {
+        var tmp = [];
+        for (var j = 0; j < WORD_LIST[i].length; j++) {
+            tmp.push(WORD_LIST[i][j]);
+        }
+        wordList.push(tmp);
+    }
+
+    for (var char = 0; char < charPositions.length; char++) {
+        charPositions[char] = [];
+    }
+
+    DEBUG_STRING = "";
+    createField();
+
+    printInfoText(DEBUG_STRING);
+
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            if (solution[m][n] != EMPTY) {
+                complField[m][n][0] = solution[m][n];
+            }
+        }
+    }
+
+    drawAll();
+
+    %printInfoText("Restart");
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = false;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%%%%%%
+% Field creation %
+% https://stackoverflow.com/questions/943113/algorithm-to-generate-a-crossword
+%%%%%%%%%%%%%%%%%%
+function createField() {
+    % select and place longest word
+    var lengthList = [];
+    for (var i = 0; i < wordCount; i++) {
+        var len = getRandomInt(Math.min(FIELD_WIDTH, FIELD_HEIGHT));
+        lengthList.push(len);
+    }
+    % Sort length
+    lengthList.sort(function(a, b) {
+        return b - a;
+    });
+
+    % For each word
+    for (var i = 0; i < wordCount; i++) {
+        var word = getWordWithLen(lengthList[i]);
+
+        % TODO
+        if (i == 0) {
+            var oriIdx = 0;%getRandomInt(ORIENTATIONS.length);
+            var m = Math.floor(FIELD_HEIGHT * 0.5);
+            var n = 0;
+            var charPos = word.charAt(0).charCodeAt() - 65;
+            charPositions[charPos].push([m, n, oriIdx]);
+        }
+
+        % place at valid position
+        if (!addWord(word) || word == "###") {
+            DEBUG_STRING += "!!!";
+            i--;
+        }
+        DEBUG_STRING += word;
+    }
+}
+
+function getWordWithLen(len) {
+    var minLen = WORD_LIST[0][0].length;
+    var maxLen = WORD_LIST[WORD_LIST.length - 1][0].length;
+    if (len < minLen) {
+        len = minLen;
+    } else if (len > maxLen) {
+        len = maxLen;
+    }
+
+    var lIdx = len - 4;
+    for (var tmp = 0; wordList[lIdx].length == 0; tmp++) {
+        if (tmp >= WORD_LIST.length) {
+            return "###";
+        }
+        lIdx = (lIdx + 1) \% WORD_LIST.length;
+    }
+
+    var wIdx = getRandomInt(wordList[lIdx].length);
+    var word = wordList[lIdx][wIdx];
+    wordList[lIdx].splice(wIdx, 1);
+
+    return word;
+}
+
+function addWord(word) {
+    var posInfo = getValidPosition(word);
+    if (posInfo.length == 0) {
+        return false;
+    }
+    var m = posInfo[M];
+    var n = posInfo[N];
+    var oriIdx = posInfo[ORI_IDX];
+    var ori = ORIENTATIONS[oriIdx];
+
+    for (var l = 0; l < word.length; l++) {
+        if (n >= 0 && n < FIELD_WIDTH && m >= 0 && m < FIELD_HEIGHT) {
+            var char = word.charAt(l);
+            solution[m][n] = char;
+            % for each char save the position in the char array
+            charPositions[(char.charCodeAt() - 65)].push([m, n, oriIdx]);
+        }
+        m += ori[M];
+        n += ori[N];
+    }
+    return true;
+}
+
+function getValidPosition(word) {
+    var m = 0;
+    var n = 0;
+    var oriIdx = 0;
+
+    var len = 0;
+    var lastChar = 0;
+    var lastPos = 0;
+
+    var result = [];
+
+    % Iterate all characters of the word
+    for (var l = 0; l < word.length; l++) {
+        var char = word.charAt(l).charCodeAt() - 65;
+        % If there are idientical characters available
+        if (charPositions[char].length > len) {
+
+            % Iterate all possible positions of this character
+            for (var pos = 0; pos < charPositions[char].length; pos++) {
+                var posInfo = charPositions[char][pos];
+
+                oriIdx = (posInfo[ORI_IDX] + 1) \% ORIENTATIONS.length;
+                var ori = ORIENTATIONS[oriIdx];
+
+                m = posInfo[M] - l * ori[M];
+                n = posInfo[N] - l * ori[N];
+                % Check if the word would be override somthing or be OOB
+                if (checkCollisionAndOOB(word, [m, n, oriIdx])) {
+                    result = [m, n, oriIdx];
+                    len = charPositions[char].length;
+                    lastChar = char;
+                    lastPos = pos;
+                }
+            }
+        }
+    }
+    % No matching character was found
+    if (result.length != 0) {
+        charPositions[lastChar].splice(pos, 1);
+    }
+    return result;
+}
+
+function checkCollisionAndOOB(word, posInfo) {
+    var m = posInfo[M];
+    var n = posInfo[N];
+    var oriIdx = posInfo[ORI_IDX];
+    var ori = ORIENTATIONS[oriIdx];
+
+    for (var l = 0; l < word.length; l++) {
+        if (n < 0 || n >= FIELD_WIDTH || m < 0 || m >= FIELD_HEIGHT) {
+            return false;
+        }
+        if (solution[m][n] == EMPTY) {
+            % Specify the direction of the neighbourhood
+            var neighOriIdx = (oriIdx + 1) \% ORIENTATIONS.length;
+            if (!checkNeighbourhood(m, n, neighOriIdx)) {
+                return false;
+            }
+        } else if (solution[m][n] != word.charAt(l)) {
+            return false;
+        }
+
+        m += ori[M];
+        n += ori[N];
+    }
+    return true;
+}
+
+function checkNeighbourhood(m, n, oriIdx) {
+    var neighOri = ORIENTATIONS[oriIdx];
+    var neigh1M = m + neighOri[M];
+    var neigh1N = n + neighOri[N];
+    var neigh2M = m - neighOri[M];
+    var neigh2N = n - neighOri[N];
+
+    if (neigh1N >= 0 && neigh1N < FIELD_WIDTH && neigh1M >= 0 && neigh1M < FIELD_HEIGHT) {
+        if (solution[neigh1M][neigh1N] != EMPTY) {
+            return false;
+        }
+    }
+    if (neigh2N >= 0 && neigh2N < FIELD_WIDTH && neigh2M >= 0 && neigh2M < FIELD_HEIGHT) {
+        if (solution[neigh2M][neigh2N] != EMPTY) {
+            return false;
+        }
+    }
+    return true;
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Draw all cells.
+ */
+function drawAll() {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            draw(m, n);
+        }
+    }
+}
+
+/**
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ */
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    if (complField[m][n][1] != RND) {
+        cell.value = complField[m][n][CHAR];% + complField[m][n][1];
+    } else {
+        cell.value = complField[m][n][CHAR];
+    }
+    cell.delay = false;
+}
+
+/**
+ * Enables or disables the highlight of the given cell.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ * @param {Boolean} enable If true enables the highlight
+ */
+function highlight(m, n, enable) {
+    var field = this.getField("cell" + m + "-" + n);
+    field.delay = true;
+    % Highlight the current taken move
+    if (enable) {
+        field.borderColor = HIGHLIGHT_COLOR;
+    } else {
+        field.borderColor = color.white;
+    }
+    field.delay = false;
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Crossword}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
+
+        % The gamefield
+        \begin{tcolorbox}
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=cell#1-#2]{}\hspace{3pt}%
+                    }\vspace{3pt}
+                    \newline%
+                }%
+            \end{flushright}%
+        \end{tcolorbox}
+
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % \def\DefaultHeightofText{14pt}
+        % \renewcommand*{\LayoutTextField}[2]{%
+        %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
+        % }
+
+        % \renewcommand*{\LayoutCheckField}[2]{#1 #2}
+        % \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        % \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        % \renewcommand*{\LayoutCheckField}[2]{%
+        %     \parbox[c][\DefaultHeightofCheckBox]{0.12\linewidth}{#1}\enspace%
+        %     \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}%
+        % }
+
+        % \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        % \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        \begin{center}
+            % Game related buttons
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+
+    \end{Form}
+\end{document}
