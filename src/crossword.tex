@@ -24,8 +24,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{10}
-\def\fieldHeight{10}
+\def\fieldWidth{11}
+\def\fieldHeight{11}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -42,14 +42,13 @@ Text.";
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 300;
-var wordCount = 5;
+var wordCount = 9;
 
 % TODO debugging
 var DEBUG_STRING = "";
 
 % Constants
 const EMPTY = -1;
-const RND = -1;
 
 % For indexing
 const CHAR = 0;
@@ -58,8 +57,8 @@ const N = 1;
 const ORI_IDX = 2;
 
 const ORIENTATIONS = [
-    [1, 0], [0, 1]%,
-    %[-1, 0], [0, -1]
+    [1, 0], [0, 1],
+    [-1, 0], [0, -1]
 ]
 
 % Globals
@@ -124,7 +123,7 @@ function initialise() {
         var solRow = new Array();
         for (var n = 0; n < FIELD_WIDTH; n++) {
             % Random number
-            tmp.push(["", RND]);
+            tmp.push(EMPTY);
             solRow.push(EMPTY);
         }
         complField.push(tmp);
@@ -146,13 +145,7 @@ function initialise() {
 
     printInfoText(DEBUG_STRING);
 
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
-            if (solution[m][n] != EMPTY) {
-                complField[m][n][0] = solution[m][n];
-            }
-        }
-    }
+    hideEmpty();
 
     drawAll();
 }
@@ -170,7 +163,7 @@ function initialiseButtons() {
     this.getField("restart").setAction("MouseUp", "restart();");
 
     % Each cell needs to be connected to an input function
-    var funcName = "fieldClicked";
+    var funcName = "cellClicked";
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
@@ -200,7 +193,7 @@ function restart() {
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
             solution[m][n] = EMPTY;
-            complField[m][n][0] = "";
+            complField[m][n] = EMPTY;
         }
     }
 
@@ -222,17 +215,11 @@ function restart() {
 
     printInfoText(DEBUG_STRING);
 
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
-            if (solution[m][n] != EMPTY) {
-                complField[m][n][0] = solution[m][n];
-            }
-        }
-    }
+    hideEmpty();
 
     drawAll();
 
-    %printInfoText("Restart");
+    printInfoText("Restart");
 }
 
 /**
@@ -280,7 +267,7 @@ function createField() {
     % select and place longest word
     var lengthList = [];
     for (var i = 0; i < wordCount; i++) {
-        var len = getRandomInt(Math.min(FIELD_WIDTH, FIELD_HEIGHT));
+        var len = getRandomInt(Math.min(FIELD_WIDTH, FIELD_HEIGHT) - 1);
         lengthList.push(len);
     }
     % Sort length
@@ -294,15 +281,20 @@ function createField() {
 
         % TODO
         if (i == 0) {
-            var oriIdx = 0;%getRandomInt(ORIENTATIONS.length);
+            var center = Math.floor(word.length / 2.0);
+            var oriIdx = getRandomInt(ORIENTATIONS.length);
             var m = Math.floor(FIELD_HEIGHT * 0.5);
-            var n = 0;
-            var charPos = word.charAt(0).charCodeAt() - 65;
+            var n = Math.floor(FIELD_WIDTH * 0.5);
+            var charPos = word.charAt(center).charCodeAt() - 65;
             charPositions[charPos].push([m, n, oriIdx]);
         }
 
+        if (word == "###") {
+            DEBUG_STRING += word;
+            return;
+        }
         % place at valid position
-        if (!addWord(word) || word == "###") {
+        if (!addWord(word)) {
             DEBUG_STRING += "!!!";
             i--;
         }
@@ -344,6 +336,8 @@ function addWord(word) {
     var oriIdx = posInfo[ORI_IDX];
     var ori = ORIENTATIONS[oriIdx];
 
+    placeStart(posInfo);
+
     for (var l = 0; l < word.length; l++) {
         if (n >= 0 && n < FIELD_WIDTH && m >= 0 && m < FIELD_HEIGHT) {
             var char = word.charAt(l);
@@ -355,6 +349,24 @@ function addWord(word) {
         n += ori[N];
     }
     return true;
+}
+
+function placeStart(posInfo) {
+    var m = posInfo[M];
+    var n = posInfo[N];
+
+    const symbols = [
+        String.fromCharCode(0x2192),
+        String.fromCharCode(0x2193),
+        String.fromCharCode(0x2190),
+        String.fromCharCode(0x2191)
+    ];
+
+    var ori = ORIENTATIONS[posInfo[ORI_IDX]];
+
+    var tmpM = m - ori[M];
+    var tmpN = n - ori[N];
+    solution[tmpM][tmpN] = symbols[posInfo[ORI_IDX]];
 }
 
 function getValidPosition(word) {
@@ -378,7 +390,8 @@ function getValidPosition(word) {
             for (var pos = 0; pos < charPositions[char].length; pos++) {
                 var posInfo = charPositions[char][pos];
 
-                oriIdx = (posInfo[ORI_IDX] + 1) \% ORIENTATIONS.length;
+                var add = 1 + getRandomInt(2) * 2;
+                oriIdx = (posInfo[ORI_IDX] + add) \% ORIENTATIONS.length;
                 var ori = ORIENTATIONS[oriIdx];
 
                 m = posInfo[M] - l * ori[M];
@@ -406,6 +419,17 @@ function checkCollisionAndOOB(word, posInfo) {
     var oriIdx = posInfo[ORI_IDX];
     var ori = ORIENTATIONS[oriIdx];
 
+    var tmpM = m - ori[M];
+    var tmpN = n - ori[N];
+    if (tmpN >= 0 && tmpN < FIELD_WIDTH && tmpM >= 0 & tmpM < FIELD_HEIGHT) {
+        if (solution[tmpM][tmpN] != EMPTY) {
+            return false;
+        }
+    }
+    else {
+        return false;
+    }
+
     for (var l = 0; l < word.length; l++) {
         if (n < 0 || n >= FIELD_WIDTH || m < 0 || m >= FIELD_HEIGHT) {
             return false;
@@ -423,6 +447,13 @@ function checkCollisionAndOOB(word, posInfo) {
         m += ori[M];
         n += ori[N];
     }
+
+    if (n >= 0 && n < FIELD_WIDTH && m >= 0 & m < FIELD_HEIGHT) {
+        if (solution[m][n] != EMPTY) {
+            return false;
+        }
+    }
+
     return true;
 }
 
@@ -449,6 +480,8 @@ function checkNeighbourhood(m, n, oriIdx) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
+function cellClicked(m, n) {
+}
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
@@ -474,12 +507,33 @@ function drawAll() {
 function draw(m, n) {
     var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
-    if (complField[m][n][1] != RND) {
-        cell.value = complField[m][n][CHAR];% + complField[m][n][1];
+    if (solution[m][n] > "Z") {
+        cell.value = solution[m][n];
+        cell.textColor = color.white;
+        cell.fillColor = color.black;
+    } else if (complField[m][n] != EMPTY) {
+        cell.value = complField[m][n];
+        cell.textColor = color.black;
+        cell.fillColor = color.white;
     } else {
-        cell.value = complField[m][n][CHAR];
+        cell.value = "";
+        cell.textColor = color.black;
+        cell.fillColor = color.white;
     }
     cell.delay = false;
+}
+
+function hideEmpty() {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            var c = this.getField("cell" + m + "-" + n);
+            if (solution[m][n] != EMPTY) {
+                c.hidden = false;
+            } else {
+                c.hidden = true;
+            }
+        }
+    }
 }
 
 /**
