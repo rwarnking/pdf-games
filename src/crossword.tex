@@ -87,6 +87,17 @@ const WORD_LIST = [
     ["COMPETITION", "ANNIVERSARY"] % 11
 ]
 
+const HINT_LIST = [
+    ["WIND", "BEAN", "HOOK", "COAT", "EASY"], % 4
+    ["LEARN", "FAITH", "PROOF", "SOLID", "ALOOF", "PEACE", "BELLY", "ALLOW"], % 5
+    ["MARKET", "PERSON", "PRAISE", "FINISH"], % 6
+    ["FRECKLE", "COMBINE", "ARCHIVE", "INSPIRE"], % 7
+    ["NONSENSE", "HARDWARE"], % 8
+    ["EVOLUTION", "ORCHESTRA", "OPERATION", "POLICEMAN"], % 9
+    ["COMPROMISE"], % 10
+    ["COMPETITION", "ANNIVERSARY"] % 11
+]
+
 % A modifyable copy of the WORD_LIST
 var wordList = [];
 
@@ -130,20 +141,19 @@ function initialise() {
     % Init the GUI
     initialiseButtons();
 
-    % Create the field choosing a random symbol for each cell
-    var rnd;
+    % Create an empty field
     for (var m = 0; m < FIELD_HEIGHT; m++) {
-        var tmp = new Array();
+        var row = new Array();
         var solRow = new Array();
         for (var n = 0; n < FIELD_WIDTH; n++) {
-            % Random number
-            tmp.push(EMPTY);
+            row.push(EMPTY);
             solRow.push(EMPTY);
         }
-        complField.push(tmp);
+        complField.push(row);
         solution.push(solRow);
     }
 
+    % Copy word list
     for (var i = 0; i < WORD_LIST.length; i++) {
         var tmp = [];
         for (var j = 0; j < WORD_LIST[i].length; j++) {
@@ -154,11 +164,7 @@ function initialise() {
 
     createField();
 
-    printInfoText(DEBUG_STRING);
-
-    hideEmpty();
-
-    drawAll();
+    drawAndHideAll();
 }
 
 /**
@@ -182,6 +188,7 @@ function initialiseButtons() {
             cell.setAction("MouseDown", callbackName);
             cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
             cell.alignment = "center";
+            cell.charLimit = 1;
 
             % Add hover callbacks to cells
             var showCallback = "showHint" + "(" + m.toString() + "," + n.toString() + ");";
@@ -237,14 +244,9 @@ function restart() {
 
     curWords = [];
 
-    DEBUG_STRING = "";
     createField();
 
-    printInfoText(DEBUG_STRING);
-
-    hideEmpty();
-
-    drawAll();
+    drawAndHideAll();
 
     printInfoText("Restart");
 }
@@ -497,7 +499,6 @@ function checkNeighbourhood(m, n, oriIdx) {
 % Gamelogic %
 %%%%%%%%%%%%%
 function cellClicked(m, n) {
-    % TODO shift focus
     printInfoText("clicked " + m + " " + n + " " + solution[m][n]);
     if (solution[m][n] >= "A") {
         complField[m][n] = solution[m][n];
@@ -529,7 +530,7 @@ function showHint(m, n) {
         var overlay = this.getField("overlay");
         overlay.hidden = false;
         overlay.rect = newRect;
-        overlay.value = "hi";
+        overlay.value = getHintText(wIdx);
 
         if (lRx - uLx < uLy - lRy) {
             overlay.rotation = 90;
@@ -539,6 +540,25 @@ function showHint(m, n) {
 
         printInfoText("showhint ");
     }
+}
+
+function getHintText(wIdx) {
+    var word = "";
+    for (var c = 1; c < curWords[wIdx].length; c++) {
+        var char = solution[curWords[wIdx][c][M]][curWords[wIdx][c][N]];
+        word += char;
+    }
+
+    % Iterate all length rows of the word list
+    for (var l = 0; l < WORD_LIST.length; l++) {
+        for (var w = 0; w < WORD_LIST[l].length; w++) {
+            % https://stackoverflow.com/questions/1179366/is-there-a-javascript-strcmp
+            if (word == WORD_LIST[l][w]) {
+                return HINT_LIST[l][w];
+            }
+        }
+    }
+
 }
 
 function hideHint(m, n) {
@@ -560,10 +580,12 @@ function hideCell(m, n, state) {
 /**
  * Draw all cells.
  */
-function drawAll() {
+function drawAndHideAll() {
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
-            draw(m, n);
+            if (!hide(m, n)) {
+                draw(m, n);
+            }
         }
     }
 }
@@ -594,16 +616,14 @@ function draw(m, n) {
     cell.delay = false;
 }
 
-function hideEmpty() {
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
-            var c = this.getField("cell" + m + "-" + n);
-            if (solution[m][n] != EMPTY) {
-                c.hidden = false;
-            } else {
-                c.hidden = true;
-            }
-        }
+function hide(m, n) {
+    var c = this.getField("cell" + m + "-" + n);
+    if (solution[m][n] != EMPTY) {
+        c.hidden = false;
+        return false;
+    } else {
+        c.hidden = true;
+        return true;
     }
 }
 
@@ -683,7 +703,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=cell#1-#2]{}\hspace{3pt}%
+                            bordercolor=gray, name=cell#1-#2]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline%
                 }%
