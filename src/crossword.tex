@@ -87,12 +87,26 @@ const WORD_LIST = [
     ["COMPETITION", "ANNIVERSARY"] % 11
 ]
 
+% A modifyable copy of the WORD_LIST
 var wordList = [];
 
+% Allows to save the currently available positions
+% of each char between 'A' and 'Z'
 var charPositions = [
     [], [], [], [], [], [], [], [], [], [],
     [], [], [], [], [], [], [], [], [], [],
     [], [], [], [], [], []
+];
+
+% A list of coordinates for each word
+var curWords = [];
+
+% Arrow symbols
+const symbols = [
+    String.fromCharCode(0x2192),
+    String.fromCharCode(0x2193),
+    String.fromCharCode(0x2190),
+    String.fromCharCode(0x2191)
 ];
 
 %%%%%%%%%%
@@ -139,9 +153,6 @@ function initialise() {
     }
 
     createField();
-    % for (var i = 0; i < wordCount; i++) {
-    %     DEBUG_STRING += getWordWithLen(i);
-    % }
 
     printInfoText(DEBUG_STRING);
 
@@ -171,8 +182,22 @@ function initialiseButtons() {
             cell.setAction("MouseDown", callbackName);
             cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
             cell.alignment = "center";
+
+            % Add hover callbacks to cells
+            var showCallback = "showHint" + "(" + m.toString() + "," + n.toString() + ");";
+            var cell = this.getField("cell" + m + "-" + n);
+            cell.setAction("MouseEnter", showCallback);
+
+            var hideCallback = "hideHint" + "(" + m.toString() + "," + n.toString() + ");";
+            cell.setAction("MouseExit", hideCallback);
         }
     }
+
+    var overlay = this.getField("overlay");
+    overlay.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+    overlay.alignment = "center";
+    overlay.textColor = color.white;
+    overlay.fillColor = color.black;
 
     % Info field setup
     this.getField("info").fillColor = color.transparent;
@@ -209,6 +234,8 @@ function restart() {
     for (var char = 0; char < charPositions.length; char++) {
         charPositions[char] = [];
     }
+
+    curWords = [];
 
     DEBUG_STRING = "";
     createField();
@@ -331,42 +358,32 @@ function addWord(word) {
     if (posInfo.length == 0) {
         return false;
     }
-    var m = posInfo[M];
-    var n = posInfo[N];
     var oriIdx = posInfo[ORI_IDX];
     var ori = ORIENTATIONS[oriIdx];
 
-    placeStart(posInfo);
+    var m = posInfo[M] - ori[M];
+    var n = posInfo[N] - ori[N];
+
+    var wordCoords = [];
+    wordCoords.push([m, n]);
+    % Place the start icon
+    complField[m][n] = symbols[posInfo[ORI_IDX]];
+    solution[m][n] = curWords.length;
 
     for (var l = 0; l < word.length; l++) {
-        if (n >= 0 && n < FIELD_WIDTH && m >= 0 && m < FIELD_HEIGHT) {
-            var char = word.charAt(l);
-            solution[m][n] = char;
-            % for each char save the position in the char array
-            charPositions[(char.charCodeAt() - 65)].push([m, n, oriIdx]);
-        }
         m += ori[M];
         n += ori[N];
+
+        var char = word.charAt(l);
+        solution[m][n] = char;
+        % for each char save the position in the char array
+        charPositions[(char.charCodeAt() - 65)].push([m, n, oriIdx]);
+
+        wordCoords.push([m, n]);
     }
+
+    curWords.push(wordCoords);
     return true;
-}
-
-function placeStart(posInfo) {
-    var m = posInfo[M];
-    var n = posInfo[N];
-
-    const symbols = [
-        String.fromCharCode(0x2192),
-        String.fromCharCode(0x2193),
-        String.fromCharCode(0x2190),
-        String.fromCharCode(0x2191)
-    ];
-
-    var ori = ORIENTATIONS[posInfo[ORI_IDX]];
-
-    var tmpM = m - ori[M];
-    var tmpN = n - ori[N];
-    solution[tmpM][tmpN] = symbols[posInfo[ORI_IDX]];
 }
 
 function getValidPosition(word) {
@@ -425,8 +442,7 @@ function checkCollisionAndOOB(word, posInfo) {
         if (solution[tmpM][tmpN] != EMPTY) {
             return false;
         }
-    }
-    else {
+    } else {
         return false;
     }
 
@@ -481,6 +497,61 @@ function checkNeighbourhood(m, n, oriIdx) {
 % Gamelogic %
 %%%%%%%%%%%%%
 function cellClicked(m, n) {
+    % TODO shift focus
+    printInfoText("clicked " + m + " " + n + " " + solution[m][n]);
+    if (solution[m][n] >= "A") {
+        complField[m][n] = solution[m][n];
+    }
+    draw(m, n);
+}
+
+function showHint(m, n) {
+    if (complField[m][n] > "Z") {
+        const START = 1;
+        var wIdx = solution[m][n];
+
+        var startM = curWords[wIdx][START][M];
+        var startN = curWords[wIdx][START][N];
+        var endM = curWords[wIdx][curWords[wIdx].length - 1][M];
+        var endN = curWords[wIdx][curWords[wIdx].length - 1][N];
+
+        var startCell = this.getField("cell" + startM + "-" + startN);
+        var endCell = this.getField("cell" + endM + "-" + endN);
+
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        var uLx = Math.min(startCell.rect[0], endCell.rect[0]);
+        var uLy = Math.max(startCell.rect[1], endCell.rect[1]);
+        var lRx = Math.max(startCell.rect[2], endCell.rect[2]);
+        var lRy = Math.min(startCell.rect[3], endCell.rect[3]);
+
+        var newRect = [uLx, uLy, lRx, lRy];
+
+        var overlay = this.getField("overlay");
+        overlay.hidden = false;
+        overlay.rect = newRect;
+        overlay.value = "hi";
+
+        if (lRx - uLx < uLy - lRy) {
+            overlay.rotation = 90;
+        } else {
+            overlay.rotation = 0;
+        }
+
+        printInfoText("showhint ");
+    }
+}
+
+function hideHint(m, n) {
+    if (complField[m][n] > "Z") {
+        var overlay = this.getField("overlay");
+        overlay.hidden = true;
+
+        printInfoText("hidehint ");
+    }
+}
+
+function hideCell(m, n, state) {
+    this.getField("cell" + m + "-" + n).hidden = state;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -507,8 +578,8 @@ function drawAll() {
 function draw(m, n) {
     var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
-    if (solution[m][n] > "Z") {
-        cell.value = solution[m][n];
+    if (complField[m][n] > "Z") {
+        cell.value = complField[m][n];
         cell.textColor = color.white;
         cell.fillColor = color.black;
     } else if (complField[m][n] != EMPTY) {
@@ -658,6 +729,8 @@ function printInfoText(text) {
         \end{center}
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+
+        \TextField[bordercolor=white, name=overlay, readonly=true, hidden]{}
 
     \end{Form}
 \end{document}
