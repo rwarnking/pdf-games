@@ -5,10 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-% \usepackage[utf8x]{inputenc}
-% \usepackage[T1]{fontenc}
-% \usepackage[ngerman]{babel}
-% \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -32,17 +28,17 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{Crossword}
 
-const GAME_DESC = "Text.\
-Text.\
-Text.\
-Text.\
-Text.";
+const GAME_DESC = "This is a crossword puzzle. Your goal is to fill all cells with the correct\
+character. Usually the connected character build a word. When hovering over the arrows a hint\
+is shown, indicating which word should be entered into a row or column.";
 
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 300;
 % Maximum amount of words in the puzzle
+% OBACHT: This count is not very accurate, since the random length of the words highly
+% influence how many words can be placed onto the field.
 var wordCount = 10;
 
 % Constants
@@ -71,7 +67,7 @@ const HIGHLIGHT_FALSE_COLOR = [ "RGB", 0.984, 0.100, 0.176 ];
 
 % Word data
 const WORD_LIST = [
-    ["WIND", "BEAN", "HOOK", "COAT", "EASY"], % 4
+    ["WIND", "BEAN", "HOOK", "COAT", "EASY", "JOKE"], % 4
     ["LEARN", "FAITH", "PROOF", "SOLID", "ALOOF", "PEACE", "BELLY", "ALLOW"], % 5
     ["MARKET", "PERSON", "PRAISE", "FINISH"], % 6
     ["FRECKLE", "COMBINE", "ARCHIVE", "INSPIRE"], % 7
@@ -82,15 +78,17 @@ const WORD_LIST = [
 ]
 
 % Containing hints for the word that is to be found
+% https://www.the-crossword-solver.com/search
 const HINT_LIST = [
-    ["WIND", "BEAN", "HOOK", "COAT", "EASY"], % 4
-    ["LEARN", "FAITH", "PROOF", "SOLID", "ALOOF", "PEACE", "BELLY", "ALLOW"], % 5
-    ["MARKET", "PERSON", "PRAISE", "FINISH"], % 6
-    ["FRECKLE", "COMBINE", "ARCHIVE", "INSPIRE"], % 7
-    ["NONSENSE", "HARDWARE"], % 8
-    ["EVOLUTION", "ORCHESTRA", "OPERATION", "POLICEMAN"], % 9
-    ["COMPROMISE"], % 10
-    ["COMPETITION", "ANNIVERSARY"] % 11
+    ["air moving", "edible pod", "fish trap", "blazer", "like childs play", "pun"], % 4
+    ["get to know", "strong belief", "evidence", "not hollow", "hardly warm",
+        "state of calm", "abdomen", "give permission"], % 5
+    ["place of trade", "an individual", "expressed approval", "goal"], % 6
+    ["melanin spot", "add together", "databank", "stimulate activity"], % 7
+    ["without meaning", "computer equipment"], % 8
+    ["gradual development", "large band", "surgery", "law enforcer"], % 9
+    ["trade-off"], % 10
+    ["duel to gain", "recurring yearly"] % 11
 ]
 
 % A modifyable copy of the WORD_LIST
@@ -171,6 +169,8 @@ function initialiseButtons() {
     app.focusRect = false;
 
     this.getField("cmDirs").currentValueIndices = 0;
+    this.getField("cmWords").currentValueIndices = 5;
+    wordCount = this.getField("cmWords").value;
 
     % Assign each button the coresponding function
     this.getField("restart").setAction("MouseUp", "restart();");
@@ -218,9 +218,11 @@ function initialiseButtons() {
 }
 
 /**
- * Restart the game and clear everything
+ * Clear everything and restart the game.
  */
 function restart() {
+    % Update word count
+    wordCount = this.getField("cmWords").value;
     % Use gui to set amount of orientations
     if (this.getField("cmDirs").value == 2) {
         ORIENTATIONS = [
@@ -865,7 +867,7 @@ function printInfoText(text) {
         % Header
         \begin{multicols}{2}
             % Title
-            \section*{Crossword}
+            \section*{Crossword puzzle}
         \columnbreak
             % Tooltip object
             \begin{flushright}%
@@ -910,18 +912,6 @@ function printInfoText(text) {
         % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
         %%%%%%%%%%%%%%%%%%%%%%%
         \def\DefaultHeightofText{14pt}
-        % \renewcommand*{\LayoutTextField}[2]{%
-        %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
-        % }
-
-        % \renewcommand*{\LayoutCheckField}[2]{#1 #2}
-        % \renewcommand*{\DefaultWidthofCheckBox}{2ex}
-        % \renewcommand*{\DefaultHeightofCheckBox}{2ex}
-        % \renewcommand*{\LayoutCheckField}[2]{%
-        %     \parbox[c][\DefaultHeightofCheckBox]{0.12\linewidth}{#1}\enspace%
-        %     \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}%
-        % }
-
         \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
         \renewcommand*{\DefaultHeightofChoiceMenu}{\DefaultHeightofText}
 
@@ -935,9 +925,11 @@ function printInfoText(text) {
                     \TextField[name=info, width=\linewidth, readonly=true]{\strut}
                 \end{tcolorbox} &
                 \begin{tcolorbox}
-                    %\centering
-                    \ChoiceMenu[name=cmDirs, bordercolor=gray, width=2cm, combo]
+                    \centering
+                    \ChoiceMenu[name=cmDirs, bordercolor=gray, width=1.5cm, combo]
                         {Directions: \strut}{2, 4}
+                    \ChoiceMenu[name=cmWords, bordercolor=gray, width=1.5cm, combo]
+                        {Words: \strut}{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
                 \end{tcolorbox}\\[-0.5cm]
                 \PushButton[name=checkall, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
