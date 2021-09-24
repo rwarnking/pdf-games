@@ -67,7 +67,8 @@ var complField = new Array();
 var solution = new Array();
 
 % Color data
-const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
+const HIGHLIGHT_TRUE_COLOR = [ "RGB", 0.100, 0.800, 0.176 ];
+const HIGHLIGHT_FALSE_COLOR = [ "RGB", 0.984, 0.100, 0.176 ];
 
 const COLORS = new Array(
     %[ "RGB", 0.843, 0.078, 0.058 ],
@@ -176,16 +177,17 @@ function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the coresponding function
     this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("checkall").setAction("MouseUp", "checkAll();");
 
-    % Each cell needs to be connected to an input function
+    % Each cell needs to be connected to an input and a hover function
     var funcName = "cellClicked";
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
             cell = this.getField("cell" + m + "-" + n);
-            cell.setAction("MouseDown", callbackName);
+            cell.setAction("OnBlur", callbackName);
             cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
             cell.alignment = "center";
             cell.charLimit = 1;
@@ -200,6 +202,7 @@ function initialiseButtons() {
         }
     }
 
+    % The overlay used for the hint
     var overlay = this.getField("overlay");
     overlay.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
     overlay.alignment = "center";
@@ -215,13 +218,14 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
 
-    printInfoText("Init");
+    printInfoText("Solve this puzzle.");
 }
 
 /**
  * Restart the game and clear everything
  */
 function restart() {
+    % Reset both fields
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
             solution[m][n] = EMPTY;
@@ -229,6 +233,7 @@ function restart() {
         }
     }
 
+    % Copy the word list
     wordList = [];
     for (var i = 0; i < WORD_LIST.length; i++) {
         var tmp = [];
@@ -238,17 +243,21 @@ function restart() {
         wordList.push(tmp);
     }
 
+    % Reset all char positions since there are no entries in the beginning
     for (var char = 0; char < charPositions.length; char++) {
         charPositions[char] = [];
     }
 
+    % Reset the words to be found
     curWords = [];
-
+    % Create the field, by creating a solution and a list of current words
     createField();
 
+    % Disable highlight and refresh rendering
+    highlightAll(color.gray);
     drawAndHideAll();
 
-    printInfoText("Restart");
+    printInfoText("Restarted game.");
 }
 
 /**
@@ -475,6 +484,12 @@ function checkCollisionAndOOB(word, posInfo) {
     return true;
 }
 
+/**
+ *
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ * @param {Number} oriIdx
+ */
 function checkNeighbourhood(m, n, oriIdx) {
     var neighOri = ORIENTATIONS[oriIdx];
     var neigh1M = m + neighOri[M];
@@ -498,19 +513,90 @@ function checkNeighbourhood(m, n, oriIdx) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
+/**
+ * Assignes the current cell value to the complField array.
+ * Used for updating the array after an input (OnBlur event).
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
 function cellClicked(m, n) {
-    printInfoText("clicked " + m + " " + n + " " + solution[m][n]);
-    if (solution[m][n] >= "A") {
-        complField[m][n] = solution[m][n];
+    % TODO convert input if lower case
+    var cell = this.getField("cell" + m + "-" + n);
+    % Revert changes to the arrow cells
+    if (complField[m][n] > "Z") {
+        cell.value = complField[m][n];
+    } else {
+        % Convert to uppercase
+        if ("a" <= cell.value && cell.value <= "z") {
+            cell.value = cell.value.toUpperCase();
+            complField[m][n] = cell.value;
+        } else if ("A" <= cell.value && cell.value <= "Z") {
+            complField[m][n] = cell.value;
+        } else {
+            % If the input was not a letter remove the symbol
+            cell.value = "";
+            complField[m][n] = EMPTY;
+        }
     }
-    draw(m, n);
 }
 
+/**
+ * Check the complete field for correct or incorrect inputs
+ * and mark these correspondingly. Only complete words are marked.
+ * Indicate when the game is over.
+ */
+function checkAll() {
+    var m = 0;
+    var n = 0;
+
+    var gameover = true;
+    for (var w = 0; w < curWords.length; w++) {
+        var wordComplete = true;
+        for (var c = 1; c < curWords[w].length; c++) {
+            m = curWords[w][c][M];
+            n = curWords[w][c][N];
+
+            if (solution[m][n] != complField[m][n]) {
+                wordComplete = false;
+                gameover = false;
+            }
+        }
+
+        for (var c = 1; c < curWords[w].length; c++) {
+            m = curWords[w][c][M];
+            n = curWords[w][c][N];
+
+            if (wordComplete) {
+                printInfoText("Found correct word!");
+                highlight(m, n, HIGHLIGHT_TRUE_COLOR);
+            } else {
+                highlight(m, n, HIGHLIGHT_FALSE_COLOR);
+            }
+            draw(m, n);
+        }
+    }
+
+    if (gameover) {
+        printInfoText("Gameover!");
+    }
+}
+
+/**
+ * Checks if a cell is an starting cell for a word (arrow cell).
+ * If so activate the overlay.
+ * For this the word index is used to get the rect of the first and
+ * last cell and adjust the dimensions of the overlayfield.
+ * The hint text is rotated if necessary.
+ *
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
 function showHint(m, n) {
     if (complField[m][n] > "Z") {
         const START = 1;
         var wIdx = solution[m][n];
 
+        % Get the coordinates of this words cells
         var startM = curWords[wIdx][START][M];
         var startN = curWords[wIdx][START][N];
         var endM = curWords[wIdx][curWords[wIdx].length - 1][M];
@@ -519,6 +605,7 @@ function showHint(m, n) {
         var startCell = this.getField("cell" + startM + "-" + startN);
         var endCell = this.getField("cell" + endM + "-" + endN);
 
+        % Get the new rect positions
         % upper-left x, upper-left y, lower-right x and lower-right y
         var uLx = Math.min(startCell.rect[0], endCell.rect[0]);
         var uLy = Math.max(startCell.rect[1], endCell.rect[1]);
@@ -526,23 +613,44 @@ function showHint(m, n) {
         var lRy = Math.min(startCell.rect[3], endCell.rect[3]);
 
         var newRect = [uLx, uLy, lRx, lRy];
-
+        % Adjust overlayfield
         var overlay = this.getField("overlay");
         overlay.hidden = false;
         overlay.rect = newRect;
         overlay.value = getHintText(wIdx);
-
+        % Rotate depending on the dimensions (length vs width)
         if (lRx - uLx < uLy - lRy) {
             overlay.rotation = 90;
         } else {
             overlay.rotation = 0;
         }
-
-        printInfoText("showhint ");
     }
 }
 
+/**
+ * Checks if a cell is an starting cell for a word (arrow cell).
+ * If so deactivate the overlay.
+ * Is used on MouseExit.
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
+function hideHint(m, n) {
+    % Ensure arrow cell
+    if (complField[m][n] > "Z") {
+        % Just hide the overlayfield, no need to adjust it
+        var overlay = this.getField("overlay");
+        overlay.hidden = true;
+    }
+}
+
+/**
+ * Searches the WORD_LIST for the initial index of the given word
+ * and uses this index to access the HINT_LIST.
+ * @param {Number} wIdx The words index to reconstruct the word.
+ * @param {String} The hint belonging to the given word.
+ */
 function getHintText(wIdx) {
+    % Reconstruct the word
     var word = "";
     for (var c = 1; c < curWords[wIdx].length; c++) {
         var char = solution[curWords[wIdx][c][M]][curWords[wIdx][c][N]];
@@ -558,20 +666,6 @@ function getHintText(wIdx) {
             }
         }
     }
-
-}
-
-function hideHint(m, n) {
-    if (complField[m][n] > "Z") {
-        var overlay = this.getField("overlay");
-        overlay.hidden = true;
-
-        printInfoText("hidehint ");
-    }
-}
-
-function hideCell(m, n, state) {
-    this.getField("cell" + m + "-" + n).hidden = state;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -583,6 +677,7 @@ function hideCell(m, n, state) {
 function drawAndHideAll() {
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
+            % Redraw only if not hidden
             if (!hide(m, n)) {
                 draw(m, n);
             }
@@ -594,12 +689,13 @@ function drawAndHideAll() {
  * Since only one cell is updated with each input,
  * only this cell needs to be redrawn.
  *
- * @param {Number} m The m position.
- * @param {Number} n The n position.
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
  */
 function draw(m, n) {
     var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
+    % Bigger than "z" are the arrows
     if (complField[m][n] > "Z") {
         cell.value = complField[m][n];
         cell.textColor = color.white;
@@ -616,8 +712,16 @@ function draw(m, n) {
     cell.delay = false;
 }
 
+/**
+ * Toggles the hidden state of the given cell,
+ * depending on the value in the solution array.
+ * If the solution is empty the cell is hidden.
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
 function hide(m, n) {
     var c = this.getField("cell" + m + "-" + n);
+    % If the solution is empty the cell must be hidden
     if (solution[m][n] != EMPTY) {
         c.hidden = false;
         return false;
@@ -628,21 +732,28 @@ function hide(m, n) {
 }
 
 /**
- * Enables or disables the highlight of the given cell.
- *
- * @param {Number} m The m position.
- * @param {Number} n The n position.
- * @param {Boolean} enable If true enables the highlight
+ * Highlights all cells with the given color.
+ * @param {Array} color The color array.
  */
-function highlight(m, n, enable) {
+function highlightAll(color) {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            highlight(m, n, color);
+        }
+    }
+}
+
+/**
+ * Highlights the given cell with the given color.
+ *
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ * @param {Array} color The color array.
+ */
+function highlight(m, n, color) {
     var field = this.getField("cell" + m + "-" + n);
     field.delay = true;
-    % Highlight the current taken move
-    if (enable) {
-        field.borderColor = HIGHLIGHT_COLOR;
-    } else {
-        field.borderColor = color.white;
-    }
+    field.borderColor = color;
     field.delay = false;
 }
 
@@ -744,7 +855,13 @@ function printInfoText(text) {
                 } &
                 \begin{tcolorbox}
                     \TextField[name=info, width=\linewidth, readonly=true]{}
-                \end{tcolorbox}
+                \end{tcolorbox} \\
+                \PushButton[name=checkall, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Check input\strut
+                    \end{tcolorbox}
+                }
             \end{tabularx}
         \end{center}
 
