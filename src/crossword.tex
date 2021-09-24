@@ -42,39 +42,32 @@ Text.";
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 300;
-var wordCount = 9;
-
-% TODO debugging
-var DEBUG_STRING = "";
+% Maximum amount of words in the puzzle
+var wordCount = 10;
 
 % Constants
 const EMPTY = -1;
 
 % For indexing
-const CHAR = 0;
 const M = 0;
 const N = 1;
 const ORI_IDX = 2;
 
-const ORIENTATIONS = [
-    [1, 0], [0, 1],
-    [-1, 0], [0, -1]
+% The game allows for upto 4 directions (up, down, left, right)
+% Diagonals also work, but are not supported by the arrows and the hint system
+var ORIENTATIONS = [
+    [1, 0], [0, 1]%,
+    %[-1, 0], [0, -1]
 ]
 
 % Globals
-% The game field
+% The game- and the solution field
 var complField = new Array();
 var solution = new Array();
 
 % Color data
 const HIGHLIGHT_TRUE_COLOR = [ "RGB", 0.100, 0.800, 0.176 ];
 const HIGHLIGHT_FALSE_COLOR = [ "RGB", 0.984, 0.100, 0.176 ];
-
-const COLORS = new Array(
-    %[ "RGB", 0.843, 0.078, 0.058 ],
-    %[ "RGB", 0.203, 0.603, 0.054 ],
-    %[ "RGB", 0.078, 0.305, 0.560 ]
-);
 
 % Word data
 const WORD_LIST = [
@@ -88,6 +81,7 @@ const WORD_LIST = [
     ["COMPETITION", "ANNIVERSARY"] % 11
 ]
 
+% Containing hints for the word that is to be found
 const HINT_LIST = [
     ["WIND", "BEAN", "HOOK", "COAT", "EASY"], % 4
     ["LEARN", "FAITH", "PROOF", "SOLID", "ALOOF", "PEACE", "BELLY", "ALLOW"], % 5
@@ -164,7 +158,7 @@ function initialise() {
     }
 
     createField();
-
+    % Hide unused cells
     drawAndHideAll();
 }
 
@@ -173,15 +167,17 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
-    var cell;
     % Disables the rectangle around a button after the click
     app.focusRect = false;
+
+    this.getField("cmDirs").currentValueIndices = 0;
 
     % Assign each button the coresponding function
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("checkall").setAction("MouseUp", "checkAll();");
 
     % Each cell needs to be connected to an input and a hover function
+    var cell;
     var funcName = "cellClicked";
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
@@ -225,6 +221,18 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
+    % Use gui to set amount of orientations
+    if (this.getField("cmDirs").value == 2) {
+        ORIENTATIONS = [
+            [1, 0], [0, 1]
+        ];
+    } else {
+        ORIENTATIONS = [
+            [1, 0], [0, 1],
+            [-1, 0], [0, -1]
+        ];
+    }
+
     % Reset both fields
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
@@ -301,23 +309,37 @@ function tooltip(on) {
 % Field creation %
 % https://stackoverflow.com/questions/943113/algorithm-to-generate-a-crossword
 %%%%%%%%%%%%%%%%%%
+/**
+ * Creates a field, by adding words from the word list to the solution array when possible.
+ * This is determined by checking all already placed characters for intersections
+ * with each available word.
+ * The words character positions are also saved inside another array.
+ */
 function createField() {
-    % select and place longest word
+    % Create list of random length
     var lengthList = [];
     for (var i = 0; i < wordCount; i++) {
         var len = getRandomInt(Math.min(FIELD_WIDTH, FIELD_HEIGHT) - 1);
         lengthList.push(len);
     }
-    % Sort length
+    % Sort length list
     lengthList.sort(function(a, b) {
         return b - a;
     });
 
-    % For each word
+    % Create and add the specified amount of words
+    % OBACHT: The algorithm tries to fit each word once,
+    % if there was not valid position the word is removed and not used again.
+    % This could be changed by moving the splice-method from getWordWithLen()
+    % into this loop after adding a word, but in that case the word would be
+    % marked anotherway to prevent testing a word multiple times.
     for (var i = 0; i < wordCount; i++) {
+        % Get a word with the current length
         var word = getWordWithLen(lengthList[i]);
 
         % TODO
+        % If is is the first word, place its center letter
+        % in the middle of the field
         if (i == 0) {
             var center = Math.floor(word.length / 2.0);
             var oriIdx = getRandomInt(ORIENTATIONS.length);
@@ -327,20 +349,28 @@ function createField() {
             charPositions[charPos].push([m, n, oriIdx]);
         }
 
+        % In case all words in the word list where tested
         if (word == "###") {
-            DEBUG_STRING += word;
             return;
         }
-        % place at valid position
+        % Place at valid position
+        % If this is not possible try to add another word
         if (!addWord(word)) {
-            DEBUG_STRING += "!!!";
             i--;
         }
-        DEBUG_STRING += word;
     }
 }
 
+/**
+ * Gets a random word from the word list with the given length.
+ * If the length is smaller or bigger than allowed the closest length is used.
+ * If there are no words left with this length other length are chosen,
+ * until the word list is completely empty.
+ * @param {Number} len The length of the word.
+ * @return {String} The found word.
+ */
 function getWordWithLen(len) {
+    % Check for out of bounds
     var minLen = WORD_LIST[0][0].length;
     var maxLen = WORD_LIST[WORD_LIST.length - 1][0].length;
     if (len < minLen) {
@@ -349,38 +379,50 @@ function getWordWithLen(len) {
         len = maxLen;
     }
 
+    % Check the list at the current length. If there are no words
+    % left try another length until a word is found or all sizes are checked
     var lIdx = len - 4;
     for (var tmp = 0; wordList[lIdx].length == 0; tmp++) {
         if (tmp >= WORD_LIST.length) {
+            % The list is empty
             return "###";
         }
         lIdx = (lIdx + 1) \% WORD_LIST.length;
     }
 
+    % Return a random word for the given length from the list
     var wIdx = getRandomInt(wordList[lIdx].length);
     var word = wordList[lIdx][wIdx];
+    % Remove the word such that it can not be tested again
     wordList[lIdx].splice(wIdx, 1);
 
     return word;
 }
 
+/**
+ * Adds a word to the solution and the current list of words,
+ * if a valid position is found.
+ * @param {String} word The word to add.
+ */
 function addWord(word) {
+    % If there is no valid position indicate the failure
     var posInfo = getValidPosition(word);
     if (posInfo.length == 0) {
         return false;
     }
     var oriIdx = posInfo[ORI_IDX];
     var ori = ORIENTATIONS[oriIdx];
-
+    % Get one cell before the word to add start icon
     var m = posInfo[M] - ori[M];
     var n = posInfo[N] - ori[N];
 
     var wordCoords = [];
     wordCoords.push([m, n]);
-    % Place the start icon
+    % Place the start icon and the index of the word
     complField[m][n] = symbols[posInfo[ORI_IDX]];
     solution[m][n] = curWords.length;
 
+    % Iterate all chars and add them to the solution
     for (var l = 0; l < word.length; l++) {
         m += ori[M];
         n += ori[N];
@@ -389,19 +431,32 @@ function addWord(word) {
         solution[m][n] = char;
         % for each char save the position in the char array
         charPositions[(char.charCodeAt() - 65)].push([m, n, oriIdx]);
-
+        % Push character coordinates
         wordCoords.push([m, n]);
     }
-
+    % Add the coordinates to the current words array
     curWords.push(wordCoords);
     return true;
 }
 
+/**
+ * Tests if the given word has any valid positions at which to be placed.
+ * For this each character of the word is iterated checking if this character
+ * can be found on the field.
+ * Select a position if placing the word there would not be out of bounds and
+ * would not collide with other words. All options are tested, while the one
+ * having the most occurrences is chossen.
+ * Example: if there would be 3x "e", 2x "f" - "e" would be chosen, unless
+ * none of these are valid due to collisions.
+ *
+ * @param {String} word The word to get a valid position for.
+ */
 function getValidPosition(word) {
     var m = 0;
     var n = 0;
     var oriIdx = 0;
 
+    % Used for saving the best combination of len, char and position
     var len = 0;
     var lastChar = 0;
     var lastPos = 0;
@@ -418,14 +473,20 @@ function getValidPosition(word) {
             for (var pos = 0; pos < charPositions[char].length; pos++) {
                 var posInfo = charPositions[char][pos];
 
+                % Alternate orientation - otherwise the orientation
+                % from words attached to another word always be the same
+                % OBACHT: only one direction is tested, it might be possible,
+                % that the other direction would have worked
                 var add = 1 + getRandomInt(2) * 2;
                 oriIdx = (posInfo[ORI_IDX] + add) \% ORIENTATIONS.length;
                 var ori = ORIENTATIONS[oriIdx];
 
+                % Calculate start position
                 m = posInfo[M] - l * ori[M];
                 n = posInfo[N] - l * ori[N];
-                % Check if the word would be override somthing or be OOB
+                % Check if the word would be override something or be OOB
                 if (checkCollisionAndOOB(word, [m, n, oriIdx])) {
+                    % Save the startposition
                     result = [m, n, oriIdx];
                     len = charPositions[char].length;
                     lastChar = char;
@@ -434,19 +495,31 @@ function getValidPosition(word) {
             }
         }
     }
-    % No matching character was found
+    % Remove char if there was a match otherwise return an empty array
     if (result.length != 0) {
         charPositions[lastChar].splice(pos, 1);
     }
     return result;
 }
 
+/**
+ * Checks for collisions and out of bounds.
+ * Collision would be if a cell is already occupied by a character
+ * different from the one that shall be placed.
+ * Furthermore a word can collide if a neighbouring cell is occupied,
+ * since this would alter the neighbouring word.
+ *
+ * @param {String} word The word to test for collsion.
+ * @param {Array} posInfo The start position and the orientation.
+ * @return {Boolean} True if there is no collision, else false.
+ */
 function checkCollisionAndOOB(word, posInfo) {
     var m = posInfo[M];
     var n = posInfo[N];
     var oriIdx = posInfo[ORI_IDX];
     var ori = ORIENTATIONS[oriIdx];
 
+    % Test the cell infront of the word (for the orientation symbol)
     var tmpM = m - ori[M];
     var tmpN = n - ori[N];
     if (tmpN >= 0 && tmpN < FIELD_WIDTH && tmpM >= 0 & tmpM < FIELD_HEIGHT) {
@@ -454,15 +527,18 @@ function checkCollisionAndOOB(word, posInfo) {
             return false;
         }
     } else {
+        % OOB
         return false;
     }
 
     for (var l = 0; l < word.length; l++) {
+        % OOB
         if (n < 0 || n >= FIELD_WIDTH || m < 0 || m >= FIELD_HEIGHT) {
             return false;
         }
+        % Collision
         if (solution[m][n] == EMPTY) {
-            % Specify the direction of the neighbourhood
+            % Specify the direction of the neighbourhood (orthogonal)
             var neighOriIdx = (oriIdx + 1) \% ORIENTATIONS.length;
             if (!checkNeighbourhood(m, n, neighOriIdx)) {
                 return false;
@@ -475,6 +551,7 @@ function checkCollisionAndOOB(word, posInfo) {
         n += ori[N];
     }
 
+    % Test the cell behind the word (no OOB test)
     if (n >= 0 && n < FIELD_WIDTH && m >= 0 & m < FIELD_HEIGHT) {
         if (solution[m][n] != EMPTY) {
             return false;
@@ -485,10 +562,13 @@ function checkCollisionAndOOB(word, posInfo) {
 }
 
 /**
+ * Checks the two neighbouring cells in the +- direction of the given
+ * orientation for beeing empty.
  *
  * @param {Number} m The row index.
  * @param {Number} n The column index.
- * @param {Number} oriIdx
+ * @param {Number} oriIdx The orientation index.
+ * @return {Boolean} True if neighbouring cells are empty, else false.
  */
 function checkNeighbourhood(m, n, oriIdx) {
     var neighOri = ORIENTATIONS[oriIdx];
@@ -497,7 +577,9 @@ function checkNeighbourhood(m, n, oriIdx) {
     var neigh2M = m - neighOri[M];
     var neigh2N = n - neighOri[N];
 
+    % Ignore OOB
     if (neigh1N >= 0 && neigh1N < FIELD_WIDTH && neigh1M >= 0 && neigh1M < FIELD_HEIGHT) {
+        % If non empty return false
         if (solution[neigh1M][neigh1N] != EMPTY) {
             return false;
         }
@@ -520,7 +602,6 @@ function checkNeighbourhood(m, n, oriIdx) {
  * @param {Number} n The column index.
  */
 function cellClicked(m, n) {
-    % TODO convert input if lower case
     var cell = this.getField("cell" + m + "-" + n);
     % Revert changes to the arrow cells
     if (complField[m][n] > "Z") {
@@ -550,8 +631,10 @@ function checkAll() {
     var n = 0;
 
     var gameover = true;
+    % Iterate list of words
     for (var w = 0; w < curWords.length; w++) {
         var wordComplete = true;
+        % Check if current word is correct
         for (var c = 1; c < curWords[w].length; c++) {
             m = curWords[w][c][M];
             n = curWords[w][c][N];
@@ -562,6 +645,7 @@ function checkAll() {
             }
         }
 
+        % Mark current word as current or incorrect
         for (var c = 1; c < curWords[w].length; c++) {
             m = curWords[w][c][M];
             n = curWords[w][c][N];
@@ -825,7 +909,7 @@ function printInfoText(text) {
         % Commandredifinition %
         % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
         %%%%%%%%%%%%%%%%%%%%%%%
-        % \def\DefaultHeightofText{14pt}
+        \def\DefaultHeightofText{14pt}
         % \renewcommand*{\LayoutTextField}[2]{%
         %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
         % }
@@ -838,8 +922,8 @@ function printInfoText(text) {
         %     \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}%
         % }
 
-        % \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
-        % \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{\DefaultHeightofText}
 
         %%%%%%%%%%%%%%%%
         % GUI elements %
@@ -847,19 +931,24 @@ function printInfoText(text) {
         \begin{center}
             % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=restart, bordercolor=white]{
-                    \begin{tcolorbox}
-                        \centering
-                        Restart game\strut
-                    \end{tcolorbox}
-                } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
-                \end{tcolorbox} \\
-                \PushButton[name=checkall, bordercolor=white]{
+                    \TextField[name=info, width=\linewidth, readonly=true]{\strut}
+                \end{tcolorbox} &
+                \begin{tcolorbox}
+                    %\centering
+                    \ChoiceMenu[name=cmDirs, bordercolor=gray, width=2cm, combo]
+                        {Directions: \strut}{2, 4}
+                \end{tcolorbox}\\[-0.5cm]
+                \PushButton[name=checkall, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Check input\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
                     \end{tcolorbox}
                 }
             \end{tabularx}
