@@ -99,6 +99,8 @@ function initialise() {
     % Init the GUI
     initialiseButtons();
 
+    updateButtontxt();
+
     getEnemy();
 
     drawAll();
@@ -109,9 +111,20 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
-    % Assign each button the coresponding function and disable the highlights
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the coresponding function
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
+
+    this.getField("button1").setAction("MouseUp", "processInput(1);");
+    this.getField("button1txt").setAction("MouseUp", "processInput(1);");
+    this.getField("button2").setAction("MouseUp", "processInput(2);");
+    this.getField("button2txt").setAction("MouseUp", "processInput(2);");
+    this.getField("button3").setAction("MouseUp", "processInput(3);");
+    this.getField("button3txt").setAction("MouseUp", "processInput(3);");
+    this.getField("button4").setAction("MouseUp", "processInput(4);");
+    this.getField("button4txt").setAction("MouseUp", "processInput(4);");
 
     % Info field setup
     this.getField("info").fillColor = color.transparent;
@@ -172,6 +185,72 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
+
+const MENU = 0;
+const FIGHT = 1;
+const CHANGE = 2;
+const ITEMS = 3;
+const RUN = 4;
+
+var gamestate = MENU;
+
+function processInput(button) {
+    this.getField("info").setFocus();
+
+    if (gamestate == MENU) {
+        if (button == RUN) {
+            run();
+        } else {
+            gamestate = button;
+        }
+    } else {
+        if (gamestate == FIGHT) {
+            attack(button);
+        } else if (gamestate == CHANGE) {
+            change(button);
+        } else if (gamestate == ITEMS) {
+            items(button);
+        }
+        gamestate = MENU;
+    }
+    updateButtontxt();
+}
+
+function run() {
+}
+
+function attack(idx) {
+}
+
+function change(idx) {
+}
+
+function items(idx) {
+}
+
+function updateButtontxt() {
+    if (gamestate == MENU) {
+        this.getField("button1txt").value = "Fight";
+        this.getField("button2txt").value = "Change";
+        this.getField("button3txt").value = "Item";
+        this.getField("button4txt").value = "Run";
+    } else if (gamestate == FIGHT) {
+        this.getField("button1txt").value = "A1";
+        this.getField("button2txt").value = "A2";
+        this.getField("button3txt").value = "A3";
+        this.getField("button4txt").value = "A4";
+    } else if (gamestate == CHANGE) {
+        this.getField("button1txt").value = "M1";
+        this.getField("button2txt").value = "M2";
+        this.getField("button3txt").value = "M3";
+        this.getField("button4txt").value = "M4";
+    } else if (gamestate == ITEMS) {
+        this.getField("button1txt").value = "I1";
+        this.getField("button2txt").value = "I2";
+        this.getField("button3txt").value = "I3";
+        this.getField("button4txt").value = "I4";
+    }
+}
 
 function getPlayer() {
 
@@ -341,28 +420,32 @@ function printInfoText(text) {
 
             % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=fight, bordercolor=white, borderwidth=0]{
+                \PushButton[name=button1, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        Fight\strut
+                        \TextField[name=button1txt, width=\linewidth, readonly=true]{}%
+                        \strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=change, bordercolor=white, borderwidth=0]{
+                \PushButton[name=button2, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        Change\strut
+                        \TextField[name=button2txt, width=\linewidth, readonly=true]{}%
+                        \strut
                     \end{tcolorbox}
                 }\\
-                \PushButton[name=item, bordercolor=white, borderwidth=0]{
+                \PushButton[name=button3, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        Item\strut
+                        \TextField[name=button3txt, width=\linewidth, readonly=true]{}%
+                        \strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=run, bordercolor=white, borderwidth=0]{
+                \PushButton[name=button4, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        Run\strut
+                        \TextField[name=button4txt, width=\linewidth, readonly=true]{}%
+                        \strut
                     \end{tcolorbox}
                 }\\
                 \PushButton[name=back, bordercolor=white, borderwidth=0]{
