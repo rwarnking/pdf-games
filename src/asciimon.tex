@@ -46,6 +46,7 @@ Text.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const ENEMY_RESPONSE_TIME = 1000;
 
 % Constants
 const MENU = 0;
@@ -58,10 +59,16 @@ const RUN = 4;
 % The game field
 %var complField = new Array();
 var gamestate = MENU;
+var gameover = false;
+
 var curCreatureIdx = 0;
 var curPlayerCreatures = [["Empty"], ["Empty"], ["Empty"], ["Empty"]];
 var curPlayerItems = [0, 0, 0, 0];
 var curEnemy = 0;
+
+const PLAYER = true;
+const ENEMY = false;
+var turn = PLAYER;
 
 % Attributes
 const NAME = 0;
@@ -73,14 +80,28 @@ const ATKS = 4; % attacks
 % Types
 const T_WATER = 0;
 const T_AIR = 1;
+const T_STONE = 2;
+const T_GRASS = 3;
+const T_GHOST = 4;
+const T_FLUFF = 5;
 
 const CREATURE_LIST = new Array(
-    ["SHEEP", 68, 68, T_WATER, [0, 1, 2, 3]],
-    ["BIRD", 18, 18, T_AIR, [0, 1, 2, 3]]
+    ["SHEEP", 66, 66, T_FLUFF, [0, 1, 2, 3]],
+    ["BIRD", 18, 18, T_AIR, [0, 1, 2, 3]],
+    ["STONE", 230, 230, T_STONE, [0, 1, 2, 3]],
+    ["TREE", 150, 150, T_GRASS, [0, 1, 2, 3]],
+    ["SKELETOR", 120, 120, T_GHOST, [0, 1, 2, 3]],
+    ["DUCK", 34, 34, T_WATER, [0, 1, 2, 3]]
 );
 
+const DMG = 1;
+const KP = 2;
+
 const ATTACK_LIST = new Array(
-    "Jump", "Cry", "Speak", "Look"
+    ["Jump", 210, 3],
+    ["Cry", 10, 5],
+    ["Speak", 20, 10],
+    ["Look", 13, 22]
 );
 
 const ITEM_LIST = new Array(
@@ -168,6 +189,7 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
+    gameover = false;
     printInfoText("Restart");
 }
 
@@ -215,6 +237,15 @@ function tooltip(on) {
 function processInput(button) {
     this.getField("info").setFocus();
 
+    if (gameover) {
+        return;
+    }
+
+    if (turn != PLAYER) {
+        printInfoText("Wait your turn!");
+        return;
+    }
+
     if (gamestate == MENU) {
         if (button == RUN) {
             run();
@@ -235,15 +266,81 @@ function processInput(button) {
 }
 
 function run() {
+    curEnemy = getCreature();
+    updateEnemyTxt();
+    printInfoText("You ran from your enemy. Your new enemy is: " + curEnemy[NAME]);
 }
 
 function attack(idx) {
+    var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
+    var attack = ATTACK_LIST[attacks[idx - 1]];
+    curEnemy[CUR_HP] -= attack[DMG];
+    if (curEnemy[CUR_HP] < 0) {
+        curEnemy[CUR_HP] = 0;
+    }
+
+    turn = ENEMY;
+    updateEnemyTxt();
+    printInfoText("You attacked with " + attack[NAME] + "! " + curEnemy[NAME] + " took " + attack[DMG] + " damage.");
+
+    app.setTimeOut("enemyTurn();", ENEMY_RESPONSE_TIME);
 }
 
 function change(idx) {
+    turn = ENEMY;
+
+    printInfoText("You switched from ... to ....");
+
+    app.setTimeOut("enemyTurn();", ENEMY_RESPONSE_TIME);
 }
 
 function items(idx) {
+    turn = ENEMY;
+
+    printInfoText("You used ....");
+
+    app.setTimeOut("enemyTurn();", ENEMY_RESPONSE_TIME);
+}
+
+function enemyTurn() {
+    turn = PLAYER;
+    if (curEnemy[CUR_HP] == 0) {
+        curEnemy = getCreature();
+        updateEnemyTxt();
+        printInfoText("Your new enemy is: " + curEnemy[NAME]);
+        return;
+    }
+
+    var attacks = curEnemy[ATKS];
+    var attackIdx = getRandomInt(attacks.length);
+    var attack = ATTACK_LIST[attacks[attackIdx]];
+
+    var creature = curPlayerCreatures[curCreatureIdx];
+    creature[CUR_HP] -= attack[DMG];
+    if (creature[CUR_HP] < 0) {
+        creature[CUR_HP] = 0;
+        updatePlayerTxt();
+
+        curPlayerCreatures[curCreatureIdx] = ["Empty"];
+        if (noCreatureLeft()) {
+            gameover = true;
+            printInfoText("No Creatures left, game over!");
+        } else {
+            printInfoText("Your creature has no health left, please select a new creature.");
+        }
+    } else {
+        printInfoText("You got attacked with " + attack[NAME] + "! " + creature[NAME] + " took " + attack[DMG] + " damage.");
+        updatePlayerTxt();
+    }
+}
+
+function noCreatureLeft() {
+    for (var i = 0; i < curPlayerCreatures.length; i++) {
+        if (curPlayerCreatures[i][NAME] != "Empty") {
+            return false;
+        }
+    }
+    return true;
 }
 
 function updateButtontxt() {
@@ -254,10 +351,10 @@ function updateButtontxt() {
         this.getField("button4txt").value = "Run";
     } else if (gamestate == FIGHT) {
         var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
-        this.getField("button1txt").value = ATTACK_LIST[attacks[0]];
-        this.getField("button2txt").value = ATTACK_LIST[attacks[1]];
-        this.getField("button3txt").value = ATTACK_LIST[attacks[2]];
-        this.getField("button4txt").value = ATTACK_LIST[attacks[3]];
+        this.getField("button1txt").value = ATTACK_LIST[attacks[0]][NAME];
+        this.getField("button2txt").value = ATTACK_LIST[attacks[1]][NAME];
+        this.getField("button3txt").value = ATTACK_LIST[attacks[2]][NAME];
+        this.getField("button4txt").value = ATTACK_LIST[attacks[3]][NAME];
     } else if (gamestate == CHANGE) {
         this.getField("button1txt").value = curPlayerCreatures[0][NAME];
         this.getField("button2txt").value = curPlayerCreatures[1][NAME];
