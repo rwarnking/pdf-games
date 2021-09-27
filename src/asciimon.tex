@@ -48,34 +48,55 @@ const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 
 % Constants
+const MENU = 0;
+const FIGHT = 1;
+const CHANGE = 2;
+const ITEMS = 3;
+const RUN = 4;
 
 % Globals
 % The game field
 %var complField = new Array();
+var gamestate = MENU;
+var curCreatureIdx = 0;
+var curPlayerCreatures = [["Empty"], ["Empty"], ["Empty"], ["Empty"]];
+var curPlayerItems = [0, 0, 0, 0];
+var curEnemy = 0;
+
+% Attributes
+const NAME = 0;
+const CUR_HP = 1;
+const MAX_HP = 2;
+const TYPE = 3;
+const ATKS = 4; % attacks
+
+% Types
+const T_WATER = 0;
+const T_AIR = 1;
+
+const CREATURE_LIST = new Array(
+    ["SHEEP", 68, 68, T_WATER, [0, 1, 2, 3]],
+    ["BIRD", 18, 18, T_AIR, [0, 1, 2, 3]]
+);
+
+const ATTACK_LIST = new Array(
+    "Jump", "Cry", "Speak", "Look"
+);
+
+const ITEM_LIST = new Array(
+    ["Empty", 0],
+    ["Potion", 50],
+    ["Capture", 30],
+    ["Improve", 10],
+    ["Weaken", 10],
+    ["lalala", 0]
+);
 
 % Color data
 const COLORS = new Array(
     %[ "RGB", 0.843, 0.078, 0.058 ],
     %[ "RGB", 0.203, 0.603, 0.054 ],
     %[ "RGB", 0.078, 0.305, 0.560 ]
-);
-
-const ANIMAL_COUNT = 2;
-const A_NAME = 0;
-const A_HP = 1;
-const A_TYPE = 2;
-const A_ATK = 3; % attacks
-
-const T_WATER = 0;
-const T_AIR = 1;
-
-const ANIMAL_LIST = new Array(
-    ["SHEEP", 68, T_WATER, [0, 1, 2, 3]],
-    ["BIRD", 68, T_WATER, [0, 1, 2, 3]]
-);
-
-const ATTACK_LIST = new Array(
-    "JUMP", "CRY", "SPEAK", "LOOK"
 );
 
 %%%%%%%%%%
@@ -101,7 +122,12 @@ function initialise() {
 
     updateButtontxt();
 
-    getEnemy();
+    curPlayerCreatures[0] = getCreature();
+    curCreatureIdx = 0;
+    curEnemy = getCreature();
+
+    updateEnemyTxt();
+    updatePlayerTxt();
 
     drawAll();
 }
@@ -186,14 +212,6 @@ function tooltip(on) {
 % Gamelogic %
 %%%%%%%%%%%%%
 
-const MENU = 0;
-const FIGHT = 1;
-const CHANGE = 2;
-const ITEMS = 3;
-const RUN = 4;
-
-var gamestate = MENU;
-
 function processInput(button) {
     this.getField("info").setFocus();
 
@@ -235,33 +253,47 @@ function updateButtontxt() {
         this.getField("button3txt").value = "Item";
         this.getField("button4txt").value = "Run";
     } else if (gamestate == FIGHT) {
-        this.getField("button1txt").value = "A1";
-        this.getField("button2txt").value = "A2";
-        this.getField("button3txt").value = "A3";
-        this.getField("button4txt").value = "A4";
+        var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
+        this.getField("button1txt").value = ATTACK_LIST[attacks[0]];
+        this.getField("button2txt").value = ATTACK_LIST[attacks[1]];
+        this.getField("button3txt").value = ATTACK_LIST[attacks[2]];
+        this.getField("button4txt").value = ATTACK_LIST[attacks[3]];
     } else if (gamestate == CHANGE) {
-        this.getField("button1txt").value = "M1";
-        this.getField("button2txt").value = "M2";
-        this.getField("button3txt").value = "M3";
-        this.getField("button4txt").value = "M4";
+        this.getField("button1txt").value = curPlayerCreatures[0][NAME];
+        this.getField("button2txt").value = curPlayerCreatures[1][NAME];
+        this.getField("button3txt").value = curPlayerCreatures[2][NAME];
+        this.getField("button4txt").value = curPlayerCreatures[3][NAME];
     } else if (gamestate == ITEMS) {
-        this.getField("button1txt").value = "I1";
-        this.getField("button2txt").value = "I2";
-        this.getField("button3txt").value = "I3";
-        this.getField("button4txt").value = "I4";
+        this.getField("button1txt").value = ITEM_LIST[curPlayerItems[0]][NAME];
+        this.getField("button2txt").value = ITEM_LIST[curPlayerItems[1]][NAME];
+        this.getField("button3txt").value = ITEM_LIST[curPlayerItems[2]][NAME];
+        this.getField("button4txt").value = ITEM_LIST[curPlayerItems[3]][NAME];
     }
 }
 
-function getPlayer() {
-
+function updateEnemyTxt() {
+    this.getField("enemyname").value = curEnemy[NAME];
+    this.getField("enemystatus").value = curEnemy[TYPE];
+    this.getField("enemyhp").value = curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
 }
 
-function getEnemy() {
-    var enemy = getRandomInt(ANIMAL_LIST.length);
+function updatePlayerTxt() {
+    var creature = curPlayerCreatures[curCreatureIdx];
+    this.getField("playername").value = creature[NAME];
+    this.getField("playerstatus").value = creature[TYPE];
+    this.getField("playerhp").value = creature[CUR_HP] + " of " + creature[MAX_HP];
+}
 
-    this.getField("enemyname").value = ANIMAL_LIST[enemy][A_NAME];
-    this.getField("enemystatus").value = ANIMAL_LIST[enemy][A_HP];
-    this.getField("enemyhp").value = ANIMAL_LIST[enemy][A_TYPE];
+function getCreature() {
+    var creature = getRandomInt(CREATURE_LIST.length);
+
+    return [
+        CREATURE_LIST[creature][NAME],
+        CREATURE_LIST[creature][CUR_HP],
+        CREATURE_LIST[creature][MAX_HP],
+        CREATURE_LIST[creature][TYPE],
+        CREATURE_LIST[creature][ATKS]
+    ];
 }
 
 %%%%%%%%%%%%%%%%%%%%%
