@@ -1,0 +1,387 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+% \usepackage[utf8x]{inputenc}
+% \usepackage[T1]{fontenc}
+% \usepackage[ngerman]{babel}
+% \usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% to slow to play
+\def\fieldWidth{10}
+\def\fieldHeight{10}
+
+% Max playercount is 5
+\def\playerCount{5}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{insDLJS}[]{JSDateiname}{asciimon}
+
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
+
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+
+% Constants
+
+% Globals
+% The game field
+%var complField = new Array();
+
+% Color data
+const COLORS = new Array(
+    %[ "RGB", 0.843, 0.078, 0.058 ],
+    %[ "RGB", 0.203, 0.603, 0.054 ],
+    %[ "RGB", 0.078, 0.305, 0.560 ]
+);
+
+const ANIMAL_COUNT = 2;
+const A_NAME = 0;
+const A_HP = 1;
+const A_TYPE = 2;
+const A_ATK = 3; % attacks
+
+const T_WATER = 0;
+const T_AIR = 1;
+
+const ANIMAL_LIST = new Array(
+    ["SHEEP", 68, T_WATER, [0, 1, 2, 3]],
+    ["BIRD", 68, T_WATER, [0, 1, 2, 3]]
+);
+
+const ATTACK_LIST = new Array(
+    "JUMP", "CRY", "SPEAK", "LOOK"
+);
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Init the GUI
+    initialiseButtons();
+
+    getEnemy();
+
+    drawAll();
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Assign each button the coresponding function and disable the highlights
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("restart").highlight="none";
+
+    % Info field setup
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Init");
+}
+
+/**
+ * Restart the game and clear everything
+ */
+function restart() {
+    printInfoText("Restart");
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = false;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+
+function getPlayer() {
+
+}
+
+function getEnemy() {
+    var enemy = getRandomInt(ANIMAL_LIST.length);
+
+    this.getField("enemyname").value = ANIMAL_LIST[enemy][A_NAME];
+    this.getField("enemystatus").value = ANIMAL_LIST[enemy][A_HP];
+    this.getField("enemyhp").value = ANIMAL_LIST[enemy][A_TYPE];
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Draw all cells.
+ */
+function drawAll() {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            draw(m, n);
+        }
+    }
+}
+
+/**
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ */
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    cell.value = "tmp";
+    cell.delay = false;
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{ASCIImon}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 3)}
+        \def\blocksizeW{\dimexpr ((\linewidth)-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 3)}
+        \def\blocksizeH{\dimexpr (250 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
+
+        \begin{multicols}{2}
+
+            \begin{tcolorbox}%
+                \TextField[name=enemyname, width=\linewidth, readonly=true]{}\newline
+
+                \TextField[name=enemystatus, width=\linewidth, readonly=true]{}\newline
+
+                \TextField[name=enemyhp, width=\linewidth, readonly=true]{}%
+            \end{tcolorbox}%
+
+            \vspace{2.5cm}
+
+            \begin{center}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize, bordercolor=black, name=player#1-#2, readonly=true%
+                        ]{}\hspace{3pt}%
+                    }%
+                    \\[2pt]%
+                }%
+            \end{center}
+
+        \columnbreak%
+
+            \begin{center}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize, bordercolor=black, name=enemy#1-#2, readonly=true%
+                        ]{}\hspace{2pt}%
+                    }%
+                    \\[2pt]%
+                }%
+            \end{center}
+
+            \vspace{2.5cm}
+
+            \begin{tcolorbox}%
+                \TextField[name=playername, width=\linewidth, readonly=true]{}\newline
+
+                \TextField[name=playerstatus, width=\linewidth, readonly=true]{}\newline
+
+                \TextField[name=playerhp, width=\linewidth, readonly=true]{}%
+            \end{tcolorbox}%
+
+        \end{multicols}
+
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % \def\DefaultHeightofText{14pt}
+        % \renewcommand*{\LayoutTextField}[2]{%
+        %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
+        % }
+
+        % \renewcommand*{\LayoutCheckField}[2]{#1 #2}
+        % \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        % \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        % \renewcommand*{\LayoutCheckField}[2]{%
+        %     \parbox[c][\DefaultHeightofCheckBox]{0.12\linewidth}{#1}\enspace%
+        %     \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}%
+        % }
+
+        % \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        % \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        \begin{center}
+            \begin{tcolorbox}
+                \TextField[name=info, width=\linewidth, readonly=true]{}
+            \end{tcolorbox}
+
+            % Game related buttons
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=fight, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Fight\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=change, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Change\strut
+                    \end{tcolorbox}
+                }\\
+                \PushButton[name=item, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Item\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=run, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Run\strut
+                    \end{tcolorbox}
+                }\\
+                \PushButton[name=back, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Back\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                }
+                \\
+            \end{tabularx}
+        \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+
+    \end{Form}
+\end{document}
