@@ -76,6 +76,9 @@ const CUR_HP = 1;
 const MAX_HP = 2;
 const TYPE = 3;
 const ATKS = 4; % attacks
+const LVL = 5;
+
+const MIN_LVL = 5;
 
 % Types
 const T_WATER = 0;
@@ -143,9 +146,11 @@ function initialise() {
 
     updateButtontxt();
 
-    curPlayerCreatures[0] = getCreature();
+    curPlayerCreatures[0] = getCreature(MIN_LVL);
     curCreatureIdx = 0;
-    curEnemy = getCreature();
+    curEnemy = getEnemy();
+
+    curPlayerItems[0] = 2;
 
     updateEnemyTxt();
     updatePlayerTxt();
@@ -266,7 +271,7 @@ function processInput(button) {
 }
 
 function run() {
-    curEnemy = getCreature();
+    curEnemy = getEnemy();
     updateEnemyTxt();
     printInfoText("You ran from your enemy. Your new enemy is: " + curEnemy[NAME]);
 }
@@ -287,25 +292,66 @@ function attack(idx) {
 }
 
 function change(idx) {
+    var creature = curPlayerCreatures[idx - 1];
+    var oldName = creature[NAME];
+
+    if (creature[NAME] == "Empty") {
+        printInfoText("Creature was not switched.");
+        return;
+    }
+
     turn = ENEMY;
 
-    printInfoText("You switched from ... to ....");
+    curCreatureIdx = idx - 1;
+
+    updatePlayerTxt();
+    printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
 
     app.setTimeOut("enemyTurn();", ENEMY_RESPONSE_TIME);
 }
 
 function items(idx) {
+    var item = ITEM_LIST[curPlayerItems[idx - 1]];
+
+    if (item[NAME] == "Empty") {
+        printInfoText("No item was used.");
+        return;
+    }
+
+    printInfoText("You used " + item[NAME] + ".");
+    if (item[NAME] == "Capture") {
+        if(catchCreature()) {
+            updateEnemyTxt();
+        }
+        return;
+    }
+
     turn = ENEMY;
 
-    printInfoText("You used ....");
+    if (item[NAME] == "Improve") {
+    } else if (item[NAME] == "Weaken") {
+    } else if (item[NAME] == "Potion") {
+    } else if (item[NAME] == "lalala") {
+    }
 
     app.setTimeOut("enemyTurn();", ENEMY_RESPONSE_TIME);
+}
+
+function catchCreature() {
+    for (var i = 0; i < curPlayerCreatures.length; i++) {
+        if (curPlayerCreatures[i][NAME] == "Empty") {
+            curPlayerCreatures[i] = curEnemy;
+            curEnemy = getEnemy();
+            return true;
+        }
+    }
+    return false;
 }
 
 function enemyTurn() {
     turn = PLAYER;
     if (curEnemy[CUR_HP] == 0) {
-        curEnemy = getCreature();
+        curEnemy = getEnemy();
         updateEnemyTxt();
         printInfoText("Your new enemy is: " + curEnemy[NAME]);
         return;
@@ -370,18 +416,34 @@ function updateButtontxt() {
 
 function updateEnemyTxt() {
     this.getField("enemyname").value = curEnemy[NAME];
-    this.getField("enemystatus").value = curEnemy[TYPE];
+    this.getField("enemystatus").value = curEnemy[TYPE] + " " + curEnemy[LVL];
     this.getField("enemyhp").value = curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
 }
 
 function updatePlayerTxt() {
     var creature = curPlayerCreatures[curCreatureIdx];
     this.getField("playername").value = creature[NAME];
-    this.getField("playerstatus").value = creature[TYPE];
+    this.getField("playerstatus").value = creature[TYPE] + " " + creature[LVL];
     this.getField("playerhp").value = creature[CUR_HP] + " of " + creature[MAX_HP];
 }
 
-function getCreature() {
+function getEnemy() {
+    var curLvl = 0;
+    for (var i = 0; i < curPlayerCreatures.length; i++) {
+        if (curPlayerCreatures[i][NAME] != "Empty") {
+            curLvl += curPlayerCreatures[i][LVL];
+        }
+    }
+    curLvl /= curPlayerCreatures.length;
+
+    var offset = getRandomInt(MIN_LVL * 2);
+    curLvl = curLvl + (MIN_LVL - offset);
+    curLvl = Math.max(MIN_LVL, Math.floor(curLvl));
+
+    return getCreature(curLvl);
+}
+
+function getCreature(curLvl) {
     var creature = getRandomInt(CREATURE_LIST.length);
 
     return [
@@ -389,7 +451,8 @@ function getCreature() {
         CREATURE_LIST[creature][CUR_HP],
         CREATURE_LIST[creature][MAX_HP],
         CREATURE_LIST[creature][TYPE],
-        CREATURE_LIST[creature][ATKS]
+        CREATURE_LIST[creature][ATKS],
+        curLvl
     ];
 }
 
