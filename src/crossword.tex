@@ -1,0 +1,954 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{11}
+\def\fieldHeight{11}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{insDLJS}[]{JSDateiname}{Crossword}
+
+const GAME_DESC = "This is a crossword puzzle. Your goal is to fill all cells with the correct\
+character. Usually the connected character build a word. When hovering over the arrows a hint\
+is shown, indicating which word should be entered into a row or column.";
+
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const SCREEN_TEXT_WIDTH = 300;
+% Maximum amount of words in the puzzle
+% OBACHT: This count is not very accurate, since the random length of the words highly
+% influence how many words can be placed onto the field.
+var wordCount = 10;
+
+% Constants
+const EMPTY = -1;
+
+% For indexing
+const M = 0;
+const N = 1;
+const ORI_IDX = 2;
+
+% The game allows for upto 4 directions (up, down, left, right)
+% Diagonals also work, but are not supported by the arrows and the hint system
+var ORIENTATIONS = [
+    [1, 0], [0, 1]%,
+    %[-1, 0], [0, -1]
+]
+
+% Globals
+% The game- and the solution field
+var complField = new Array();
+var solution = new Array();
+
+% Color data
+const HIGHLIGHT_TRUE_COLOR = [ "RGB", 0.100, 0.800, 0.176 ];
+const HIGHLIGHT_FALSE_COLOR = [ "RGB", 0.984, 0.100, 0.176 ];
+
+% Word data
+const WORD_LIST = [
+    ["WIND", "BEAN", "HOOK", "COAT", "EASY", "JOKE"], % 4
+    ["LEARN", "FAITH", "PROOF", "SOLID", "ALOOF", "PEACE", "BELLY", "ALLOW"], % 5
+    ["MARKET", "PERSON", "PRAISE", "FINISH"], % 6
+    ["FRECKLE", "COMBINE", "ARCHIVE", "INSPIRE"], % 7
+    ["NONSENSE", "HARDWARE"], % 8
+    ["EVOLUTION", "ORCHESTRA", "OPERATION", "POLICEMAN"], % 9
+    ["COMPROMISE"], % 10
+    ["COMPETITION", "ANNIVERSARY"] % 11
+]
+
+% Containing hints for the word that is to be found
+% https://www.the-crossword-solver.com/search
+const HINT_LIST = [
+    ["air moving", "edible pod", "fish trap", "blazer", "like childs play", "pun"], % 4
+    ["get to know", "strong belief", "evidence", "not hollow", "hardly warm",
+        "state of calm", "abdomen", "give permission"], % 5
+    ["place of trade", "an individual", "expressed approval", "goal"], % 6
+    ["melanin spot", "add together", "databank", "stimulate activity"], % 7
+    ["without meaning", "computer equipment"], % 8
+    ["gradual development", "large band", "surgery", "law enforcer"], % 9
+    ["trade-off"], % 10
+    ["duel to gain", "recurring yearly"] % 11
+]
+
+% A modifyable copy of the WORD_LIST
+var wordList = [];
+
+% Allows to save the currently available positions
+% of each char between 'A' and 'Z'
+var charPositions = [
+    [], [], [], [], [], [], [], [], [], [],
+    [], [], [], [], [], [], [], [], [], [],
+    [], [], [], [], [], []
+];
+
+% A list of coordinates for each word
+var curWords = [];
+
+% Arrow symbols
+const symbols = [
+    String.fromCharCode(0x2192),
+    String.fromCharCode(0x2193),
+    String.fromCharCode(0x2190),
+    String.fromCharCode(0x2191)
+];
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Init the GUI
+    initialiseButtons();
+
+    % Create an empty field
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        var row = new Array();
+        var solRow = new Array();
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            row.push(EMPTY);
+            solRow.push(EMPTY);
+        }
+        complField.push(row);
+        solution.push(solRow);
+    }
+
+    % Copy word list
+    for (var i = 0; i < WORD_LIST.length; i++) {
+        var tmp = [];
+        for (var j = 0; j < WORD_LIST[i].length; j++) {
+            tmp.push(WORD_LIST[i][j]);
+        }
+        wordList.push(tmp);
+    }
+
+    createField();
+    % Hide unused cells
+    drawAndHideAll();
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    this.getField("cmDirs").currentValueIndices = 0;
+    this.getField("cmWords").currentValueIndices = 5;
+    wordCount = this.getField("cmWords").value;
+
+    % Assign each button the coresponding function
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("checkall").setAction("MouseUp", "checkAll();");
+
+    % Each cell needs to be connected to an input and a hover function
+    var cell;
+    var funcName = "cellClicked";
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
+            cell.setAction("OnBlur", callbackName);
+            cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+            cell.alignment = "center";
+            cell.charLimit = 1;
+
+            % Add hover callbacks to cells
+            var showCallback = "showHint" + "(" + m.toString() + "," + n.toString() + ");";
+            var cell = this.getField("cell" + m + "-" + n);
+            cell.setAction("MouseEnter", showCallback);
+
+            var hideCallback = "hideHint" + "(" + m.toString() + "," + n.toString() + ");";
+            cell.setAction("MouseExit", hideCallback);
+        }
+    }
+
+    % The overlay used for the hint
+    var overlay = this.getField("overlay");
+    overlay.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+    overlay.alignment = "center";
+    overlay.textColor = color.white;
+    overlay.fillColor = color.black;
+
+    % Info field setup
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Solve this puzzle.");
+}
+
+/**
+ * Clear everything and restart the game.
+ */
+function restart() {
+    % Update word count
+    wordCount = this.getField("cmWords").value;
+    % Use gui to set amount of orientations
+    if (this.getField("cmDirs").value == 2) {
+        ORIENTATIONS = [
+            [1, 0], [0, 1]
+        ];
+    } else {
+        ORIENTATIONS = [
+            [1, 0], [0, 1],
+            [-1, 0], [0, -1]
+        ];
+    }
+
+    % Reset both fields
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            solution[m][n] = EMPTY;
+            complField[m][n] = EMPTY;
+        }
+    }
+
+    % Copy the word list
+    wordList = [];
+    for (var i = 0; i < WORD_LIST.length; i++) {
+        var tmp = [];
+        for (var j = 0; j < WORD_LIST[i].length; j++) {
+            tmp.push(WORD_LIST[i][j]);
+        }
+        wordList.push(tmp);
+    }
+
+    % Reset all char positions since there are no entries in the beginning
+    for (var char = 0; char < charPositions.length; char++) {
+        charPositions[char] = [];
+    }
+
+    % Reset the words to be found
+    curWords = [];
+    % Create the field, by creating a solution and a list of current words
+    createField();
+
+    % Disable highlight and refresh rendering
+    highlightAll(color.gray);
+    drawAndHideAll();
+
+    printInfoText("Restarted game.");
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = false;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%%%%%%
+% Field creation %
+% https://stackoverflow.com/questions/943113/algorithm-to-generate-a-crossword
+%%%%%%%%%%%%%%%%%%
+/**
+ * Creates a field, by adding words from the word list to the solution array when possible.
+ * This is determined by checking all already placed characters for intersections
+ * with each available word.
+ * The words character positions are also saved inside another array.
+ */
+function createField() {
+    % Create list of random length
+    var lengthList = [];
+    for (var i = 0; i < wordCount; i++) {
+        var len = getRandomInt(Math.min(FIELD_WIDTH, FIELD_HEIGHT) - 1);
+        lengthList.push(len);
+    }
+    % Sort length list
+    lengthList.sort(function(a, b) {
+        return b - a;
+    });
+
+    % Create and add the specified amount of words
+    % OBACHT: The algorithm tries to fit each word once,
+    % if there was not valid position the word is removed and not used again.
+    % This could be changed by moving the splice-method from getWordWithLen()
+    % into this loop after adding a word, but in that case the word would be
+    % marked anotherway to prevent testing a word multiple times.
+    for (var i = 0; i < wordCount; i++) {
+        % Get a word with the current length
+        var word = getWordWithLen(lengthList[i]);
+
+        % TODO
+        % If is is the first word, place its center letter
+        % in the middle of the field
+        if (i == 0) {
+            var center = Math.floor(word.length / 2.0);
+            var oriIdx = getRandomInt(ORIENTATIONS.length);
+            var m = Math.floor(FIELD_HEIGHT * 0.5);
+            var n = Math.floor(FIELD_WIDTH * 0.5);
+            var charPos = word.charAt(center).charCodeAt() - 65;
+            charPositions[charPos].push([m, n, oriIdx]);
+        }
+
+        % In case all words in the word list where tested
+        if (word == "###") {
+            return;
+        }
+        % Place at valid position
+        % If this is not possible try to add another word
+        if (!addWord(word)) {
+            i--;
+        }
+    }
+}
+
+/**
+ * Gets a random word from the word list with the given length.
+ * If the length is smaller or bigger than allowed the closest length is used.
+ * If there are no words left with this length other length are chosen,
+ * until the word list is completely empty.
+ * @param {Number} len The length of the word.
+ * @return {String} The found word.
+ */
+function getWordWithLen(len) {
+    % Check for out of bounds
+    var minLen = WORD_LIST[0][0].length;
+    var maxLen = WORD_LIST[WORD_LIST.length - 1][0].length;
+    if (len < minLen) {
+        len = minLen;
+    } else if (len > maxLen) {
+        len = maxLen;
+    }
+
+    % Check the list at the current length. If there are no words
+    % left try another length until a word is found or all sizes are checked
+    var lIdx = len - 4;
+    for (var tmp = 0; wordList[lIdx].length == 0; tmp++) {
+        if (tmp >= WORD_LIST.length) {
+            % The list is empty
+            return "###";
+        }
+        lIdx = (lIdx + 1) \% WORD_LIST.length;
+    }
+
+    % Return a random word for the given length from the list
+    var wIdx = getRandomInt(wordList[lIdx].length);
+    var word = wordList[lIdx][wIdx];
+    % Remove the word such that it can not be tested again
+    wordList[lIdx].splice(wIdx, 1);
+
+    return word;
+}
+
+/**
+ * Adds a word to the solution and the current list of words,
+ * if a valid position is found.
+ * @param {String} word The word to add.
+ */
+function addWord(word) {
+    % If there is no valid position indicate the failure
+    var posInfo = getValidPosition(word);
+    if (posInfo.length == 0) {
+        return false;
+    }
+    var oriIdx = posInfo[ORI_IDX];
+    var ori = ORIENTATIONS[oriIdx];
+    % Get one cell before the word to add start icon
+    var m = posInfo[M] - ori[M];
+    var n = posInfo[N] - ori[N];
+
+    var wordCoords = [];
+    wordCoords.push([m, n]);
+    % Place the start icon and the index of the word
+    complField[m][n] = symbols[posInfo[ORI_IDX]];
+    solution[m][n] = curWords.length;
+
+    % Iterate all chars and add them to the solution
+    for (var l = 0; l < word.length; l++) {
+        m += ori[M];
+        n += ori[N];
+
+        var char = word.charAt(l);
+        solution[m][n] = char;
+        % for each char save the position in the char array
+        charPositions[(char.charCodeAt() - 65)].push([m, n, oriIdx]);
+        % Push character coordinates
+        wordCoords.push([m, n]);
+    }
+    % Add the coordinates to the current words array
+    curWords.push(wordCoords);
+    return true;
+}
+
+/**
+ * Tests if the given word has any valid positions at which to be placed.
+ * For this each character of the word is iterated checking if this character
+ * can be found on the field.
+ * Select a position if placing the word there would not be out of bounds and
+ * would not collide with other words. All options are tested, while the one
+ * having the most occurrences is chossen.
+ * Example: if there would be 3x "e", 2x "f" - "e" would be chosen, unless
+ * none of these are valid due to collisions.
+ *
+ * @param {String} word The word to get a valid position for.
+ */
+function getValidPosition(word) {
+    var m = 0;
+    var n = 0;
+    var oriIdx = 0;
+
+    % Used for saving the best combination of len, char and position
+    var len = 0;
+    var lastChar = 0;
+    var lastPos = 0;
+
+    var result = [];
+
+    % Iterate all characters of the word
+    for (var l = 0; l < word.length; l++) {
+        var char = word.charAt(l).charCodeAt() - 65;
+        % If there are idientical characters available
+        if (charPositions[char].length > len) {
+
+            % Iterate all possible positions of this character
+            for (var pos = 0; pos < charPositions[char].length; pos++) {
+                var posInfo = charPositions[char][pos];
+
+                % Alternate orientation - otherwise the orientation
+                % from words attached to another word always be the same
+                % OBACHT: only one direction is tested, it might be possible,
+                % that the other direction would have worked
+                var add = 1 + getRandomInt(2) * 2;
+                oriIdx = (posInfo[ORI_IDX] + add) \% ORIENTATIONS.length;
+                var ori = ORIENTATIONS[oriIdx];
+
+                % Calculate start position
+                m = posInfo[M] - l * ori[M];
+                n = posInfo[N] - l * ori[N];
+                % Check if the word would be override something or be OOB
+                if (checkCollisionAndOOB(word, [m, n, oriIdx])) {
+                    % Save the startposition
+                    result = [m, n, oriIdx];
+                    len = charPositions[char].length;
+                    lastChar = char;
+                    lastPos = pos;
+                }
+            }
+        }
+    }
+    % Remove char if there was a match otherwise return an empty array
+    if (result.length != 0) {
+        charPositions[lastChar].splice(pos, 1);
+    }
+    return result;
+}
+
+/**
+ * Checks for collisions and out of bounds.
+ * Collision would be if a cell is already occupied by a character
+ * different from the one that shall be placed.
+ * Furthermore a word can collide if a neighbouring cell is occupied,
+ * since this would alter the neighbouring word.
+ *
+ * @param {String} word The word to test for collsion.
+ * @param {Array} posInfo The start position and the orientation.
+ * @return {Boolean} True if there is no collision, else false.
+ */
+function checkCollisionAndOOB(word, posInfo) {
+    var m = posInfo[M];
+    var n = posInfo[N];
+    var oriIdx = posInfo[ORI_IDX];
+    var ori = ORIENTATIONS[oriIdx];
+
+    % Test the cell infront of the word (for the orientation symbol)
+    var tmpM = m - ori[M];
+    var tmpN = n - ori[N];
+    if (tmpN >= 0 && tmpN < FIELD_WIDTH && tmpM >= 0 & tmpM < FIELD_HEIGHT) {
+        if (solution[tmpM][tmpN] != EMPTY) {
+            return false;
+        }
+    } else {
+        % OOB
+        return false;
+    }
+
+    for (var l = 0; l < word.length; l++) {
+        % OOB
+        if (n < 0 || n >= FIELD_WIDTH || m < 0 || m >= FIELD_HEIGHT) {
+            return false;
+        }
+        % Collision
+        if (solution[m][n] == EMPTY) {
+            % Specify the direction of the neighbourhood (orthogonal)
+            var neighOriIdx = (oriIdx + 1) \% ORIENTATIONS.length;
+            if (!checkNeighbourhood(m, n, neighOriIdx)) {
+                return false;
+            }
+        } else if (solution[m][n] != word.charAt(l)) {
+            return false;
+        }
+
+        m += ori[M];
+        n += ori[N];
+    }
+
+    % Test the cell behind the word (no OOB test)
+    if (n >= 0 && n < FIELD_WIDTH && m >= 0 & m < FIELD_HEIGHT) {
+        if (solution[m][n] != EMPTY) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Checks the two neighbouring cells in the +- direction of the given
+ * orientation for beeing empty.
+ *
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ * @param {Number} oriIdx The orientation index.
+ * @return {Boolean} True if neighbouring cells are empty, else false.
+ */
+function checkNeighbourhood(m, n, oriIdx) {
+    var neighOri = ORIENTATIONS[oriIdx];
+    var neigh1M = m + neighOri[M];
+    var neigh1N = n + neighOri[N];
+    var neigh2M = m - neighOri[M];
+    var neigh2N = n - neighOri[N];
+
+    % Ignore OOB
+    if (neigh1N >= 0 && neigh1N < FIELD_WIDTH && neigh1M >= 0 && neigh1M < FIELD_HEIGHT) {
+        % If non empty return false
+        if (solution[neigh1M][neigh1N] != EMPTY) {
+            return false;
+        }
+    }
+    if (neigh2N >= 0 && neigh2N < FIELD_WIDTH && neigh2M >= 0 && neigh2M < FIELD_HEIGHT) {
+        if (solution[neigh2M][neigh2N] != EMPTY) {
+            return false;
+        }
+    }
+    return true;
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+/**
+ * Assignes the current cell value to the complField array.
+ * Used for updating the array after an input (OnBlur event).
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
+function cellClicked(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    % Revert changes to the arrow cells
+    if (complField[m][n] > "Z") {
+        cell.value = complField[m][n];
+    } else {
+        % Convert to uppercase
+        if ("a" <= cell.value && cell.value <= "z") {
+            cell.value = cell.value.toUpperCase();
+            complField[m][n] = cell.value;
+        } else if ("A" <= cell.value && cell.value <= "Z") {
+            complField[m][n] = cell.value;
+        } else {
+            % If the input was not a letter remove the symbol
+            cell.value = "";
+            complField[m][n] = EMPTY;
+        }
+    }
+}
+
+/**
+ * Check the complete field for correct or incorrect inputs
+ * and mark these correspondingly. Only complete words are marked.
+ * Indicate when the game is over.
+ */
+function checkAll() {
+    var m = 0;
+    var n = 0;
+
+    var gameover = true;
+    % Iterate list of words
+    for (var w = 0; w < curWords.length; w++) {
+        var wordComplete = true;
+        % Check if current word is correct
+        for (var c = 1; c < curWords[w].length; c++) {
+            m = curWords[w][c][M];
+            n = curWords[w][c][N];
+
+            if (solution[m][n] != complField[m][n]) {
+                wordComplete = false;
+                gameover = false;
+            }
+        }
+
+        % Mark current word as current or incorrect
+        for (var c = 1; c < curWords[w].length; c++) {
+            m = curWords[w][c][M];
+            n = curWords[w][c][N];
+
+            if (wordComplete) {
+                printInfoText("Found correct word!");
+                highlight(m, n, HIGHLIGHT_TRUE_COLOR);
+            } else {
+                highlight(m, n, HIGHLIGHT_FALSE_COLOR);
+            }
+            draw(m, n);
+        }
+    }
+
+    if (gameover) {
+        printInfoText("Gameover!");
+    }
+}
+
+/**
+ * Checks if a cell is an starting cell for a word (arrow cell).
+ * If so activate the overlay.
+ * For this the word index is used to get the rect of the first and
+ * last cell and adjust the dimensions of the overlayfield.
+ * The hint text is rotated if necessary.
+ *
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
+function showHint(m, n) {
+    if (complField[m][n] > "Z") {
+        const START = 1;
+        var wIdx = solution[m][n];
+
+        % Get the coordinates of this words cells
+        var startM = curWords[wIdx][START][M];
+        var startN = curWords[wIdx][START][N];
+        var endM = curWords[wIdx][curWords[wIdx].length - 1][M];
+        var endN = curWords[wIdx][curWords[wIdx].length - 1][N];
+
+        var startCell = this.getField("cell" + startM + "-" + startN);
+        var endCell = this.getField("cell" + endM + "-" + endN);
+
+        % Get the new rect positions
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        var uLx = Math.min(startCell.rect[0], endCell.rect[0]);
+        var uLy = Math.max(startCell.rect[1], endCell.rect[1]);
+        var lRx = Math.max(startCell.rect[2], endCell.rect[2]);
+        var lRy = Math.min(startCell.rect[3], endCell.rect[3]);
+
+        var newRect = [uLx, uLy, lRx, lRy];
+        % Adjust overlayfield
+        var overlay = this.getField("overlay");
+        overlay.hidden = false;
+        overlay.rect = newRect;
+        overlay.value = getHintText(wIdx);
+        % Rotate depending on the dimensions (length vs width)
+        if (lRx - uLx < uLy - lRy) {
+            overlay.rotation = 90;
+        } else {
+            overlay.rotation = 0;
+        }
+    }
+}
+
+/**
+ * Checks if a cell is an starting cell for a word (arrow cell).
+ * If so deactivate the overlay.
+ * Is used on MouseExit.
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
+function hideHint(m, n) {
+    % Ensure arrow cell
+    if (complField[m][n] > "Z") {
+        % Just hide the overlayfield, no need to adjust it
+        var overlay = this.getField("overlay");
+        overlay.hidden = true;
+    }
+}
+
+/**
+ * Searches the WORD_LIST for the initial index of the given word
+ * and uses this index to access the HINT_LIST.
+ * @param {Number} wIdx The words index to reconstruct the word.
+ * @param {String} The hint belonging to the given word.
+ */
+function getHintText(wIdx) {
+    % Reconstruct the word
+    var word = "";
+    for (var c = 1; c < curWords[wIdx].length; c++) {
+        var char = solution[curWords[wIdx][c][M]][curWords[wIdx][c][N]];
+        word += char;
+    }
+
+    % Iterate all length rows of the word list
+    for (var l = 0; l < WORD_LIST.length; l++) {
+        for (var w = 0; w < WORD_LIST[l].length; w++) {
+            % https://stackoverflow.com/questions/1179366/is-there-a-javascript-strcmp
+            if (word == WORD_LIST[l][w]) {
+                return HINT_LIST[l][w];
+            }
+        }
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Draw all cells.
+ */
+function drawAndHideAll() {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            % Redraw only if not hidden
+            if (!hide(m, n)) {
+                draw(m, n);
+            }
+        }
+    }
+}
+
+/**
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
+ *
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    % Bigger than "z" are the arrows
+    if (complField[m][n] > "Z") {
+        cell.value = complField[m][n];
+        cell.textColor = color.white;
+        cell.fillColor = color.black;
+    } else if (complField[m][n] != EMPTY) {
+        cell.value = complField[m][n];
+        cell.textColor = color.black;
+        cell.fillColor = color.white;
+    } else {
+        cell.value = "";
+        cell.textColor = color.black;
+        cell.fillColor = color.white;
+    }
+    cell.delay = false;
+}
+
+/**
+ * Toggles the hidden state of the given cell,
+ * depending on the value in the solution array.
+ * If the solution is empty the cell is hidden.
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ */
+function hide(m, n) {
+    var c = this.getField("cell" + m + "-" + n);
+    % If the solution is empty the cell must be hidden
+    if (solution[m][n] != EMPTY) {
+        c.hidden = false;
+        return false;
+    } else {
+        c.hidden = true;
+        return true;
+    }
+}
+
+/**
+ * Highlights all cells with the given color.
+ * @param {Array} color The color array.
+ */
+function highlightAll(color) {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            highlight(m, n, color);
+        }
+    }
+}
+
+/**
+ * Highlights the given cell with the given color.
+ *
+ * @param {Number} m The row index.
+ * @param {Number} n The column index.
+ * @param {Array} color The color array.
+ */
+function highlight(m, n, color) {
+    var field = this.getField("cell" + m + "-" + n);
+    field.delay = true;
+    field.borderColor = color;
+    field.delay = false;
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Crossword puzzle}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
+
+        % The gamefield
+        \begin{tcolorbox}
+            \begin{flushright}
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=gray, name=cell#1-#2]{}\hspace{3pt}%
+                    }\vspace{3pt}
+                    \newline%
+                }%
+            \end{flushright}%
+        \end{tcolorbox}
+
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \def\DefaultHeightofText{14pt}
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{\DefaultHeightofText}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        \begin{center}
+            % Game related buttons
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{\strut}
+                \end{tcolorbox} &
+                \begin{tcolorbox}
+                    \centering
+                    \ChoiceMenu[name=cmDirs, bordercolor=gray, width=1.5cm, combo]
+                        {Directions: \strut}{2, 4}
+                    \ChoiceMenu[name=cmWords, bordercolor=gray, width=1.5cm, combo]
+                        {Words: \strut}{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
+                \end{tcolorbox}\\[-0.5cm]
+                \PushButton[name=checkall, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Check input\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                }
+            \end{tabularx}
+        \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+
+        \TextField[bordercolor=white, name=overlay, readonly=true, hidden]{}
+
+    \end{Form}
+\end{document}
