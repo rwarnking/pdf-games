@@ -69,6 +69,8 @@ var curEnemy = 0;
 const PLAYER = true;
 const ENEMY = false;
 var turn = PLAYER;
+% turn interval
+var turnInterval;
 
 % Attributes
 const NAME = 0;
@@ -195,6 +197,8 @@ function initialiseButtons() {
  */
 function restart() {
     gameover = false;
+    turn = PLAYER;
+
     printInfoText("Restart");
 }
 
@@ -238,6 +242,9 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%
+% Player actions %
+%%%%%%%%%%%%%%%%%%
 
 function processInput(button) {
     this.getField("info").setFocus();
@@ -288,7 +295,7 @@ function attack(idx) {
     updateEnemyTxt();
     printInfoText("You attacked with " + attack[NAME] + "! " + curEnemy[NAME] + " took " + attack[DMG] + " damage.");
 
-    app.setTimeOut("enemyTurn();", ENEMY_RESPONSE_TIME);
+    turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
 }
 
 function change(idx) {
@@ -307,7 +314,7 @@ function change(idx) {
     updatePlayerTxt();
     printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
 
-    app.setTimeOut("enemyTurn();", ENEMY_RESPONSE_TIME);
+    turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
 }
 
 function items(idx) {
@@ -334,7 +341,7 @@ function items(idx) {
     } else if (item[NAME] == "lalala") {
     }
 
-    app.setTimeOut("enemyTurn();", ENEMY_RESPONSE_TIME);
+    turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
 }
 
 function catchCreature() {
@@ -348,8 +355,15 @@ function catchCreature() {
     return false;
 }
 
+%%%%%%%%%%%%%%%%%
+% Enemy actions %
+%%%%%%%%%%%%%%%%%
 function enemyTurn() {
+    % Switch turn
     turn = PLAYER;
+    app.clearInterval(turnInterval);
+
+    % If the enemy is dead he is not able to attack and need to be substituted
     if (curEnemy[CUR_HP] == 0) {
         curEnemy = getEnemy();
         updateEnemyTxt();
@@ -357,17 +371,20 @@ function enemyTurn() {
         return;
     }
 
+    % Get attack data
     var attacks = curEnemy[ATKS];
     var attackIdx = getRandomInt(attacks.length);
     var attack = ATTACK_LIST[attacks[attackIdx]];
 
     var creature = curPlayerCreatures[curCreatureIdx];
     creature[CUR_HP] -= attack[DMG];
+    % If the player creature is dead remove it from the player creatures
     if (creature[CUR_HP] < 0) {
         creature[CUR_HP] = 0;
         updatePlayerTxt();
 
         curPlayerCreatures[curCreatureIdx] = ["Empty"];
+        % If the player has no creatures left the game is over
         if (noCreatureLeft()) {
             gameover = true;
             printInfoText("No Creatures left, game over!");
@@ -389,6 +406,9 @@ function noCreatureLeft() {
     return true;
 }
 
+%%%%%%%%%%%%%%%%%%%%%%%
+% Information updates %
+%%%%%%%%%%%%%%%%%%%%%%%
 function updateButtontxt() {
     if (gamestate == MENU) {
         this.getField("button1txt").value = "Fight";
@@ -427,6 +447,9 @@ function updatePlayerTxt() {
     this.getField("playerhp").value = creature[CUR_HP] + " of " + creature[MAX_HP];
 }
 
+%%%%%%%%%%%%
+% Spawning %
+%%%%%%%%%%%%
 function getEnemy() {
     var curLvl = 0;
     for (var i = 0; i < curPlayerCreatures.length; i++) {
