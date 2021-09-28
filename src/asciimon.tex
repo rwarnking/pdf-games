@@ -46,7 +46,7 @@ Text.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const ENEMY_RESPONSE_TIME = 1000;
+const ENEMY_RESPONSE_TIME = 4000;
 
 % Constants
 const MENU = 0;
@@ -74,12 +74,16 @@ var turnInterval;
 
 % Attributes
 const NAME = 0;
-const CUR_HP = 1;
-const MAX_HP = 2;
-const TYPE = 3;
-const ATKS = 4; % attacks
-const LVL = 5;
+const HP_GAIN = 1;
+const TYPE = 2;
+const ATKS = 3; % attacks
+const EXP_GAIN = 4;
+const MAX_HP = 5;
+const CUR_HP = 6;
+const LVL = 7;
+const CUR_EXP = 8;
 
+const START_EXP = 500;
 const MIN_LVL = 5;
 
 % Types
@@ -89,24 +93,29 @@ const T_STONE = 2;
 const T_GRASS = 3;
 const T_GHOST = 4;
 const T_FLUFF = 5;
+const T_FIRE = 6;
+
+const TYPE_STRINGS = new Array(
+    "Water", "Air", "Stone", "Grass", "Ghost", "Fluff", "Fire"
+);
 
 const CREATURE_LIST = new Array(
-    ["SHEEP", 66, 66, T_FLUFF, [0, 1, 2, 3]],
-    ["BIRD", 18, 18, T_AIR, [0, 1, 2, 3]],
-    ["STONE", 230, 230, T_STONE, [0, 1, 2, 3]],
-    ["TREE", 150, 150, T_GRASS, [0, 1, 2, 3]],
-    ["SKELETOR", 120, 120, T_GHOST, [0, 1, 2, 3]],
-    ["DUCK", 34, 34, T_WATER, [0, 1, 2, 3]]
+    ["SHEEP", 0.9, T_FLUFF, [0, 1, 2, 3], 32],
+    ["BIRD", 0.5, T_AIR, [0, 1, 2, 3], 15],
+    ["STONE", 2.3, T_STONE, [0, 1, 2, 3], 50],
+    ["TREE", 1.5, T_GRASS, [0, 1, 2, 3], 39],
+    ["SKELETOR", 1.2, T_GHOST, [0, 1, 2, 3], 40],
+    ["DUCK", 0.7, T_WATER, [0, 1, 2, 3], 23]
 );
 
 const DMG = 1;
 const KP = 2;
 
 const ATTACK_LIST = new Array(
-    ["Jump", 210, 3],
-    ["Cry", 10, 5],
-    ["Speak", 20, 10],
-    ["Look", 13, 22]
+    ["Jump", 1.0, 3],
+    ["Cry", 0.1, 5],
+    ["Speak", 0.2, 10],
+    ["Look", 0.8, 22]
 );
 
 const ITEM_LIST = new Array(
@@ -117,6 +126,8 @@ const ITEM_LIST = new Array(
     ["Weaken", 10],
     ["lalala", 0]
 );
+
+const EXP_TABLE = [];
 
 % Color data
 const COLORS = new Array(
@@ -147,6 +158,11 @@ function initialise() {
     initialiseButtons();
 
     updateButtontxt();
+
+    % Init exp table
+    for (var i = 1; i < 101; i++) {
+        EXP_TABLE.push(START_EXP + 250 * i * (i + 1));
+    }
 
     curPlayerCreatures[0] = getCreature(MIN_LVL);
     curCreatureIdx = 0;
@@ -284,17 +300,29 @@ function run() {
 }
 
 function attack(idx) {
-    var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
+    var curCreature = curPlayerCreatures[curCreatureIdx];
+    var attacks = curCreature[ATKS];
     var attack = ATTACK_LIST[attacks[idx - 1]];
-    curEnemy[CUR_HP] -= attack[DMG];
-    if (curEnemy[CUR_HP] < 0) {
+
+    var dmg = inflictDMG(curCreature, curEnemy, attack);
+    if (curEnemy[CUR_HP] <= 0) {
         curEnemy[CUR_HP] = 0;
+
+        var exp = addEXP(curEnemy, curCreature);
+        var lvlup = checkLvlUp(curCreature);
+        if (lvlup) {
+            updatePlayerTxt();
+            printInfoText("You have slayn " + curEnemy[NAME] + " and " + curCreature[NAME] + " leveled up." + exp + " " + curCreature[CUR_EXP]);
+        } else {
+            printInfoText("You have slayn " + curEnemy[NAME] + " and got " + exp + " experience.");
+        }
+    } else {
+        printInfoText("You attacked with " + attack[NAME] + "! " + curEnemy[NAME] + " took " + dmg + " damage.");
     }
 
-    turn = ENEMY;
     updateEnemyTxt();
-    printInfoText("You attacked with " + attack[NAME] + "! " + curEnemy[NAME] + " took " + attack[DMG] + " damage.");
 
+    turn = ENEMY;
     turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
 }
 
@@ -327,8 +355,9 @@ function items(idx) {
 
     printInfoText("You used " + item[NAME] + ".");
     if (item[NAME] == "Capture") {
-        if(catchCreature()) {
+        if (catchCreature()) {
             updateEnemyTxt();
+            addInfoText(" Your new enemy is: " + curEnemy[NAME] + ".");
         }
         return;
     }
@@ -377,9 +406,9 @@ function enemyTurn() {
     var attack = ATTACK_LIST[attacks[attackIdx]];
 
     var creature = curPlayerCreatures[curCreatureIdx];
-    creature[CUR_HP] -= attack[DMG];
+    var dmg = inflictDMG(curEnemy, creature, attack);
     % If the player creature is dead remove it from the player creatures
-    if (creature[CUR_HP] < 0) {
+    if (creature[CUR_HP] <= 0) {
         creature[CUR_HP] = 0;
         updatePlayerTxt();
 
@@ -392,7 +421,7 @@ function enemyTurn() {
             printInfoText("Your creature has no health left, please select a new creature.");
         }
     } else {
-        printInfoText("You got attacked with " + attack[NAME] + "! " + creature[NAME] + " took " + attack[DMG] + " damage.");
+        printInfoText("You got attacked with " + attack[NAME] + "! " + creature[NAME] + " took " + dmg + " damage.");
         updatePlayerTxt();
     }
 }
@@ -404,6 +433,31 @@ function noCreatureLeft() {
         }
     }
     return true;
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% Helper %
+%%%%%%%%%%%%%%%%%%%%%%%
+function checkLvlUp(creature) {
+    if (creature[CUR_EXP] > EXP_TABLE[creature[LVL] - MIN_LVL]) {
+        creature[LVL]++;
+        creature[MAX_HP] += Math.ceil(creature[HP_GAIN]);
+        creature[CUR_HP] += Math.ceil(creature[HP_GAIN]);
+        return true;
+    }
+    return false;
+}
+
+function addEXP(source, target) {
+    var exp = source[EXP_GAIN] * source[LVL];
+    target[CUR_EXP] += exp;
+    return exp;
+}
+
+function inflictDMG(source, target, attack) {
+    var dmg = Math.ceil(attack[DMG] * source[LVL])
+    target[CUR_HP] -= dmg;
+    return dmg;
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -436,15 +490,15 @@ function updateButtontxt() {
 
 function updateEnemyTxt() {
     this.getField("enemyname").value = curEnemy[NAME];
-    this.getField("enemystatus").value = curEnemy[TYPE] + " " + curEnemy[LVL];
-    this.getField("enemyhp").value = curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
+    this.getField("enemystatus").value = "Type: " + TYPE_STRINGS[curEnemy[TYPE]] + " - Level: " + curEnemy[LVL];
+    this.getField("enemyhp").value = "HP: " + curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
 }
 
 function updatePlayerTxt() {
     var creature = curPlayerCreatures[curCreatureIdx];
     this.getField("playername").value = creature[NAME];
-    this.getField("playerstatus").value = creature[TYPE] + " " + creature[LVL];
-    this.getField("playerhp").value = creature[CUR_HP] + " of " + creature[MAX_HP];
+    this.getField("playerstatus").value = "Type: " + TYPE_STRINGS[creature[TYPE]] + " - Level: " + creature[LVL];
+    this.getField("playerhp").value = "HP: " + creature[CUR_HP] + " of " + creature[MAX_HP];
 }
 
 %%%%%%%%%%%%
@@ -469,13 +523,18 @@ function getEnemy() {
 function getCreature(curLvl) {
     var creature = getRandomInt(CREATURE_LIST.length);
 
+    var hp = Math.ceil(CREATURE_LIST[creature][HP_GAIN] * curLvl);
+
     return [
         CREATURE_LIST[creature][NAME],
-        CREATURE_LIST[creature][CUR_HP],
-        CREATURE_LIST[creature][MAX_HP],
+        CREATURE_LIST[creature][HP_GAIN],
         CREATURE_LIST[creature][TYPE],
         CREATURE_LIST[creature][ATKS],
-        curLvl
+        CREATURE_LIST[creature][EXP_GAIN],
+        hp, % MAX_HP
+        hp, % CUR_HP
+        curLvl, % LVL
+        START_EXP % CUR_EXP
     ];
 }
 
@@ -514,6 +573,13 @@ function printInfoText(text) {
     var field = this.getField("info");
     field.delay = true;
     field.value = text;
+    field.delay = false;
+}
+
+function addInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value += text;
     field.delay = false;
 }
 
