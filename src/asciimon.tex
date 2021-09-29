@@ -26,11 +26,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
 % to slow to play
-\def\fieldWidth{10}
-\def\fieldHeight{10}
-
-% Max playercount is 5
-\def\playerCount{5}
+\def\fieldWidth{15}
+\def\fieldHeight{15}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -46,6 +43,7 @@ Text.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const SCREEN_TEXT_WIDTH = 400;
 const ENEMY_RESPONSE_TIME = 4000;
 
 % Constants
@@ -57,7 +55,6 @@ const RUN = 4;
 
 % Globals
 % The game field
-%var complField = new Array();
 var gamestate = MENU;
 var gameover = false;
 
@@ -78,10 +75,11 @@ const HP_GAIN = 1;
 const TYPE = 2;
 const ATKS = 3; % attacks
 const EXP_GAIN = 4;
-const MAX_HP = 5;
-const CUR_HP = 6;
-const LVL = 7;
-const CUR_EXP = 8;
+const IMAGE = 5;
+const MAX_HP = 6;
+const CUR_HP = 7;
+const LVL = 8;
+const CUR_EXP = 9;
 
 const START_EXP = 500;
 const MIN_LVL = 5;
@@ -99,13 +97,81 @@ const TYPE_STRINGS = new Array(
     "Water", "Air", "Stone", "Grass", "Ghost", "Fluff", "Fire"
 );
 
+% https://ascii.co.uk/art
+% http://www.asciiworld.com/index.html
 const CREATURE_LIST = new Array(
-    ["SHEEP", 0.9, T_FLUFF, [0, 1, 2, 3], 32],
-    ["BIRD", 0.5, T_AIR, [0, 1, 2, 3], 15],
-    ["STONE", 2.3, T_STONE, [0, 1, 2, 3], 50],
-    ["TREE", 1.5, T_GRASS, [0, 1, 2, 3], 39],
-    ["SKELETOR", 1.2, T_GHOST, [0, 1, 2, 3], 40],
-    ["DUCK", 0.7, T_WATER, [0, 1, 2, 3], 23]
+    ["SHEEP", 0.9, T_FLUFF, [0, 1, 2, 3], 32,
+        [% https://ascii.co.uk/art/sheep
+            "    .-:'  `; `-._   ",
+            "   (_,           )  ",
+            " ,'o\"(            )>",
+            "(__,-'            ) ",
+            "   (             )  ",
+            "    `-'._.--._.-'   ",
+            "       |||  |||     "
+        ]
+    ],
+    ["BIRD", 0.5, T_AIR, [0, 1, 2, 3], 15,
+        [
+            " .-.      ",
+            "(. .)__,'.",
+            "/ V      .",
+            "\  \\   \/ ",
+            " `._`._ \  ",
+            "==<<==`'== "
+        ]
+    ],
+    ["STONE", 2.3, T_STONE, [0, 1, 2, 3], 50,
+        [ % https://ascii.co.uk/art/dice
+            "          ________          ",
+            "         /\\       \\         ",
+            "        /  \\       \\        ",
+            "       /    \\       \\       ",
+            "      /      \\_______\\      ",
+            "      \\      /       /      ",
+            "    ___\\    /   ____/___    ",
+            "   /\\   \\  /   /\\       \\   ",
+            "  /  \\   \\/___/  \\       \\  ",
+            " /    \\       \\   \\       \\ ",
+            "/      \\_______\\   \\_______\\",
+            "\\      /       /   /       /",
+            " \\    /       /   /       / ",
+            "  \\  /       /\\  /       /  ",
+            "   \\/_______/  \\/_______/   "
+        ]
+    ],
+    ["TREE", 1.5, T_GRASS, [0, 1, 2, 3], 39,
+        [ % https://ascii.co.uk/art/tree
+            "          &&& &&  & &&        ",
+            "      && &\\/&\\|& ()|/ @, &&   ",
+            "      &\\/(/&/&||/& /_/)_&/_&  ",
+            "   &() &\\/&|()|/&\\/ '\%\" & ()  ",
+            "  &_\\_&&_\\ |& |&&/&__\%_/_& && ",
+            "&&   && & &| &| /& & \% ()& /&&",
+            " ()&_---()&\\&\\|&&-&&--\%---()~ ",
+            "     &&     \\|||              ",
+            "             |||              ",
+            "             |||              ",
+            "             |||              ",
+            "       , -=-~  .-^- _         "
+        ]
+    ],
+    ["SKELETOR", 1.2, T_GHOST, [0, 1, 2, 3], 40,
+        [ % https://ascii.co.uk/art/skull
+            " .-~~-. ",
+            "(_^..^_)",
+            "  ||||  ",
+            "  `--'  "
+        ]
+    ],
+    ["DUCK", 0.7, T_WATER, [0, 1, 2, 3], 23,
+        [
+             "  __    ",
+             "<(o )___",
+             " \\ ._> /",
+             "  `---' "
+        ]
+    ]
 );
 
 const DMG = 1;
@@ -195,6 +261,19 @@ function initialiseButtons() {
     this.getField("button3txt").setAction("MouseUp", "processInput(3);");
     this.getField("button4").setAction("MouseUp", "processInput(4);");
     this.getField("button4txt").setAction("MouseUp", "processInput(4);");
+
+    var cell;
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        cell = this.getField("player" + m);
+        cell.textSize = SCREEN_TEXT_WIDTH / (FIELD_WIDTH * 2);
+        cell.textFont = font.Cour;
+        %cell.alignment = "center";
+
+        cell = this.getField("enemy" + m);
+        cell.textSize = SCREEN_TEXT_WIDTH / (FIELD_WIDTH * 2);
+        cell.textFont = font.Cour;
+        %cell.alignment = "center";
+    }
 
     % Info field setup
     this.getField("info").fillColor = color.transparent;
@@ -295,6 +374,7 @@ function processInput(button) {
 
 function run() {
     curEnemy = getEnemy();
+    drawAll();
     updateEnemyTxt();
     printInfoText("You ran from your enemy. Your new enemy is: " + curEnemy[NAME]);
 }
@@ -340,6 +420,7 @@ function change(idx) {
     curCreatureIdx = idx - 1;
 
     updatePlayerTxt();
+    drawAll();
     printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
 
     turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
@@ -378,6 +459,7 @@ function catchCreature() {
         if (curPlayerCreatures[i][NAME] == "Empty") {
             curPlayerCreatures[i] = curEnemy;
             curEnemy = getEnemy();
+            drawAll();
             return true;
         }
     }
@@ -395,6 +477,7 @@ function enemyTurn() {
     % If the enemy is dead he is not able to attack and need to be substituted
     if (curEnemy[CUR_HP] == 0) {
         curEnemy = getEnemy();
+        drawAll();
         updateEnemyTxt();
         printInfoText("Your new enemy is: " + curEnemy[NAME]);
         return;
@@ -525,12 +608,15 @@ function getCreature(curLvl) {
 
     var hp = Math.ceil(CREATURE_LIST[creature][HP_GAIN] * curLvl);
 
+    % TODO dont copy everything, have an id to the original list and
+    % extra attributes for the instance variables
     return [
         CREATURE_LIST[creature][NAME],
         CREATURE_LIST[creature][HP_GAIN],
         CREATURE_LIST[creature][TYPE],
         CREATURE_LIST[creature][ATKS],
         CREATURE_LIST[creature][EXP_GAIN],
+        CREATURE_LIST[creature][IMAGE],
         hp, % MAX_HP
         hp, % CUR_HP
         curLvl, % LVL
@@ -545,9 +631,26 @@ function getCreature(curLvl) {
  * Draw all cells.
  */
 function drawAll() {
+    var creature = curPlayerCreatures[curCreatureIdx];
+    var centerM = FIELD_HEIGHT * 0.5;
+    var startM = Math.floor(centerM - creature[IMAGE].length * 0.5);
+
     for (var m = 0; m < FIELD_HEIGHT; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
-            draw(m, n);
+        if (startM <= m && m < startM + creature[IMAGE].length) {
+            drawPlayer(m, creature[IMAGE][m - startM]);
+        } else {
+            drawPlayer(m, "")
+        }
+    }
+
+    creature = curEnemy;
+    startM = Math.floor(centerM - creature[IMAGE].length * 0.5);
+
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        if (startM <= m && m < startM + creature[IMAGE].length) {
+            drawEnemy(m, creature[IMAGE][m - startM]);
+        } else {
+            drawEnemy(m, "")
         }
     }
 }
@@ -559,10 +662,17 @@ function drawAll() {
  * @param {Number} m The m position.
  * @param {Number} n The n position.
  */
-function draw(m, n) {
-    var cell = this.getField("cell" + m + "-" + n);
+function drawEnemy(m, value) {
+    var cell = this.getField("enemy" + m);
     cell.delay = true;
-    cell.value = "tmp";
+    cell.value = value;
+    cell.delay = false;
+}
+
+function drawPlayer(m, value) {
+    var cell = this.getField("player" + m);
+    cell.delay = true;
+    cell.value = value;
     cell.delay = false;
 }
 
@@ -610,18 +720,8 @@ function addInfoText(text) {
         \end{multicols}
 
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 3)}
-        \def\blocksizeW{\dimexpr ((\linewidth)-\resultW pt)/\fieldWidth \relax}
-
-        \FPeval{\resultH}{(\fieldHeight * 3)}
-        \def\blocksizeH{\dimexpr (250 pt -\resultH pt)/\fieldHeight \relax}
-
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
+        \def\blocksizeH{\dimexpr (250 pt)/\fieldHeight \relax}
+        \def\blocksizeW{\dimexpr (250 pt) \relax}
 
         \begin{multicols}{2}
 
@@ -636,26 +736,22 @@ function addInfoText(text) {
             \vspace{2.5cm}
 
             \begin{center}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \TextField[%
-                            width=\blocksize, height=\blocksize, bordercolor=black, name=player#1-#2, readonly=true%
-                        ]{}\hspace{3pt}%
-                    }%
-                    \\[2pt]%
+                \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \TextField[%
+                        width=\blocksizeW, height=\blocksizeH, bordercolor=white, name=player#1, readonly=true%
+                    ]{}%
+                    \\[0pt]%
                 }%
             \end{center}
 
         \columnbreak%
 
             \begin{center}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \TextField[%
-                            width=\blocksize, height=\blocksize, bordercolor=black, name=enemy#1-#2, readonly=true%
-                        ]{}\hspace{2pt}%
-                    }%
-                    \\[2pt]%
+                \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \TextField[%
+                        width=\blocksizeW, height=\blocksizeH, bordercolor=white, name=enemy#1, readonly=true%
+                    ]{}%
+                    \\[0pt]%
                 }%
             \end{center}
 
