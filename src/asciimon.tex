@@ -34,11 +34,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{asciimon}
 
-const GAME_DESC = "Text.\
-Text.\
-Text.\
-Text.\
-Text.";
+const GAME_DESC = "This game is similar to old games one might have played on a gameboy.\
+There are two creatures shown. The one at the bottom is the player, while the one at the\
+top is the enemy. Each turn both creatures are supposed to attack each other until\
+one of them has no health left. If the enemy is beaten a new creature is selected.\
+If your own creature dies you lose, unless you previously caught another one.";
 
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
@@ -47,6 +47,7 @@ const SCREEN_TEXT_WIDTH = 400;
 const ENEMY_RESPONSE_TIME = 4000;
 
 % Constants
+% Menu states
 const MENU = 0;
 const FIGHT = 1;
 const CHANGE = 2;
@@ -57,18 +58,19 @@ const RUN = 4;
 % The game field
 var gamestate = MENU;
 var gameover = false;
-
+% Creature data
 var curCreatureIdx = 0;
 var curPlayerCreatures = [["Empty"], ["Empty"], ["Empty"], ["Empty"]];
 var curPlayerItems = [0, 0, 0, 0];
 var curEnemy = 0;
 
+% Turn information
 const PLAYER = true;
 const ENEMY = false;
 var turn = PLAYER;
-% turn interval
 var turnInterval;
 
+% Creature data
 % Attributes
 const NAME = 0;
 const HP_GAIN = 1;
@@ -230,10 +232,12 @@ function initialise() {
         EXP_TABLE.push(START_EXP + 250 * i * (i + 1));
     }
 
-    curPlayerCreatures[0] = getCreature(MIN_LVL);
+    % Initialise the player and enemy creature
     curCreatureIdx = 0;
+    curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
     curEnemy = getEnemy();
 
+    % Initialise the player items
     curPlayerItems[0] = 2;
 
     updateEnemyTxt();
@@ -262,6 +266,7 @@ function initialiseButtons() {
     this.getField("button4").setAction("MouseUp", "processInput(4);");
     this.getField("button4txt").setAction("MouseUp", "processInput(4);");
 
+    % Adjust text size and font
     var cell;
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         cell = this.getField("player" + m);
@@ -340,9 +345,14 @@ function tooltip(on) {
 %%%%%%%%%%%%%%%%%%
 % Player actions %
 %%%%%%%%%%%%%%%%%%
-
+/**
+ * If a menu button is pressed check which action needs to be taken.
+ * This depends on the current gamestate.
+ * If the enemy did not make a move, the input is ignored.
+ * @param {Number} button The index of which button was pressed
+ */
 function processInput(button) {
-    this.getField("info").setFocus();
+    %this.getField("info").setFocus();
 
     if (gameover) {
         return;
@@ -353,6 +363,7 @@ function processInput(button) {
         return;
     }
 
+    % If the menu was active the possible actions need to be shown
     if (gamestate == MENU) {
         if (button == RUN) {
             run();
@@ -360,6 +371,7 @@ function processInput(button) {
             gamestate = button;
         }
     } else {
+        % If an action was selected run it and reset the gamestate
         if (gamestate == FIGHT) {
             attack(button);
         } else if (gamestate == CHANGE) {
@@ -372,19 +384,35 @@ function processInput(button) {
     updateButtontxt();
 }
 
+/**
+ * With this action the player indicates that he does not want to
+ * fight the current enemy. Therefore he flees and gets a new enemy.
+ */
 function run() {
     curEnemy = getEnemy();
     drawAll();
     updateEnemyTxt();
+    % TODO the player should lose something when running
     printInfoText("You ran from your enemy. Your new enemy is: " + curEnemy[NAME]);
 }
 
+/**
+ * This action runs the selected attack on the enemy creature.
+ * For this the enemy hp are reduced by the damage from the arrack.
+ * If the enemy is beaten, the player creature gets xp and has the
+ * chance of leveling up.
+ * This actions switches the turn to the enemy.
+ * @ param {Number} idx The index of the attack selected.
+ */
 function attack(idx) {
+    % Access the attack
     var curCreature = curPlayerCreatures[curCreatureIdx];
     var attacks = curCreature[ATKS];
     var attack = ATTACK_LIST[attacks[idx - 1]];
 
+    % Calculate dmg
     var dmg = inflictDMG(curCreature, curEnemy, attack);
+    % If the enemy is beaten add xp and lvl up if needed
     if (curEnemy[CUR_HP] <= 0) {
         curEnemy[CUR_HP] = 0;
 
@@ -402,39 +430,54 @@ function attack(idx) {
 
     updateEnemyTxt();
 
+    % Enemy turn
     turn = ENEMY;
     turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
 }
 
+/**
+ * Select one creature from your creature list as a substitute for
+ * the current creature. Does only work if there is an other creature
+ * then the current one.
+ * This actions switches the turn to the enemy if a switch is made.
+ * @param {Number} idx The index of the new creature.
+ */
 function change(idx) {
     var creature = curPlayerCreatures[idx - 1];
-    var oldName = creature[NAME];
+    var oldName = curPlayerCreatures[curCreatureIdx][NAME];
 
-    if (creature[NAME] == "Empty") {
+    % If there is no creature or the same one is selected the swap can not be done
+    if (creature[NAME] == "Empty" || curCreatureIdx == idx - 1) {
         printInfoText("Creature was not switched.");
         return;
     }
 
-    turn = ENEMY;
-
     curCreatureIdx = idx - 1;
 
+    printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
     updatePlayerTxt();
     drawAll();
-    printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
 
+    % Enemy turn
+    turn = ENEMY;
     turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
 }
 
+/**
+ * Selects the chosen item from the backpack and applies its affect.
+ * This actions switches the turn to the enemy if a item is used (unless it is a catcher).
+ * @param {Number} idx The index of the chosen item.
+ */
 function items(idx) {
     var item = ITEM_LIST[curPlayerItems[idx - 1]];
-
+    % If no item at that slot
     if (item[NAME] == "Empty") {
         printInfoText("No item was used.");
         return;
     }
 
     printInfoText("You used " + item[NAME] + ".");
+    % Apply the selected item
     if (item[NAME] == "Capture") {
         if (catchCreature()) {
             updateEnemyTxt();
@@ -442,36 +485,51 @@ function items(idx) {
         }
         return;
     }
-
-    turn = ENEMY;
-
     if (item[NAME] == "Improve") {
     } else if (item[NAME] == "Weaken") {
     } else if (item[NAME] == "Potion") {
     } else if (item[NAME] == "lalala") {
     }
 
+    % Enemy turn
+    turn = ENEMY;
     turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
 }
 
+/**
+ * Add the current enemy creature to your own creature list.
+ * If there are already four creature select one to replace it.
+ */
 function catchCreature() {
+    % Search for an emty space
     for (var i = 0; i < curPlayerCreatures.length; i++) {
         if (curPlayerCreatures[i][NAME] == "Empty") {
             curPlayerCreatures[i] = curEnemy;
+            % Get new enemy
             curEnemy = getEnemy();
             drawAll();
             return true;
         }
     }
+    % TODO replace creature when there is no spot left
     return false;
 }
 
 %%%%%%%%%%%%%%%%%
 % Enemy actions %
 %%%%%%%%%%%%%%%%%
+/**
+ * Calculates the enemys turn. If the current creature has
+ * less or equal to zero health a new enemy creature is spawned
+ * and the turn shifts back to the player.
+ * Otherwise an attack onto the player occurs.
+ * If the player creature is beaten, the player needs to chose a new one,
+ * unless he has none left then he lost the game.
+ */
 function enemyTurn() {
     % Switch turn
     turn = PLAYER;
+    % Clear the interval, since the enemy should only attack once
     app.clearInterval(turnInterval);
 
     % If the enemy is dead he is not able to attack and need to be substituted
@@ -509,6 +567,12 @@ function enemyTurn() {
     }
 }
 
+%%%%%%%%%%%%%%%%%%%%%%%
+% Helper %
+%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Check if the player has no creatures left.
+ */
 function noCreatureLeft() {
     for (var i = 0; i < curPlayerCreatures.length; i++) {
         if (curPlayerCreatures[i][NAME] != "Empty") {
@@ -518,12 +582,15 @@ function noCreatureLeft() {
     return true;
 }
 
-%%%%%%%%%%%%%%%%%%%%%%%
-% Helper %
-%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Check if the player creature has leveled up, by comparing
+ * its current experience to the needed xp of the next lvl.
+ * @param {Array} creature The data of the creature.
+ */
 function checkLvlUp(creature) {
     if (creature[CUR_EXP] > EXP_TABLE[creature[LVL] - MIN_LVL]) {
         creature[LVL]++;
+        % Increase health after lvl up
         creature[MAX_HP] += Math.ceil(creature[HP_GAIN]);
         creature[CUR_HP] += Math.ceil(creature[HP_GAIN]);
         return true;
@@ -531,13 +598,25 @@ function checkLvlUp(creature) {
     return false;
 }
 
+/**
+ * Add experience points to the given creature.
+ * The amount depends on the beaten enemy.
+ * @param {Array} The data of the target creature.
+ * @param {Array} The data of the source creature.
+ */
 function addEXP(source, target) {
     var exp = source[EXP_GAIN] * source[LVL];
     target[CUR_EXP] += exp;
     return exp;
 }
 
+/**
+ * Apply damage to the target creature depending on
+ * the attack and the source creature lvl.
+ * Takes also into account the type of both creatures.
+ */
 function inflictDMG(source, target, attack) {
+    % TODO take type into account
     var dmg = Math.ceil(attack[DMG] * source[LVL])
     target[CUR_HP] -= dmg;
     return dmg;
@@ -546,6 +625,10 @@ function inflictDMG(source, target, attack) {
 %%%%%%%%%%%%%%%%%%%%%%%
 % Information updates %
 %%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Update the text of all four gui buttons depending on the
+ * current menu state.
+ */
 function updateButtontxt() {
     if (gamestate == MENU) {
         this.getField("button1txt").value = "Fight";
@@ -571,12 +654,18 @@ function updateButtontxt() {
     }
 }
 
+/**
+ * Updates the enemy information displayed by the gui.
+ */
 function updateEnemyTxt() {
     this.getField("enemyname").value = curEnemy[NAME];
     this.getField("enemystatus").value = "Type: " + TYPE_STRINGS[curEnemy[TYPE]] + " - Level: " + curEnemy[LVL];
     this.getField("enemyhp").value = "HP: " + curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
 }
 
+/**
+ * Updates the player information displayed by the gui.
+ */
 function updatePlayerTxt() {
     var creature = curPlayerCreatures[curCreatureIdx];
     this.getField("playername").value = creature[NAME];
@@ -587,7 +676,13 @@ function updatePlayerTxt() {
 %%%%%%%%%%%%
 % Spawning %
 %%%%%%%%%%%%
+/**
+ * Create a new enemy with level depending on the currently available
+ * player creatures. Allows for enemys that continously pose a threat to
+ * the player and allow him to level up.
+ */
 function getEnemy() {
+    % Calculate the level depending on the reserve creatures
     var curLvl = 0;
     for (var i = 0; i < curPlayerCreatures.length; i++) {
         if (curPlayerCreatures[i][NAME] != "Empty") {
@@ -596,6 +691,7 @@ function getEnemy() {
     }
     curLvl /= curPlayerCreatures.length;
 
+    % Variance
     var offset = getRandomInt(MIN_LVL * 2);
     curLvl = curLvl + (MIN_LVL - offset);
     curLvl = Math.max(MIN_LVL, Math.floor(curLvl));
@@ -603,6 +699,10 @@ function getEnemy() {
     return getCreature(curLvl);
 }
 
+/**
+ * Get a random creature with the given level.
+ * @param {Number} curLvl The level of the creature.
+ */
 function getCreature(curLvl) {
     var creature = getRandomInt(CREATURE_LIST.length);
 
@@ -635,6 +735,7 @@ function drawAll() {
     var centerM = FIELD_HEIGHT * 0.5;
     var startM = Math.floor(centerM - creature[IMAGE].length * 0.5);
 
+    % Draw player creature
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         if (startM <= m && m < startM + creature[IMAGE].length) {
             drawPlayer(m, creature[IMAGE][m - startM]);
@@ -646,6 +747,7 @@ function drawAll() {
     creature = curEnemy;
     startM = Math.floor(centerM - creature[IMAGE].length * 0.5);
 
+    % Draw enemy creature
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         if (startM <= m && m < startM + creature[IMAGE].length) {
             drawEnemy(m, creature[IMAGE][m - startM]);
@@ -656,11 +758,10 @@ function drawAll() {
 }
 
 /**
- * Since only one cell is updated with each input,
- * only this cell needs to be redrawn.
+ * Redraw the given enemy row.
  *
  * @param {Number} m The m position.
- * @param {Number} n The n position.
+ * @param {Number} value The value.
  */
 function drawEnemy(m, value) {
     var cell = this.getField("enemy" + m);
@@ -669,6 +770,12 @@ function drawEnemy(m, value) {
     cell.delay = false;
 }
 
+/**
+ * Redraw the given player row.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} value The value.
+ */
 function drawPlayer(m, value) {
     var cell = this.getField("player" + m);
     cell.delay = true;
@@ -686,6 +793,9 @@ function printInfoText(text) {
     field.delay = false;
 }
 
+/**
+ * Add information to the information-gui.
+ */
 function addInfoText(text) {
     var field = this.getField("info");
     field.delay = true;
