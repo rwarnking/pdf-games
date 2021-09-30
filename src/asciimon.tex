@@ -99,11 +99,23 @@ const TYPE_STRINGS = new Array(
     "Water", "Air", "Stone", "Grass", "Ghost", "Fluff", "Fire"
 );
 
+% Row against column- 1 = normal dmg
+const DMG_MATRIX = [
+    % Water, Air, Stone, Grass, Ghost, Fluff, Fire
+    [1.0, 1.0, 0.3, 0.5, 1.3, 1.7, 2.0], % Water
+    [0.9, 1.0, 0.4, 0.7, 2.0, 1.3, 0.8], % Air
+    [0.7, 0.5, 1.3, 1.5, 0.8, 2.0, 1.3], % Stone
+    [1.7, 0.7, 1.3, 1.0, 1.3, 1.3, 0.7], % Grass
+    [0.9, 0.5, 0.5, 1.3, 1.3, 2.0, 0.8], % Ghost
+    [0.8, 1.1, 1.5, 1.1, 1.7, 0.5, 0.5], % Fluff
+    [0.8, 0.4, 2.0, 2.0, 0.3, 2.0, 0.4], % Fire
+];
+
 % https://ascii.co.uk/art
 % http://www.asciiworld.com/index.html
 const CREATURE_LIST = new Array(
-    ["SHEEP", 0.9, T_FLUFF, [0, 1, 2, 3], 32,
-        [% https://ascii.co.uk/art/sheep
+    ["SHEEP", 0.9, T_FLUFF, [33, 35, 37, 43], 32,
+        [ % https://ascii.co.uk/art/sheep
             "    .-:'  `; `-._   ",
             "   (_,           )  ",
             " ,'o\"(            )>",
@@ -113,7 +125,7 @@ const CREATURE_LIST = new Array(
             "       |||  |||     "
         ]
     ],
-    ["BIRD", 0.5, T_AIR, [0, 1, 2, 3], 15,
+    ["BIRD", 0.5, T_AIR, [5, 8, 10, 38], 15,
         [
             " .-.      ",
             "(. .)__,'.",
@@ -123,7 +135,7 @@ const CREATURE_LIST = new Array(
             "==<<==`'== "
         ]
     ],
-    ["STONE", 2.3, T_STONE, [0, 1, 2, 3], 50,
+    ["STONE", 2.3, T_STONE, [6, 13, 16, 39], 50,
         [ % https://ascii.co.uk/art/dice
             "          ________          ",
             "         /\\       \\         ",
@@ -142,7 +154,7 @@ const CREATURE_LIST = new Array(
             "   \\/_______/  \\/_______/   "
         ]
     ],
-    ["TREE", 1.5, T_GRASS, [0, 1, 2, 3], 39,
+    ["TREE", 1.5, T_GRASS, [11, 17, 20, 40], 39,
         [ % https://ascii.co.uk/art/tree
             "          &&& &&  & &&        ",
             "      && &\\/&\\|& ()|/ @, &&   ",
@@ -158,7 +170,7 @@ const CREATURE_LIST = new Array(
             "       , -=-~  .-^- _         "
         ]
     ],
-    ["SKELETOR", 1.2, T_GHOST, [0, 1, 2, 3], 40,
+    ["SKELETOR", 1.2, T_GHOST, [4, 18, 31, 42], 40,
         [ % https://ascii.co.uk/art/skull
             " .-~~-. ",
             "(_^..^_)",
@@ -166,7 +178,7 @@ const CREATURE_LIST = new Array(
             "  `--'  "
         ]
     ],
-    ["DUCK", 0.7, T_WATER, [0, 1, 2, 3], 23,
+    ["DUCK", 0.7, T_WATER, [0, 1, 35, 44], 23,
         [
              "  __    ",
              "<(o )___",
@@ -177,13 +189,68 @@ const CREATURE_LIST = new Array(
 );
 
 const DMG = 1;
-const KP = 2;
+const KP = 3;
 
+% https://www.fantasynamegenerators.com/anime-attack-names.php
+% Water 6, Air 6, Stone 7, Grass 6, Ghost 8, Fluff 6, Fire 11
 const ATTACK_LIST = new Array(
-    ["Jump", 1.0, 3],
-    ["Cry", 0.1, 5],
-    ["Speak", 0.2, 10],
-    ["Look", 0.8, 22]
+    % Water
+    ["OverflowingLook", 1.0, T_WATER, 1], % 0 - DUCK
+    ["BubbleKnock", 1.0, T_WATER, 1], % DUCK
+    ["IcePrism", 1.0, T_WATER, 1],
+    ["RunningWave", 1.0, T_WATER, 1],
+    ["DrowningScreech", 1.0, T_WATER, 1], % SKELETOR
+    ["Stormy Rush", 1.0, T_WATER, 1], % 5 - BIRD
+    ["Flow Release", 1.0, T_WATER, 1], % STONE
+    % Air
+    ["Fearless Smoke", 1.0, T_AIR, 1],
+    ["Dutiful Mist", 1.0, T_AIR, 1], % BIRD
+    ["Wind Volley", 1.0, T_AIR, 1],
+    ["Screaming Wind", 1.0, T_AIR, 1], % 10 - BIRD
+    ["Stormy Axe", 1.0, T_AIR, 1], % TREE
+    ["Typhoon Bullet", 1.0, T_AIR, 1],
+    % Stone
+    ["Meteor Fall", 1.0, T_STONE, 1], % STONE
+    ["Earth Impact", 1.0, T_STONE, 1],
+    ["Rockslide", 1.0, T_STONE, 1], % 15 -
+    ["Gravity Blade", 1.0, T_STONE, 1], % STONE
+    ["Tree Knock", 1.0, T_STONE, 1], % TREE
+    ["Skeletal Scratch", 1.0, T_STONE, 1], % SKELETOR
+    ["Cracking Peace", 1.0, T_STONE, 1],
+    % % Grass
+    ["Reducing Root", 1.0, T_GRASS, 1], % 20 - TREE
+    ["Doubling Drain", 1.0, T_GRASS, 1],
+    ["Arctic Branch", 1.0, T_GRASS, 1],
+    ["Lotus Cannon", 1.0, T_GRASS, 1],
+    ["Leafs Kiss", 1.0, T_GRASS, 1],
+    ["Freezing Bark", 1.0, T_GRASS, 1], % 25 -
+    % % Ghost
+    ["Phantom Stomp", 1.0, T_GHOST, 1],
+    ["Ghost Fist", 1.0, T_GHOST, 1],
+    ["Spirit Blast", 1.0, T_GHOST, 1],
+    ["Hungry Mind", 1.0, T_GHOST, 1],
+    ["Vampiric Drain", 1.0, T_GHOST, 1], % 30 -
+    ["Hells Ambush", 1.0, T_GHOST, 1], % SKELETOR
+    ["Demonic Blood", 1.0, T_GHOST, 1],
+    % % Fluff
+    ["Breaking Cuddle", 1.0, T_FLUFF, 1], % SHEEP
+    ["Sneaking Blow", 1.0, T_FLUFF, 1],
+    ["Heavens Hit", 1.0, T_FLUFF, 1], % 35 - DUCK % SHEEP
+    ["Summer Dance", 1.0, T_FLUFF, 1],
+    ["Violence Void", 1.0, T_FLUFF, 1], % SHEEP
+    ["Cloud Fall", 1.0, T_FLUFF, 1], % BIRD
+    % % Fire
+    ["Flaming Burst", 1.0, T_FIRE, 1], % STONE
+    ["Venom Heat", 1.0, T_FIRE, 1], % 40 - TREE
+    ["Poison Edge", 1.0, T_FIRE, 1],
+    ["Hot Retribution", 1.0, T_FIRE, 1], % SKELETOR
+    ["Radiating Charge", 1.0, T_FIRE, 1], % SHEEP
+    ["Magic Teardrop", 1.0, T_FIRE, 1], % DUCK
+    ["Boiling Rage", 1.0, T_FIRE, 1], % 45 -
+    ["Forbidden Light", 1.0, T_FIRE, 1],
+    ["Ash Whip", 1.0, T_FIRE, 1],
+    ["Glowing Flash", 1.0, T_FIRE, 1],
+    ["Nova Bullet", 1.0, T_FIRE, 1]
 );
 
 const ITEM_LIST = new Array(
@@ -420,7 +487,7 @@ function attack(idx) {
         var lvlup = checkLvlUp(curCreature);
         if (lvlup) {
             updatePlayerTxt();
-            printInfoText("You have slayn " + curEnemy[NAME] + " and " + curCreature[NAME] + " leveled up." + exp + " " + curCreature[CUR_EXP]);
+            printInfoText("You have slayn " + curEnemy[NAME] + " and " + curCreature[NAME] + " leveled up.");
         } else {
             printInfoText("You have slayn " + curEnemy[NAME] + " and got " + exp + " experience.");
         }
@@ -617,7 +684,9 @@ function addEXP(source, target) {
  */
 function inflictDMG(source, target, attack) {
     % TODO take type into account
-    var dmg = Math.ceil(attack[DMG] * source[LVL])
+    var creatureMul = DMG_MATRIX[source[TYPE]][target[TYPE]];
+    %var attackMul = DMG_MATRIX[attack[TYPE]][target[TYPE]];
+    var dmg = Math.ceil(attack[DMG] * source[LVL] * creatureMul);
     target[CUR_HP] -= dmg;
     return dmg;
 }
@@ -637,10 +706,11 @@ function updateButtontxt() {
         this.getField("button4txt").value = "Run";
     } else if (gamestate == FIGHT) {
         var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
-        this.getField("button1txt").value = ATTACK_LIST[attacks[0]][NAME];
-        this.getField("button2txt").value = ATTACK_LIST[attacks[1]][NAME];
-        this.getField("button3txt").value = ATTACK_LIST[attacks[2]][NAME];
-        this.getField("button4txt").value = ATTACK_LIST[attacks[3]][NAME];
+        for (var i = 0; i < 4; i++) {
+            var btn = "button" + (i + 1) + "txt";
+            var dmgTxt = " (Does " + ATTACK_LIST[attacks[i]][DMG] + " type dmg per lvl)";
+            this.getField(btn).value = ATTACK_LIST[attacks[i]][NAME] + dmgTxt;
+        }
     } else if (gamestate == CHANGE) {
         this.getField("button1txt").value = curPlayerCreatures[0][NAME];
         this.getField("button2txt").value = curPlayerCreatures[1][NAME];
@@ -659,7 +729,8 @@ function updateButtontxt() {
  */
 function updateEnemyTxt() {
     this.getField("enemyname").value = curEnemy[NAME];
-    this.getField("enemystatus").value = "Type: " + TYPE_STRINGS[curEnemy[TYPE]] + " - Level: " + curEnemy[LVL];
+    this.getField("enemystatus").value =
+        "Type: " + TYPE_STRINGS[curEnemy[TYPE]] + " - Level: " + curEnemy[LVL];
     this.getField("enemyhp").value = "HP: " + curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
 }
 
@@ -669,7 +740,8 @@ function updateEnemyTxt() {
 function updatePlayerTxt() {
     var creature = curPlayerCreatures[curCreatureIdx];
     this.getField("playername").value = creature[NAME];
-    this.getField("playerstatus").value = "Type: " + TYPE_STRINGS[creature[TYPE]] + " - Level: " + creature[LVL];
+    this.getField("playerstatus").value =
+        "Type: " + TYPE_STRINGS[creature[TYPE]] + " - Level: " + creature[LVL];
     this.getField("playerhp").value = "HP: " + creature[CUR_HP] + " of " + creature[MAX_HP];
 }
 
@@ -848,7 +920,8 @@ function addInfoText(text) {
             \begin{center}
                 \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \TextField[%
-                        width=\blocksizeW, height=\blocksizeH, bordercolor=white, name=player#1, readonly=true%
+                        width=\blocksizeW, height=\blocksizeH,%
+                        bordercolor=white, name=player#1, readonly=true%
                     ]{}%
                     \\[0pt]%
                 }%
@@ -859,7 +932,8 @@ function addInfoText(text) {
             \begin{center}
                 \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \TextField[%
-                        width=\blocksizeW, height=\blocksizeH, bordercolor=white, name=enemy#1, readonly=true%
+                        width=\blocksizeW, height=\blocksizeH,%
+                        bordercolor=white, name=enemy#1, readonly=true%
                     ]{}%
                     \\[0pt]%
                 }%
