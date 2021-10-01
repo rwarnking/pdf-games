@@ -115,7 +115,7 @@ const DMG_MATRIX = [
 % http://www.asciiworld.com/index.html
 const CREATURE_LIST = new Array(
     % Water
-    ["DUCK", 1.4, T_WATER, [0, 1, 35, 44], 23,
+    ["DUCK", 2.5, T_WATER, [0, 1, 35, 44], 25,
         [
              "  __    ",
              "<(o )___",
@@ -123,7 +123,7 @@ const CREATURE_LIST = new Array(
              "  `---' "
         ]
     ],
-    ["OCTOPUS", 2.2, T_WATER, [4, 18, 31, 42], 40, % TODO
+    ["OCTOPUS", 3.3, T_WATER, [4, 18, 31, 42], 58, % TODO
         [ % https://ascii.co.uk/art/octopus
             "                   .-'   `'.                           ",
             "                  /         \\                          ",
@@ -143,7 +143,7 @@ const CREATURE_LIST = new Array(
             "            `    '-;`          (-)  '-;                "
         ]
     ],
-    ["JELLYFISH", 2.2, T_WATER, [4, 18, 31, 42], 40, % TODO
+    ["JELLYFISH", 2.1, T_WATER, [4, 18, 31, 42], 25, % TODO
         [ % https://ascii.co.uk/art/jellyfish
             " .-;':':'-.  ",
             "{'.'.'.'.'.} ",
@@ -159,18 +159,18 @@ const CREATURE_LIST = new Array(
             "        .'   "
         ]
     ],
-    ["WHALE", 2.2, T_WATER, [4, 18, 31, 42], 40, % TODO
+    ["WHALE", 4.2, T_WATER, [4, 18, 31, 42], 80, % TODO
         [ % https://ascii.co.uk/art/whale
-            "         .        __       __  ",
-            "        \":\"      '.'--.--'.-'  ",
-            "   .,_---:--.___,   \\' r'      ",
+            "                  __       __  ",
+            "                 '.'--.--'.-'  ",
+            "   .,_--- --.___    \\' r'      ",
             "   ', '-._a      '-' .'        ",
-            "~\^~\^~'.    '-'Y \\._  /~\^~\^~\^~\^~",
+            "     \\    '-'Y \\._  /         ",
             "      '--;____'--.'-,          ",
             "       /..'       '''          "
         ]
     ],
-    ["FISH", 2.2, T_WATER, [4, 18, 31, 42], 40, % TODO
+    ["FISH", 2.7, T_WATER, [4, 18, 31, 42], 35, % TODO
         [ % https://ascii.co.uk/art/fish
             "             |               ",
             "             |               ",
@@ -182,14 +182,14 @@ const CREATURE_LIST = new Array(
             "      ,' .:     ;, `.        ",
             "      |@)|  . .  |(@|        ",
             " ,-._ `._';  .  :`_,' _,-.   ",
-            " '--  `-\\ /,-===-.\\ /-'  --` ",
-            "(----  _|  ||___||  |_  ----)",
+            "'--  `-\\ /,-===-.\\ /-'  --` ",
+            "(----  _| ||___|| |_  ----)",
             "`._,-'  \\  `-.-'  /  `-._,'  ",
             "         `-.___,-'           "
         ]
     ],
     % Air
-    ["BIRD", 1.2, T_AIR, [5, 8, 10, 38], 15,
+    ["BIRD", 2.2, T_AIR, [5, 8, 10, 38], 25,
         [ % https://ascii.co.uk/art/bird
             "       ,\\--/,       ",
             "      { @  @ }      ",
@@ -200,7 +200,7 @@ const CREATURE_LIST = new Array(
             "         WW         "
         ]
     ],
-    ["BAT", 2.2, T_AIR, [4, 18, 31, 42], 40, % TODO
+    ["BAT", 2.1, T_AIR, [4, 18, 31, 42], 20, % TODO
         [ % https://ascii.co.uk/art/bat
             "._.                  _.____.",
             " ) \\.              /    .(  ",
@@ -217,7 +217,7 @@ const CREATURE_LIST = new Array(
             "           m  M             "
         ]
     ],
-    ["BUTTERFLY", 2.2, T_AIR, [4, 18, 31, 42], 40, % TODO
+    ["BUTTERFLY", 2.2, T_AIR, [4, 18, 31, 42], 25, % TODO
         [ % https://ascii.co.uk/art/bat
                 ".==-.                   .-==.",
                 " \\()8`-._  `.   .'  _.-'8()/ ",
@@ -232,7 +232,7 @@ const CREATURE_LIST = new Array(
                 "     \"\"--'         `--\"\"     "
         ]
     ],
-    ["OWL", 2.2, T_AIR, [4, 18, 31, 42], 40, % TODO
+    ["OWL", 3.1, T_AIR, [4, 18, 31, 42], 55, % TODO
         [ % https://ascii.co.uk/art/owl
             "                 ___        ",
             "             .-\"-~-\"-.      ",
@@ -250,7 +250,7 @@ const CREATURE_LIST = new Array(
         ]
     ],
     % Stone
-    ["STONES", 2.9, T_STONE, [6, 13, 16, 39], 50,
+    ["STONES", 3.7, T_STONE, [6, 13, 16, 39], 60,
         [ % https://ascii.co.uk/art/dice
             "          ________          ",
             "         /\\       \\         ",
@@ -269,7 +269,7 @@ const CREATURE_LIST = new Array(
             "   \\/_______/  \\/_______/   "
         ]
     ],
-    ["PYRAMID", 2.2, T_STONE, [4, 18, 31, 42], 40, % TODO
+    ["PYRAMID", 4.0, T_STONE, [4, 18, 31, 42], 75, % TODO
         [ % https://ascii.co.uk/art/pyramid
             "                _L/L                ",
             "              _LT/l_L_              ",
@@ -283,7 +283,7 @@ const CREATURE_LIST = new Array(
         ]
     ],
     % Grass
-    ["TREE", 2.5, T_GRASS, [11, 17, 20, 40], 39,
+    ["TREE", 3.6, T_GRASS, [11, 17, 20, 40], 60,
         [ % https://ascii.co.uk/art/tree
             "          &&& &&  & &&        ",
             "      && &\\/&\\|& ()|/ @, &&   ",
@@ -299,7 +299,7 @@ const CREATURE_LIST = new Array(
             "       , -=-~  .-^- _         "
         ]
     ],
-    ["ANT", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+    ["ANT", 1.9, T_GRASS, [4, 18, 31, 42], 19, % TODO
         [ % https://ascii.co.uk/art/ant
             " \\       /                       ",
             "  \\     /                        ",
@@ -313,7 +313,7 @@ const CREATURE_LIST = new Array(
             "        |'    ('       ')        "
         ]
     ],
-    ["BEEHIVE", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+    ["BEEHIVE", 3.9, T_GRASS, [4, 18, 31, 42], 70, % TODO
         [ % https://ascii.co.uk/art/bee
             "     \^\^      .-=-=-=-.  \^\^         ",
             " \^\^        (`-=-=-=-=-`)         ",
@@ -330,7 +330,7 @@ const CREATURE_LIST = new Array(
             "            `-=-=-=-=-`   \^\^     "
         ]
     ],
-    ["COBRA", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+    ["COBRA", 3.0, T_GRASS, [4, 18, 31, 42], 40, % TODO
         [ % https://ascii.co.uk/art/cobra
             "         ,,'6''-,.                                  ",
             "        <====,.;;--.                                ",
@@ -349,7 +349,7 @@ const CREATURE_LIST = new Array(
             "            `=\\_______,---\"\"\"-------------\"\"\"''     "
         ]
     ],
-    ["TULIP", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+    ["TULIP", 2.4, T_GRASS, [4, 18, 31, 42], 25, % TODO
         [ % https://ascii.co.uk/art/tulips
             "      ,    ",
             "  /\^/`\\   ",
@@ -368,7 +368,7 @@ const CREATURE_LIST = new Array(
             "  `\\\\//`   "
         ]
     ],
-    ["MUSHROOM", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+    ["MUSHROOM", 2.8, T_GRASS, [4, 18, 31, 42], 45, % TODO
         [ % https://ascii.co.uk/art/mushroom
             "           ____             ",
             "       _.-'78o `\"`--._      ",
@@ -388,7 +388,7 @@ const CREATURE_LIST = new Array(
         ]
     ],
     % Ghost
-    ["REAPER", 2.2, T_GHOST, [4, 18, 31, 42], 40,
+    ["REAPER", 3.5, T_GHOST, [4, 18, 31, 42], 65,
         [ % https://ascii.co.uk/art/death
             "              ,____ ",
             "              |---.\\",
@@ -408,7 +408,7 @@ const CREATURE_LIST = new Array(
             "(_.-.__.__.)  /     "
         ]
     ],
-    ["ANGEL", 2.2, T_GHOST, [4, 18, 31, 42], 40, % TODO
+    ["ANGEL", 3.2, T_GHOST, [4, 18, 31, 42], 60, % TODO
         [ % https://ascii.co.uk/art/angel
             "     __/)     (\\__     ",
             "  ,-'~~(   _   )~~`-.  ",
@@ -422,7 +422,7 @@ const CREATURE_LIST = new Array(
             "   '    '-'-'-'    '   "
         ]
     ],
-    ["PUMPKIN FAMILY", 2.2, T_GHOST, [4, 18, 31, 42], 40, % TODO
+    ["PUMPKIN FAMILY", 3.1, T_GHOST, [4, 18, 31, 42], 57, % TODO
         [ % https://ascii.co.uk/art/halloween
             "                      /\\          ",
             "        _           __(_)__       ",
@@ -440,7 +440,7 @@ const CREATURE_LIST = new Array(
             "           '.__.__.'              "
         ]
     ],
-    ["SPIDER FAMILY", 2.2, T_GHOST, [4, 18, 31, 42], 40, % TODO
+    ["SPIDER FAMILY", 2.3, T_GHOST, [4, 18, 31, 42], 22, % TODO
         [ % https://ascii.co.uk/art/halloween
             "        _.._   _\\(o)/_  //  \\\\      ",
             "      .'    '.  /(_)\\  _\\\\()//_     ",
@@ -454,7 +454,7 @@ const CREATURE_LIST = new Array(
             "     \\      /       \\\\  //          "
         ]
     ],
-    ["MAGICIAN", 2.2, T_GHOST, [4, 18, 31, 42], 40, % TODO
+    ["MAGICIAN", 3.0, T_GHOST, [4, 18, 31, 42], 55, % TODO
         [ % https://ascii.co.uk/art/magician
             ". .'..' . ' ' . . '.  . '",
             "  `.':.'        ':'.'.'  ",
@@ -473,7 +473,7 @@ const CREATURE_LIST = new Array(
         ]
     ],
     % Fluff
-    ["SHEEP", 1.9, T_FLUFF, [33, 35, 37, 43], 32,
+    ["SHEEP", 2.9, T_FLUFF, [33, 35, 37, 43], 40,
         [ % https://ascii.co.uk/art/sheep
             "    .-:'  `; `-._   ",
             "   (_,           )  ",
@@ -484,7 +484,7 @@ const CREATURE_LIST = new Array(
             "       |||  |||     "
         ]
     ],
-    ["BEAR", 2.2, T_FLUFF, [4, 18, 31, 42], 40, % TODO
+    ["BEAR", 3.4, T_FLUFF, [4, 18, 31, 42], 55, % TODO
         [ % https://ascii.co.uk/art/ant
             "     ( )___( )    ",
             "     /__oo   \\    ",
@@ -503,7 +503,7 @@ const CREATURE_LIST = new Array(
             "   (\"__,..\"'_._.) "
         ]
     ],
-    ["SNAIL", 2.2, T_FLUFF, [4, 18, 31, 42], 40, % TODO
+    ["SNAIL", 2.3, T_FLUFF, [4, 18, 31, 42], 30, % TODO
         [ % https://ascii.co.uk/art/insect
             "     /\^\\    /\^\\                         ",
             "    {  O}  {  O}                        ",
@@ -522,7 +522,7 @@ const CREATURE_LIST = new Array(
         ]
     ],
     % Fire
-    ["CANDLE", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+    ["CANDLE", 2.6, T_FIRE, [4, 18, 31, 42], 20, % TODO
         [ % https://ascii.co.uk/art/candle
             "         (\\           ",
             "        /  )          ",
@@ -538,7 +538,7 @@ const CREATURE_LIST = new Array(
             "     '\"\"\"\"\"\"'         "
         ]
     ],
-    ["DRAGON", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+    ["DRAGON", 3.7, T_FIRE, [4, 18, 31, 42], 65, % TODO
         [ % https://ascii.co.uk/art/dragon
             " <>=======()                           ",
             " /\\___   /|\\\\          ()==========<>_ ",
@@ -557,7 +557,7 @@ const CREATURE_LIST = new Array(
             "                 '------'              "
         ]
     ],
-    ["HANDGRANADE", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+    ["HANDGRANADE", 2.7, T_FIRE, [4, 18, 31, 42], 20, % TODO
         [ % https://ascii.co.uk/art/handgranade
             "           .     ",
             "          /|     ",
@@ -575,7 +575,7 @@ const CREATURE_LIST = new Array(
             "   '\"-------\"    "
         ]
     ],
-    ["COFFEE", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+    ["COFFEE", 2.6, T_FIRE, [4, 18, 31, 42], 20, % TODO
         [ % https://ascii.co.uk/art/coffee
             "    {  }            ",
             "  {   }             ",
@@ -593,7 +593,7 @@ const CREATURE_LIST = new Array(
             " `-.._____..-'      "
         ]
     ],
-    ["FLAMEINGO", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+    ["FLAMEINGO", 2.7, T_FIRE, [4, 18, 31, 42], 38, % TODO
         [ % https://ascii.co.uk/art/flamingo
             "           __   ",
             "          /(`o) ",
