@@ -114,28 +114,143 @@ const DMG_MATRIX = [
 % https://ascii.co.uk/art
 % http://www.asciiworld.com/index.html
 const CREATURE_LIST = new Array(
-    ["SHEEP", 0.9, T_FLUFF, [33, 35, 37, 43], 32,
-        [ % https://ascii.co.uk/art/sheep
-            "    .-:'  `; `-._   ",
-            "   (_,           )  ",
-            " ,'o\"(            )>",
-            "(__,-'            ) ",
-            "   (             )  ",
-            "    `-'._.--._.-'   ",
-            "       |||  |||     "
-        ]
-    ],
-    ["BIRD", 0.5, T_AIR, [5, 8, 10, 38], 15,
+    % Water
+    ["DUCK", 1.4, T_WATER, [0, 1, 35, 44], 23,
         [
-            " .-.      ",
-            "(. .)__,'.",
-            "/ V      .",
-            "\  \\   \/ ",
-            " `._`._ \  ",
-            "==<<==`'== "
+             "  __    ",
+             "<(o )___",
+             " \\ ._> /",
+             "  `---' "
         ]
     ],
-    ["STONE", 2.3, T_STONE, [6, 13, 16, 39], 50,
+    ["OCTOPUS", 2.2, T_WATER, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/octopus
+            "                   .-'   `'.                           ",
+            "                  /         \\                          ",
+            "                  |         ;                          ",
+            "                  |         |           ___.--,        ",
+            "         _.._     (0) ~ (0) |    _.---'`__.-( )_.      ",
+            "  __.--'`_.. '.__.\\    '--. \\_.-' ,.--'`     `\"\"`      ",
+            "   ,.--'`   ',__ /./;   ;, '.__.'`    __               ",
+            "        .---.__.' / |   |\\   \\__..--\"\"  \"\"\"--.,_       ",
+            "      .'.''-._.-'`_./  /\\ '.  \\ _.-~~~````~~~-._`-.__.'",
+            "      | |  .' _.-' |  |  \\  \\  '.               `~---` ",
+            "       \\ \\/ .'     (  \\   '. '-._)                     ",
+            "        \\/ /        \\  \\    `=.__`~-.                  ",
+            "        / /\\         (  )    / / `\"\".`\\                ",
+            "  , _.-'.'\\ \\        / /    ( )     / /                ",
+            "   `--~`   ( )    .-'.'      '.'.  | |                 ",
+            "            `    '-;`          (-)  '-;                "
+        ]
+    ],
+    ["JELLYFISH", 2.2, T_WATER, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/jellyfish
+            " .-;':':'-.  ",
+            "{'.'.'.'.'.} ",
+            " ?        '`.",
+            "'-. ._ ,_.-='",
+            "  `). ( `);( ",
+            "  ('. .)(,'.)",
+            "   ) ( ,').( ",
+            "  ( .').'(').",
+            "  .) (' ).(' ",
+            "   '  ? (  ).",
+            "    .'( .)'  ",
+            "        .'   "
+        ]
+    ],
+    ["WHALE", 2.2, T_WATER, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/whale
+            "         .        __       __  ",
+            "        \":\"      '.'--.--'.-'  ",
+            "   .,_---:--.___,   \\' r'      ",
+            "   ', '-._a      '-' .'        ",
+            "~\^~\^~'.    '-'Y \\._  /~\^~\^~\^~\^~",
+            "      '--;____'--.'-,          ",
+            "       /..'       '''          "
+        ]
+    ],
+    ["FISH", 2.2, T_WATER, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/fish
+            "             |               ",
+            "             |               ",
+            "            ,|.              ",
+            "           ,\\|/.             ",
+            "         ,' .V. `.           ",
+            "        / .     . \\          ",
+            "       /_`       '_\\         ",
+            "      ,' .:     ;, `.        ",
+            "      |@)|  . .  |(@|        ",
+            " ,-._ `._';  .  :`_,' _,-.   ",
+            " '--  `-\\ /,-===-.\\ /-'  --` ",
+            "(----  _|  ||___||  |_  ----)",
+            "`._,-'  \\  `-.-'  /  `-._,'  ",
+            "         `-.___,-'           "
+        ]
+    ],
+    % Air
+    ["BIRD", 1.2, T_AIR, [5, 8, 10, 38], 15,
+        [ % https://ascii.co.uk/art/bird
+            "       ,\\--/,       ",
+            "      { @  @ }      ",
+            "      |  \\/  |      ",
+            "      | )  ( |      ",
+            "------`W-mm-W'------",
+            "        \\  /        ",
+            "         WW         "
+        ]
+    ],
+    ["BAT", 2.2, T_AIR, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/bat
+            "._.                  _.____.",
+            " ) \\.              /    .(  ",
+            " )  |            .'   .(    ",
+            " ). |.          .'  .(      ",
+            "   ) |.        .'  (        ",
+            "   ). ;      ./  .(         ",
+            "    ) |      |  (           ",
+            "    ).;      :.(            ",
+            "     ||    .|.;             ",
+            "     .^--^./ |.             ",
+            "     ;0..0;   \\             ",
+            "      'vv'_.:_.:            ",
+            "           m  M             "
+        ]
+    ],
+    ["BUTTERFLY", 2.2, T_AIR, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/bat
+                ".==-.                   .-==.",
+                " \\()8`-._  `.   .'  _.-'8()/ ",
+                " (88\"   ::.  \\./  .::   \"88) ",
+                "  \\_.'`-::::.(#).::::-'`._/  ",
+                "    `._... .q(_)p. ..._.'    ",
+                "      \"\"-..-'|=|`-..-\"\"      ",
+                "      .\"\"' .'|=|`. `\"\".      ",
+                "    ,':8(o)./|=|\\.(o)8:`.    ",
+                "   (O :8 ::/ \\_/ \\:: 8: O)   ",
+                "    \\O `::/       \\::' O/    ",
+                "     \"\"--'         `--\"\"     "
+        ]
+    ],
+    ["OWL", 2.2, T_AIR, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/owl
+            "                 ___        ",
+            "             .-\"-~-\"-.      ",
+            "            /.-\"-.-\"-.\\     ",
+            "            ||((o|o))||     ",
+            "            )\\__/V\\__/(     ",
+            "           / ~ -...- ~ \\    ",
+            "          |\\` ~. ~ .~ `/|   ",
+            "       () | `~ - \^ - ~` |   ",
+            "   () //  | ;  '  :  .  |   ",
+            "  ()\\\\/_() \\ . : '  ; '/    ",
+            " ___/ /_____'.   ; ' .'____ ",
+            "       _   \^ `uu---uu`    /\\",
+            "__   ________\^ _________\^_\\/"
+        ]
+    ],
+    % Stone
+    ["STONES", 2.9, T_STONE, [6, 13, 16, 39], 50,
         [ % https://ascii.co.uk/art/dice
             "          ________          ",
             "         /\\       \\         ",
@@ -154,7 +269,21 @@ const CREATURE_LIST = new Array(
             "   \\/_______/  \\/_______/   "
         ]
     ],
-    ["TREE", 1.5, T_GRASS, [11, 17, 20, 40], 39,
+    ["PYRAMID", 2.2, T_STONE, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/pyramid
+            "                _L/L                ",
+            "              _LT/l_L_              ",
+            "            _LLl/L_T_lL_            ",
+            "          _LT|L/_|__L_|_L_          ",
+            "        _TL|_T/_L_|__T__|_l_        ",
+            "      _LL|_Tl/_|__l___L__L_|L_      ",
+            "    _'|_|_|T/_L_l__T _ l__|__|L_    ",
+            "  _LlT_|_Ll/_l_ _|__[ ]__|__|_l_L_  ",
+            "_T_L|_|_|l/___|__ | _l__|_ |__|_T_L_"
+        ]
+    ],
+    % Grass
+    ["TREE", 2.5, T_GRASS, [11, 17, 20, 40], 39,
         [ % https://ascii.co.uk/art/tree
             "          &&& &&  & &&        ",
             "      && &\\/&\\|& ()|/ @, &&   ",
@@ -170,87 +299,384 @@ const CREATURE_LIST = new Array(
             "       , -=-~  .-^- _         "
         ]
     ],
-    ["SKELETOR", 1.2, T_GHOST, [4, 18, 31, 42], 40,
-        [ % https://ascii.co.uk/art/skull
-            " .-~~-. ",
-            "(_^..^_)",
-            "  ||||  ",
-            "  `--'  "
+    ["ANT", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/ant
+            " \\       /                       ",
+            "  \\     /                        ",
+            "   \\.-./                         ",
+            "  (o\\^/o)  _   _   _     __      ",
+            "   ./ \\.\\ ( )-( )-( ) .-'  '-.   ",
+            "    {-} \\(//  ||   \\\\/ (   )) '-.",
+            "         //-__||__.-\\\\.       .-'",
+            "        (/    ()     \\) '-._.-'   ",
+            "        ||    ||      \\\\         ",
+            "        |'    ('       ')        "
         ]
     ],
-    ["DUCK", 0.7, T_WATER, [0, 1, 35, 44], 23,
-        [
-             "  __    ",
-             "<(o )___",
-             " \\ ._> /",
-             "  `---' "
+    ["BEEHIVE", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/bee
+            "     \^\^      .-=-=-=-.  \^\^         ",
+            " \^\^        (`-=-=-=-=-`)         ",
+            "         (`-=-=-=-=-=-=-`)  \^\^   ",
+            "   \^\^   (`-=-=-=-=-=-=-=-`)      ",
+            "       ( `-=-=-=-( )-=-=-` )       ",
+            "       (`-=-=-=-=-=-=-=-=-`)       ",
+            "       (`-=-=-=-=-=-=-=-=-`)       ",
+            "       (`-=-=-=-=-=-=-=-=-`)       ",
+            "       (`-=-=-=-=-=-=-=-=-`)       ",
+            "        (`-=-=-=-=-=-=-=-`)        ",
+            "         (`-=-=-=-=-=-=-`)  \^\^   ",
+            "           (`-=-=-=-=-`)           ",
+            "            `-=-=-=-=-`   \^\^     "
+        ]
+    ],
+    ["COBRA", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/cobra
+            "         ,,'6''-,.                                  ",
+            "        <====,.;;--.                                ",
+            "        _`---===. \"\"\"==__                           ",
+            "      //\"\"@@-\\===\\@@@@ \"\"\\\\                         ",
+            "     |( @@@  |===|  @@@  |)                         ",
+            "      \\\\ @@   |===|  @@  //                         ",
+            "        \\\\ @@ |===|@@@ //                           ",
+            "         \\\\  |===|  //                              ",
+            "___________\\\\|===| //_____,----\"\"\"\"\"\"\"\"\"\"-----,_    ",
+            "  \"\"\"\"---,__`\\===`/ _________,---------,____    `,  ",
+            "             |==||                           `\\   \\ ",
+            "            |==| |                             |   |",
+            "           |==| |       _____         ______,--'   '",
+            "           |=|  `----\"\"\"     `\"\"\"\"\"\"\"\"         _,-' ",
+            "            `=\\_______,---\"\"\"-------------\"\"\"''     "
+        ]
+    ],
+    ["TULIP", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/tulips
+            "      ,    ",
+            "  /\^/`\\   ",
+            " | \\/   |  ",
+            " | |    |  ",
+            " \\ \\    /  ",
+            "  '\\\\//'   ",
+            "    ||     ",
+            "    ||     ",
+            "    ||     ",
+            "    ||  ,  ",
+            "|\\  ||  |\\ ",
+            "| | ||  | |",
+            "| | || / / ",
+            " \\ \\||/ /  ",
+            "  `\\\\//`   "
+        ]
+    ],
+    ["MUSHROOM", 2.2, T_GRASS, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/mushroom
+            "           ____             ",
+            "       _.-'78o `\"`--._      ",
+            "   ,o888o.  .o888o,   ''-.  ",
+            " ,88888P  `78888P..______.] ",
+            "/_..__..----\"\"        __.'  ",
+            "`-._       /\"\"| _..-''      ",
+            "    \"`-----\\  `\\            ",
+            "            |   ;.-\"\"--..   ",
+            "            | ,8o.  o88. `. ",
+            "            `;888P  `788P  :",
+            "      .o\"\"-.|`-._         ./",
+            "     J88 _.-/    \";\"-P----' ",
+            "     `--'\\`|     /  /       ",
+            "         | /     |  |       ",
+            "         `------`---'       "
+        ]
+    ],
+    % Ghost
+    ["REAPER", 2.2, T_GHOST, [4, 18, 31, 42], 40,
+        [ % https://ascii.co.uk/art/death
+            "              ,____ ",
+            "              |---.\\",
+            "      ___     |    `",
+            "     / .-\\  .(=)    ",
+            "    |  |\"|_/\\/|     ",
+            "    ;  |-;| /_|     ",
+            "   / \\_| |/   |     ",
+            "  /      \\/   |     ",
+            "  |   /  |`   |     ",
+            "  /   \\ _/    |     ",
+            " /--._/  \\    |     ",
+            " (/|)    |    /     ",
+            "    /     |   |     ",
+            "  .'      |   |     ",
+            " /         \\  |     ",
+            "(_.-.__.__.)  /     "
+        ]
+    ],
+    ["ANGEL", 2.2, T_GHOST, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/angel
+            "     __/)     (\\__     ",
+            "  ,-'~~(   _   )~~`-.  ",
+            " /      \\/'_'\\/      \\ ",
+            "|       /_(_)_\\       |",
+            "|     _(/(\\_/)\\)_     |",
+            "|    / // \\ / \\\\ \\    |",
+            " \\  | ``  / \\ ''  |  / ",
+            "  \\  )   /   \\   (  /  ",
+            "   )/   /     \\   \\(   ",
+            "   '    '-'-'-'    '   "
+        ]
+    ],
+    ["PUMPKIN FAMILY", 2.2, T_GHOST, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/halloween
+            "                      /\\          ",
+            "        _           __(_)__       ",
+            "        \\_      .-'._'-'_.'-.    ",
+            "     .'`---`'. .'.' /o\\'/o\\ '.'.  ",
+            "    /  <> <>  \\ : ._:  0  :_. : \\ ",
+            "    |    A    |:   \\\\/\\_/\\//   : |",
+            "    \\  <\\_/>  / :  :\\/\\_/\\/:  : / ",
+            "   _?_._`\"`_.'`'-:__:__:__:__:-'  ",
+            " .'`---`'.``  _/\\                 ",
+            "/.'a . a  \\.'`---`'.              ",
+            "|:        /.'<> <>  \\             ",
+            "\\'  \\__   |:   ^    |             ",
+            " '._____.'\\' '___'  /             ",
+            "           '.__.__.'              "
+        ]
+    ],
+    ["SPIDER FAMILY", 2.2, T_GHOST, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/halloween
+            "        _.._   _\\(o)/_  //  \\\\      ",
+            "      .'    '.  /(_)\\  _\\\\()//_     ",
+            "    /   __   \\        / //  \\\\ \\    ",
+            " ,  |   ><   |  ,      | \\__/ |     ",
+            ". \\  \\      /  / .                  ",
+            " \\_'--`(  )'--'_/     __             ",
+            "   .--'/()\\'--.    | /  \\ |         ",
+            "  /  /` '' `\\  \\  \\_\\\\  //_/        ",
+            "    |        |      //()\\\\          ",
+            "     \\      /       \\\\  //          "
+        ]
+    ],
+    ["MAGICIAN", 2.2, T_GHOST, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/magician
+            ". .'..' . ' ' . . '.  . '",
+            "  `.':.'        ':'.'.'  ",
+            "    `\\\\_  |     _//'     ",
+            "      \\(  |\\    )/       ",
+            "      //\\ |_\\  /\\\\       ",
+            "     (/ /\\(\" )/\\ \\)      ",
+            "      \\/\\ (  ) /\\/       ",
+            "         |(  )|          ",
+            "         | \\( \\          ",
+            "         |  )  \\         ",
+            "         |      \\        ",
+            "         |       \\       ",
+            "         |        `.__,  ",
+            "         \\_________.-'   "
+        ]
+    ],
+    % Fluff
+    ["SHEEP", 1.9, T_FLUFF, [33, 35, 37, 43], 32,
+        [ % https://ascii.co.uk/art/sheep
+            "    .-:'  `; `-._   ",
+            "   (_,           )  ",
+            " ,'o\"(            )>",
+            "(__,-'            ) ",
+            "   (             )  ",
+            "    `-'._.--._.-'   ",
+            "       |||  |||     "
+        ]
+    ],
+    ["BEAR", 2.2, T_FLUFF, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/ant
+            "     ( )___( )    ",
+            "     /__oo   \\    ",
+            "    ( \\/     )    ",
+            "    | `=/    |    ",
+            "   /         \\    ",
+            "  /  /    \\   \\   ",
+            " /  /      \\   \\  ",
+            "| ,_/_      \\   \\ ",
+            " \\_ '=       \\   |",
+            "   \"\"'       /  / ",
+            "   ;        /  /'?",
+            "   :       {{}} / ",
+            "    `._   \\  _ (  ",
+            "     __)   |  /_  ",
+            "   (\"__,..\"'_._.) "
+        ]
+    ],
+    ["SNAIL", 2.2, T_FLUFF, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/insect
+            "     /\^\\    /\^\\                         ",
+            "    {  O}  {  O}                        ",
+            "     \\ /    \\ /                         ",
+            "     //     //       _------_           ",
+            "    //     //     ./~        ~-_        ",
+            "   / ~----~/     /              \\       ",
+            " /         :   ./       _---_    ~-     ",
+            "|  \\________? :       /~     ~\\   |     ",
+            "|        /    |      |  :~~\\  |   |     ",
+            "|       |     |      |  \\___-~    |     ",
+            "|       \\ __/`\^\\______\\.        ./     ",
+            " \\                     ~-______-~\\.     ",
+            " .|                                ~-_  ",
+            "/_____________________________________~~"
+        ]
+    ],
+    % Fire
+    ["CANDLE", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/candle
+            "         (\\           ",
+            "        /  )          ",
+            "       ( * )          ",
+            "        \\#/           ",
+            "      .-\"#'-.         ",
+            "      |\"-.-\"|         ",
+            "      |     |         ",
+            "    __|     |__   .-. ",
+            " .-'  |     |  `-:   :",
+            ":     '-._,-'    :-'  ",
+            " `-._         _.-'    ",
+            "     '\"\"\"\"\"\"'         "
+        ]
+    ],
+    ["DRAGON", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/dragon
+            " <>=======()                           ",
+            " /\\___   /|\\\\          ()==========<>_ ",
+            "      \\_/ | \\\\        //|\\   ______/ \\",
+            "        \\_|  \\\\      // | \\_/          ",
+            "          \\|\\/|\\_   //  /\\/            ",
+            "           (oo)\\ \\_//  /               ",
+            "          //_/\\_\\/ /  |                ",
+            "         @@/  |=\\  \\  |                ",
+            "              \\_=\\_ \\ |                ",
+            "                \\==\\ \\|\\_              ",
+            "             __/\\===\\(  )\\             ",
+            "            ((~)) __-_/   |            ",
+            "                 ((~)) \\  /            ",
+            "                 ______/ /             ",
+            "                 '------'              "
+        ]
+    ],
+    ["HANDGRANADE", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/handgranade
+            "           .     ",
+            "          /|     ",
+            "         |@/     ",
+            "        _/\"      ",
+            "      _/==\\__    ",
+            "     (==---==)   " ,
+            "  /\%/_________\\  ",
+            " /#(_|_|_|_|_|_) ",
+            "|#(_|_|_|_|_|_|_)",
+            "|#(|_|_|_|_|_|_|)",
+            "|#(_|_|_|_|_|_|_)",
+            "\\#(_|_|_|_|_|_)  ",
+            " \\#|_|_|_|_|_/   ",
+            "   '\"-------\"    "
+        ]
+    ],
+    ["COFFEE", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/coffee
+            "    {  }            ",
+            "  {   }             ",
+            "   {}_{ __{         ",
+            " .-{   }   }-.      ",
+            "(   }     { } )     ",
+            "|`-.._____..-'|     ",
+            "|             ;--.  ",
+            "|             |__  \\",
+            "|             | (  )",
+            "|             |/  / ",
+            "|             /  /  ",
+            "|               /   ",
+            "\\             y'    ",
+            " `-.._____..-'      "
+        ]
+    ],
+    ["FLAMEINGO", 2.2, T_FIRE, [4, 18, 31, 42], 40, % TODO
+        [ % https://ascii.co.uk/art/flamingo
+            "           __   ",
+            "          /(`o) ",
+            "    ,-,  //  \\\\ ",
+            "   (,,,) ||   V ",
+            "  (,,,,)\\//     ",
+            "  (,,,/w)-'     ",
+            "  (,,/w)        ",
+            "  `V/uu         ",
+            "    / |         ",
+            "    | |         ",
+            "    o o         ",
+            "    \\ |         ",
+            "\\,/   ,\\|,.  \\,/"
         ]
     ]
+
+    % https://ascii.co.uk/art/fire
 );
 
 const DMG = 1;
-const KP = 3;
 
 % https://www.fantasynamegenerators.com/anime-attack-names.php
 % Water 6, Air 6, Stone 7, Grass 6, Ghost 8, Fluff 6, Fire 11
+% Each creature should have attacks worth of 6 dmg points
 const ATTACK_LIST = new Array(
     % Water
-    ["OverflowingLook", 1.0, T_WATER, 1], % 0 - DUCK
-    ["BubbleKnock", 1.0, T_WATER, 1], % DUCK
-    ["IcePrism", 1.0, T_WATER, 1],
-    ["RunningWave", 1.0, T_WATER, 1],
-    ["DrowningScreech", 1.0, T_WATER, 1], % SKELETOR
-    ["Stormy Rush", 1.0, T_WATER, 1], % 5 - BIRD
-    ["Flow Release", 1.0, T_WATER, 1], % STONE
+    ["Overflowing Look", 1.1, T_WATER], % 0 - DUCK
+    ["Bubble Knock", 1.3, T_WATER], % DUCK
+    ["Ice Prism", 1.8, T_WATER],
+    ["Running Wave", 1.0, T_WATER],
+    ["Drowning Screech", 1.5, T_WATER], % SKELETOR
+    ["Stormy Rush", 1.2, T_WATER], % 5 - BIRD
+    ["Flow Release", 0.9, T_WATER], % STONE
     % Air
-    ["Fearless Smoke", 1.0, T_AIR, 1],
-    ["Dutiful Mist", 1.0, T_AIR, 1], % BIRD
-    ["Wind Volley", 1.0, T_AIR, 1],
-    ["Screaming Wind", 1.0, T_AIR, 1], % 10 - BIRD
-    ["Stormy Axe", 1.0, T_AIR, 1], % TREE
-    ["Typhoon Bullet", 1.0, T_AIR, 1],
+    ["Fearless Smoke", 0.9, T_AIR],
+    ["Dutiful Mist", 1.0, T_AIR], % BIRD
+    ["Wind Volley", 1.3, T_AIR],
+    ["Screaming Wind", 1.9, T_AIR], % 10 - BIRD
+    ["Stormy Axe", 1.4, T_AIR], % TREE
+    ["Typhoon Bullet", 1.8, T_AIR],
     % Stone
-    ["Meteor Fall", 1.0, T_STONE, 1], % STONE
-    ["Earth Impact", 1.0, T_STONE, 1],
-    ["Rockslide", 1.0, T_STONE, 1], % 15 -
-    ["Gravity Blade", 1.0, T_STONE, 1], % STONE
-    ["Tree Knock", 1.0, T_STONE, 1], % TREE
-    ["Skeletal Scratch", 1.0, T_STONE, 1], % SKELETOR
-    ["Cracking Peace", 1.0, T_STONE, 1],
-    % % Grass
-    ["Reducing Root", 1.0, T_GRASS, 1], % 20 - TREE
-    ["Doubling Drain", 1.0, T_GRASS, 1],
-    ["Arctic Branch", 1.0, T_GRASS, 1],
-    ["Lotus Cannon", 1.0, T_GRASS, 1],
-    ["Leafs Kiss", 1.0, T_GRASS, 1],
-    ["Freezing Bark", 1.0, T_GRASS, 1], % 25 -
-    % % Ghost
-    ["Phantom Stomp", 1.0, T_GHOST, 1],
-    ["Ghost Fist", 1.0, T_GHOST, 1],
-    ["Spirit Blast", 1.0, T_GHOST, 1],
-    ["Hungry Mind", 1.0, T_GHOST, 1],
-    ["Vampiric Drain", 1.0, T_GHOST, 1], % 30 -
-    ["Hells Ambush", 1.0, T_GHOST, 1], % SKELETOR
-    ["Demonic Blood", 1.0, T_GHOST, 1],
-    % % Fluff
-    ["Breaking Cuddle", 1.0, T_FLUFF, 1], % SHEEP
-    ["Sneaking Blow", 1.0, T_FLUFF, 1],
-    ["Heavens Hit", 1.0, T_FLUFF, 1], % 35 - DUCK % SHEEP
-    ["Summer Dance", 1.0, T_FLUFF, 1],
-    ["Violence Void", 1.0, T_FLUFF, 1], % SHEEP
-    ["Cloud Fall", 1.0, T_FLUFF, 1], % BIRD
-    % % Fire
-    ["Flaming Burst", 1.0, T_FIRE, 1], % STONE
-    ["Venom Heat", 1.0, T_FIRE, 1], % 40 - TREE
-    ["Poison Edge", 1.0, T_FIRE, 1],
-    ["Hot Retribution", 1.0, T_FIRE, 1], % SKELETOR
-    ["Radiating Charge", 1.0, T_FIRE, 1], % SHEEP
-    ["Magic Teardrop", 1.0, T_FIRE, 1], % DUCK
-    ["Boiling Rage", 1.0, T_FIRE, 1], % 45 -
-    ["Forbidden Light", 1.0, T_FIRE, 1],
-    ["Ash Whip", 1.0, T_FIRE, 1],
-    ["Glowing Flash", 1.0, T_FIRE, 1],
-    ["Nova Bullet", 1.0, T_FIRE, 1]
+    ["Meteor Fall", 2.8, T_STONE], % STONE
+    ["Earth Impact", 1.1, T_STONE],
+    ["Rockslide", 1.2, T_STONE], % 15 -
+    ["Gravity Blade", 1.5, T_STONE], % STONE
+    ["Tree Knock", 1.7, T_STONE], % TREE
+    ["Skeletal Scratch", 1.2, T_STONE], % SKELETOR
+    ["Cracking Peace", 0.8, T_STONE],
+    % Grass
+    ["Reducing Root", 2.0, T_GRASS], % 20 - TREE
+    ["Doubling Drain", 1.3, T_GRASS],
+    ["Arctic Branch", 2.7, T_GRASS],
+    ["Lotus Cannon", 2.0, T_GRASS],
+    ["Leafs Kiss", 1.8, T_GRASS],
+    ["Freezing Bark", 0.8, T_GRASS], % 25 -
+    % Ghost
+    ["Phantom Stomp", 1.4, T_GHOST],
+    ["Ghost Fist", 1.6, T_GHOST],
+    ["Spirit Blast", 1.8, T_GHOST],
+    ["Hungry Mind", 3.0, T_GHOST],
+    ["Vampiric Drain", 2.4, T_GHOST], % 30 -
+    ["Hells Ambush", 2.3, T_GHOST], % SKELETOR
+    ["Demonic Blood", 1.8, T_GHOST],
+    % Fluff
+    ["Breaking Cuddle", 2.0, T_FLUFF], % SHEEP
+    ["Sneaking Blow", 0.8, T_FLUFF],
+    ["Heavens Hit", 1.4, T_FLUFF], % 35 - DUCK % SHEEP
+    ["Summer Dance", 0.6, T_FLUFF],
+    ["Violence Void", 2.0, T_FLUFF], % SHEEP
+    ["Cloud Fall", 1.9, T_FLUFF], % BIRD
+    % Fire
+    ["Flaming Burst", 0.8, T_FIRE], % STONE
+    ["Venom Heat", 0.9, T_FIRE], % 40 - TREE
+    ["Poison Edge", 0.5, T_FIRE],
+    ["Hot Retribution", 1.0, T_FIRE], % SKELETOR
+    ["Radiating Charge", 0.6, T_FIRE], % SHEEP
+    ["Magic Teardrop", 2.0, T_FIRE], % DUCK
+    ["Boiling Rage", 1.7, T_FIRE], % 45 -
+    ["Forbidden Light", 1.3, T_FIRE],
+    ["Ash Whip", 1.6, T_FIRE],
+    ["Glowing Flash", 0.8, T_FIRE],
+    ["Nova Bullet", 4.0, T_FIRE]
 );
 
 const ITEM_LIST = new Array(
@@ -492,7 +918,7 @@ function attack(idx) {
             printInfoText("You have slayn " + curEnemy[NAME] + " and got " + exp + " experience.");
         }
     } else {
-        printInfoText("You attacked with " + attack[NAME] + "! " + curEnemy[NAME] + " took " + dmg + " damage.");
+         printInfoText("You attacked with " + attack[NAME] + "! " + curEnemy[NAME] + " took " + dmg + " damage.");
     }
 
     updateEnemyTxt();
@@ -683,10 +1109,9 @@ function addEXP(source, target) {
  * Takes also into account the type of both creatures.
  */
 function inflictDMG(source, target, attack) {
-    % TODO take type into account
     var creatureMul = DMG_MATRIX[source[TYPE]][target[TYPE]];
-    %var attackMul = DMG_MATRIX[attack[TYPE]][target[TYPE]];
-    var dmg = Math.ceil(attack[DMG] * source[LVL] * creatureMul);
+    var attackMul = DMG_MATRIX[attack[TYPE]][target[TYPE]];
+    var dmg = Math.ceil(attack[DMG] * source[LVL] * creatureMul * attackMul);
     target[CUR_HP] -= dmg;
     return dmg;
 }
@@ -707,9 +1132,11 @@ function updateButtontxt() {
     } else if (gamestate == FIGHT) {
         var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
         for (var i = 0; i < 4; i++) {
+            var attack = ATTACK_LIST[attacks[i]];
             var btn = "button" + (i + 1) + "txt";
-            var dmgTxt = " (Does " + ATTACK_LIST[attacks[i]][DMG] + " type dmg per lvl)";
-            this.getField(btn).value = ATTACK_LIST[attacks[i]][NAME] + dmgTxt;
+            var dmgTxt = " (Does " + attack[DMG] + " "
+                + TYPE_STRINGS[attack[TYPE]] + " dmg per lvl)";
+            this.getField(btn).value = attack[NAME] + dmgTxt;
         }
     } else if (gamestate == CHANGE) {
         this.getField("button1txt").value = curPlayerCreatures[0][NAME];
