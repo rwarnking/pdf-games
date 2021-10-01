@@ -123,7 +123,7 @@ const CREATURE_LIST = new Array(
              "  `---' "
         ]
     ],
-    ["OCTOPUS", 3.3, T_WATER, [4, 18, 31, 42], 58, % TODO
+    ["OCTOPUS", 3.3, T_WATER, [1, 2, 12, 41], 58,
         [ % https://ascii.co.uk/art/octopus
             "                   .-'   `'.                           ",
             "                  /         \\                          ",
@@ -143,7 +143,7 @@ const CREATURE_LIST = new Array(
             "            `    '-;`          (-)  '-;                "
         ]
     ],
-    ["JELLYFISH", 2.1, T_WATER, [4, 18, 31, 42], 25, % TODO
+    ["JELLYFISH", 2.1, T_WATER, [1, 6, 28, 46], 25,
         [ % https://ascii.co.uk/art/jellyfish
             " .-;':':'-.  ",
             "{'.'.'.'.'.} ",
@@ -159,7 +159,7 @@ const CREATURE_LIST = new Array(
             "        .'   "
         ]
     ],
-    ["WHALE", 4.2, T_WATER, [4, 18, 31, 42], 80, % TODO
+    ["WHALE", 4.2, T_WATER, [2, 3, 13, 36], 80,
         [ % https://ascii.co.uk/art/whale
             "                  __       __  ",
             "                 '.'--.--'.-'  ",
@@ -170,7 +170,7 @@ const CREATURE_LIST = new Array(
             "       /..'       '''          "
         ]
     ],
-    ["FISH", 2.7, T_WATER, [4, 18, 31, 42], 35, % TODO
+    ["FISH", 2.7, T_WATER, [1, 3, 5, 8], 35,
         [ % https://ascii.co.uk/art/fish
             "             |               ",
             "             |               ",
@@ -200,7 +200,7 @@ const CREATURE_LIST = new Array(
             "         WW         "
         ]
     ],
-    ["BAT", 2.1, T_AIR, [4, 18, 31, 42], 20, % TODO
+    ["BAT", 2.1, T_AIR, [7, 11, 21, 30], 20,
         [ % https://ascii.co.uk/art/bat
             "._.                  _.____.",
             " ) \\.              /    .(  ",
@@ -217,8 +217,8 @@ const CREATURE_LIST = new Array(
             "           m  M             "
         ]
     ],
-    ["BUTTERFLY", 2.2, T_AIR, [4, 18, 31, 42], 25, % TODO
-        [ % https://ascii.co.uk/art/bat
+    ["BUTTERFLY", 2.2, T_AIR, [10, 12, 24, 36], 25,
+        [ % https://ascii.co.uk/art/butterfly
                 ".==-.                   .-==.",
                 " \\()8`-._  `.   .'  _.-'8()/ ",
                 " (88\"   ::.  \\./  .::   \"88) ",
@@ -232,7 +232,7 @@ const CREATURE_LIST = new Array(
                 "     \"\"--'         `--\"\"     "
         ]
     ],
-    ["OWL", 3.1, T_AIR, [4, 18, 31, 42], 55, % TODO
+    ["OWL", 3.1, T_AIR, [10, 11, 28, 34], 55,
         [ % https://ascii.co.uk/art/owl
             "                 ___        ",
             "             .-\"-~-\"-.      ",
@@ -269,7 +269,7 @@ const CREATURE_LIST = new Array(
             "   \\/_______/  \\/_______/   "
         ]
     ],
-    ["PYRAMID", 4.0, T_STONE, [4, 18, 31, 42], 75, % TODO
+    ["PYRAMID", 4.0, T_STONE, [13, 15, 26, 39], 75,
         [ % https://ascii.co.uk/art/pyramid
             "                _L/L                ",
             "              _LT/l_L_              ",
@@ -299,7 +299,7 @@ const CREATURE_LIST = new Array(
             "       , -=-~  .-^- _         "
         ]
     ],
-    ["ANT", 1.9, T_GRASS, [4, 18, 31, 42], 19, % TODO
+    ["ANT", 1.9, T_GRASS, [21, 24, 31,  41], 19,
         [ % https://ascii.co.uk/art/ant
             " \\       /                       ",
             "  \\     /                        ",
@@ -313,7 +313,7 @@ const CREATURE_LIST = new Array(
             "        |'    ('       ')        "
         ]
     ],
-    ["BEEHIVE", 3.9, T_GRASS, [4, 18, 31, 42], 70, % TODO
+    ["BEEHIVE", 3.9, T_GRASS, [9,  17, 21, 45], 70,
         [ % https://ascii.co.uk/art/bee
             "     \^\^      .-=-=-=-.  \^\^         ",
             " \^\^        (`-=-=-=-=-`)         ",
@@ -330,7 +330,7 @@ const CREATURE_LIST = new Array(
             "            `-=-=-=-=-`   \^\^     "
         ]
     ],
-    ["COBRA", 3.0, T_GRASS, [4, 18, 31, 42], 40, % TODO
+    ["COBRA", 3.0, T_GRASS, [21,  30, 40, 45], 40,
         [ % https://ascii.co.uk/art/cobra
             "         ,,'6''-,.                                  ",
             "        <====,.;;--.                                ",
@@ -349,7 +349,7 @@ const CREATURE_LIST = new Array(
             "            `=\\_______,---\"\"\"-------------\"\"\"''     "
         ]
     ],
-    ["TULIP", 2.4, T_GRASS, [4, 18, 31, 42], 25, % TODO
+    ["TULIP", 2.4, T_GRASS, [7,  23, 36, 47], 25,
         [ % https://ascii.co.uk/art/tulips
             "      ,    ",
             "  /\^/`\\   ",
@@ -368,7 +368,7 @@ const CREATURE_LIST = new Array(
             "  `\\\\//`   "
         ]
     ],
-    ["MUSHROOM", 2.8, T_GRASS, [4, 18, 31, 42], 45, % TODO
+    ["MUSHROOM", 2.8, T_GRASS, [14,  22, 27, 41], 45,
         [ % https://ascii.co.uk/art/mushroom
             "           ____             ",
             "       _.-'78o `\"`--._      ",
@@ -388,7 +388,7 @@ const CREATURE_LIST = new Array(
         ]
     ],
     % Ghost
-    ["REAPER", 3.5, T_GHOST, [4, 18, 31, 42], 65,
+    ["REAPER", 3.5, T_GHOST, [4, 18, 29, 42], 65,
         [ % https://ascii.co.uk/art/death
             "              ,____ ",
             "              |---.\\",
@@ -408,7 +408,7 @@ const CREATURE_LIST = new Array(
             "(_.-.__.__.)  /     "
         ]
     ],
-    ["ANGEL", 3.2, T_GHOST, [4, 18, 31, 42], 60, % TODO
+    ["ANGEL", 3.2, T_GHOST, [25, 29, 33, 48], 60,
         [ % https://ascii.co.uk/art/angel
             "     __/)     (\\__     ",
             "  ,-'~~(   _   )~~`-.  ",
@@ -422,7 +422,7 @@ const CREATURE_LIST = new Array(
             "   '    '-'-'-'    '   "
         ]
     ],
-    ["PUMPKIN FAMILY", 3.1, T_GHOST, [4, 18, 31, 42], 57, % TODO
+    ["PUMPKIN FAMILY", 3.1, T_GHOST, [25,  26, 31, 46], 57,
         [ % https://ascii.co.uk/art/halloween
             "                      /\\          ",
             "        _           __(_)__       ",
@@ -440,7 +440,7 @@ const CREATURE_LIST = new Array(
             "           '.__.__.'              "
         ]
     ],
-    ["SPIDER FAMILY", 2.3, T_GHOST, [4, 18, 31, 42], 22, % TODO
+    ["SPIDER FAMILY", 2.3, T_GHOST, [15, 21, 32, 45], 22,
         [ % https://ascii.co.uk/art/halloween
             "        _.._   _\\(o)/_  //  \\\\      ",
             "      .'    '.  /(_)\\  _\\\\()//_     ",
@@ -454,7 +454,7 @@ const CREATURE_LIST = new Array(
             "     \\      /       \\\\  //          "
         ]
     ],
-    ["MAGICIAN", 3.0, T_GHOST, [4, 18, 31, 42], 55, % TODO
+    ["MAGICIAN", 3.0, T_GHOST, [0, 9, 28, 44], 55,
         [ % https://ascii.co.uk/art/magician
             ". .'..' . ' ' . . '.  . '",
             "  `.':.'        ':'.'.'  ",
@@ -484,8 +484,8 @@ const CREATURE_LIST = new Array(
             "       |||  |||     "
         ]
     ],
-    ["BEAR", 3.4, T_FLUFF, [4, 18, 31, 42], 55, % TODO
-        [ % https://ascii.co.uk/art/ant
+    ["BEAR", 3.4, T_FLUFF, [11, 16, 33, 42], 55,
+        [ % https://ascii.co.uk/art/bear
             "     ( )___( )    ",
             "     /__oo   \\    ",
             "    ( \\/     )    ",
@@ -503,7 +503,7 @@ const CREATURE_LIST = new Array(
             "   (\"__,..\"'_._.) "
         ]
     ],
-    ["SNAIL", 2.3, T_FLUFF, [4, 18, 31, 42], 30, % TODO
+    ["SNAIL", 2.3, T_FLUFF, [1, 19, 24, 37], 30,
         [ % https://ascii.co.uk/art/insect
             "     /\^\\    /\^\\                         ",
             "    {  O}  {  O}                        ",
@@ -522,7 +522,7 @@ const CREATURE_LIST = new Array(
         ]
     ],
     % Fire
-    ["CANDLE", 2.6, T_FIRE, [4, 18, 31, 42], 20, % TODO
+    ["CANDLE", 2.6, T_FIRE, [8, 31, 46, 48], 20,
         [ % https://ascii.co.uk/art/candle
             "         (\\           ",
             "        /  )          ",
@@ -538,7 +538,7 @@ const CREATURE_LIST = new Array(
             "     '\"\"\"\"\"\"'         "
         ]
     ],
-    ["DRAGON", 3.7, T_FIRE, [4, 18, 31, 42], 65, % TODO
+    ["DRAGON", 3.7, T_FIRE, [10, 39, 45, 49], 65,
         [ % https://ascii.co.uk/art/dragon
             " <>=======()                           ",
             " /\\___   /|\\\\          ()==========<>_ ",
@@ -557,7 +557,7 @@ const CREATURE_LIST = new Array(
             "                 '------'              "
         ]
     ],
-    ["HANDGRANADE", 2.7, T_FIRE, [4, 18, 31, 42], 20, % TODO
+    ["HANDGRANADE", 2.7, T_FIRE, [14, 39, 48, 50], 20,
         [ % https://ascii.co.uk/art/handgranade
             "           .     ",
             "          /|     ",
@@ -575,7 +575,7 @@ const CREATURE_LIST = new Array(
             "   '\"-------\"    "
         ]
     ],
-    ["COFFEE", 2.6, T_FIRE, [4, 18, 31, 42], 20, % TODO
+    ["COFFEE", 2.6, T_FIRE, [6, 8, 20, 42], 20,
         [ % https://ascii.co.uk/art/coffee
             "    {  }            ",
             "  {   }             ",
@@ -593,7 +593,7 @@ const CREATURE_LIST = new Array(
             " `-.._____..-'      "
         ]
     ],
-    ["FLAMEINGO", 2.7, T_FIRE, [4, 18, 31, 42], 38, % TODO
+    ["FLAMEINGO", 2.7, T_FIRE, [10, 35, 43, 47], 38,
         [ % https://ascii.co.uk/art/flamingo
             "           __   ",
             "          /(`o) ",
@@ -621,62 +621,63 @@ const DMG = 1;
 % Each creature should have attacks worth of 6 dmg points
 const ATTACK_LIST = new Array(
     % Water
-    ["Overflowing Look", 1.1, T_WATER], % 0 - DUCK
-    ["Bubble Knock", 1.3, T_WATER], % DUCK
-    ["Ice Prism", 1.8, T_WATER],
-    ["Running Wave", 1.0, T_WATER],
-    ["Drowning Screech", 1.5, T_WATER], % SKELETOR
-    ["Stormy Rush", 1.2, T_WATER], % 5 - BIRD
-    ["Flow Release", 0.9, T_WATER], % STONE
+    ["Overflowing Look", 1.1, T_WATER], % 0 - DUCK, MAGICIAN
+    ["Bubble Knock", 1.3, T_WATER], % DUCK, OCTOPUS, JELLYFISH, FISH, SNAIL
+    ["Ice Prism", 2.3, T_WATER], % OCTOPUS, WHALE
+    ["Running Wave", 1.0, T_WATER], % WHALE, FISH
+    ["Drowning Screech", 1.5, T_WATER], % REAPER, ELLYFISH
+    ["Stormy Rush", 1.2, T_WATER], % 5 - BIRD, FISH
+    ["Flow Release", 0.9, T_WATER], % STONE, COFFEE
     % Air
-    ["Fearless Smoke", 0.9, T_AIR],
-    ["Dutiful Mist", 1.0, T_AIR], % BIRD
-    ["Wind Volley", 1.3, T_AIR],
-    ["Screaming Wind", 1.9, T_AIR], % 10 - BIRD
-    ["Stormy Axe", 1.4, T_AIR], % TREE
-    ["Typhoon Bullet", 1.8, T_AIR],
+    ["Fearless Smoke", 0.9, T_AIR], % TULIP
+    ["Dutiful Mist", 1.0, T_AIR], % BIRD, FISH, BAT, CANDLE, COFFEE
+    ["Wind Volley", 1.3, T_AIR], % BEEHIVE, MAGICIAN
+    ["Screaming Wind", 1.9, T_AIR], % 10 - BIRD, BUTTERFLY, OWL, DRAGON, FLAMEINGO
+    ["Stormy Axe", 1.4, T_AIR], % TREE, BAT, OWL, BEAR
+    ["Typhoon Bullet", 1.8, T_AIR], % OCTOPUS, BUTTERFLY
     % Stone
-    ["Meteor Fall", 2.8, T_STONE], % STONE
-    ["Earth Impact", 1.1, T_STONE],
-    ["Rockslide", 1.2, T_STONE], % 15 -
-    ["Gravity Blade", 1.5, T_STONE], % STONE
-    ["Tree Knock", 1.7, T_STONE], % TREE
-    ["Skeletal Scratch", 1.2, T_STONE], % SKELETOR
-    ["Cracking Peace", 0.8, T_STONE],
+    ["Meteor Fall", 2.8, T_STONE], % STONE, WHALE, PYRAMID
+    ["Earth Impact", 1.1, T_STONE], % MUSHROOM, HANDGRANADE
+    ["Rockslide", 1.2, T_STONE], % 15 - PYRAMID, SPIDER FAMILY
+    ["Gravity Blade", 1.5, T_STONE], % STONE, BEAR
+    ["Tree Knock", 1.7, T_STONE], % TREE, BEEHIVE
+    ["Skeletal Scratch", 1.2, T_STONE], % REAPER
+    ["Cracking Peace", 0.8, T_STONE], % SNAIL
     % Grass
-    ["Reducing Root", 2.0, T_GRASS], % 20 - TREE
-    ["Doubling Drain", 1.3, T_GRASS],
-    ["Arctic Branch", 2.7, T_GRASS],
-    ["Lotus Cannon", 2.0, T_GRASS],
-    ["Leafs Kiss", 1.8, T_GRASS],
-    ["Freezing Bark", 0.8, T_GRASS], % 25 -
+    ["Reducing Root", 2.0, T_GRASS], % 20 - TREE, COFFEE
+    ["Doubling Drain", 1.3, T_GRASS], % BAT, ANT, BEEHIVE, COBRA, SPIDER FAMILY
+    ["Arctic Branch", 2.7, T_GRASS], % MUSHROOM
+    ["Lotus Cannon", 2.0, T_GRASS], % TULIP
+    ["Leafs Kiss", 1.8, T_GRASS], % BUTTERFLY, ANT, SNAIL
+    ["Freezing Bark", 0.8, T_GRASS], % 25 - ANGEL, PUMPKIN FAMILY
     % Ghost
-    ["Phantom Stomp", 1.4, T_GHOST],
-    ["Ghost Fist", 1.6, T_GHOST],
-    ["Spirit Blast", 1.8, T_GHOST],
-    ["Hungry Mind", 3.0, T_GHOST],
-    ["Vampiric Drain", 2.4, T_GHOST], % 30 -
-    ["Hells Ambush", 2.3, T_GHOST], % SKELETOR
-    ["Demonic Blood", 1.8, T_GHOST],
+    ["Phantom Stomp", 1.4, T_GHOST], % PYRAMID, PUMPKIN FAMILY
+    ["Ghost Fist", 1.6, T_GHOST], % MUSHROOM
+    ["Spirit Blast", 1.8, T_GHOST], % JELLYFISH, OWL, MAGICIAN
+    ["Hungry Mind", 3.0, T_GHOST], % REAPER, ANGEL
+    ["Vampiric Drain", 2.4, T_GHOST], % 30 - BAT, COBRA
+    ["Hells Ambush", 2.3, T_GHOST], % ANT, PUMPKIN FAMILY, CANDLE
+    ["Demonic Blood", 1.8, T_GHOST], % SPIDER FAMILY
     % Fluff
-    ["Breaking Cuddle", 2.0, T_FLUFF], % SHEEP
-    ["Sneaking Blow", 0.8, T_FLUFF],
-    ["Heavens Hit", 1.4, T_FLUFF], % 35 - DUCK % SHEEP
-    ["Summer Dance", 0.6, T_FLUFF],
-    ["Violence Void", 2.0, T_FLUFF], % SHEEP
+    ["Breaking Cuddle", 2.0, T_FLUFF], % SHEEP, ANGEL, BEAR
+    ["Sneaking Blow", 0.8, T_FLUFF], % OWL
+    ["Heavens Hit", 1.4, T_FLUFF], % 35 - DUCK, SHEEP, FLAMEINGO
+    ["Summer Dance", 0.6, T_FLUFF], % WHALE, BUTTERFLY, TULIP
+    ["Violence Void", 2.0, T_FLUFF], % SHEEP, SNAIL
     ["Cloud Fall", 1.9, T_FLUFF], % BIRD
     % Fire
-    ["Flaming Burst", 0.8, T_FIRE], % STONE
-    ["Venom Heat", 0.9, T_FIRE], % 40 - TREE
-    ["Poison Edge", 0.5, T_FIRE],
-    ["Hot Retribution", 1.0, T_FIRE], % SKELETOR
-    ["Radiating Charge", 0.6, T_FIRE], % SHEEP
-    ["Magic Teardrop", 2.0, T_FIRE], % DUCK
-    ["Boiling Rage", 1.7, T_FIRE], % 45 -
-    ["Forbidden Light", 1.3, T_FIRE],
-    ["Ash Whip", 1.6, T_FIRE],
-    ["Glowing Flash", 0.8, T_FIRE],
-    ["Nova Bullet", 4.0, T_FIRE]
+    ["Flaming Burst", 0.8, T_FIRE], % STONE, PYRAMID, DRAGON, HANDGRANADE
+    ["Venom Heat", 0.9, T_FIRE], % 40 - TREE, COBRA
+    ["Poison Edge", 0.5, T_FIRE], % OCTOPUS, ANT, MUSHROOM
+    ["Hot Retribution", 1.0, T_FIRE], % REAPER, BEAR, COFFEE
+    ["Radiating Charge", 0.6, T_FIRE], % SHEEP, FLAMEINGO
+    ["Magic Teardrop", 2.0, T_FIRE], % DUCK, MAGICIAN
+    ["Boiling Rage", 1.7, T_FIRE], % 45 - BEEHIVE, COBRA, SPIDER FAMILY, DRAGON
+    ["Forbidden Light", 1.3, T_FIRE], % JELLYFISH, PUMPKIN FAMILY, CANDLE
+    ["Ash Whip", 1.6, T_FIRE], % TULIP, FLAMEINGO
+    ["Glowing Flash", 0.8, T_FIRE], % ANGEL, CANDLE, HANDGRANADE
+    ["Nova Bullet", 4.0, T_FIRE], % DRAGON
+    ["Dual Explosion", 3.0, T_FIRE] % 50 - HANDGRANADE
 );
 
 const ITEM_LIST = new Array(
