@@ -99,7 +99,7 @@ const TYPE_STRINGS = new Array(
     "Water", "Air", "Stone", "Grass", "Ghost", "Fluff", "Fire"
 );
 
-% Row against column- 1 = normal dmg
+% Row against column - 1 = normal dmg
 const DMG_MATRIX = [
     % Water, Air, Stone, Grass, Ghost, Fluff, Fire
     [1.0, 1.0, 0.3, 0.5, 1.3, 1.7, 2.0], % Water
@@ -760,6 +760,8 @@ function initialiseButtons() {
     this.getField("button4").setAction("MouseUp", "processInput(4);");
     this.getField("button4txt").setAction("MouseUp", "processInput(4);");
 
+    this.getField("back").setAction("MouseUp", "processInput(0);");
+
     % Adjust text size and font
     var cell;
     for (var m = 0; m < FIELD_HEIGHT; m++) {
@@ -783,7 +785,7 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
     this.getField("tooltipbtn").highlight="none";
 
-    printInfoText("Init");
+    printInfoText("Initialised the game. Beat the current enemy creature.");
 }
 
 /**
@@ -791,9 +793,23 @@ function initialiseButtons() {
  */
 function restart() {
     gameover = false;
+    gamestate = MENU;
     turn = PLAYER;
 
-    printInfoText("Restart");
+    % Initialise the player and enemy creature
+    curCreatureIdx = 0;
+    curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
+    curEnemy = getEnemy();
+
+    % Initialise the player items
+    curPlayerItems[0] = 2;
+
+    % Update GUI
+    updateButtontxt();
+    updateEnemyTxt();
+    updatePlayerTxt();
+    drawAll();
+    printInfoText("Restarted the game!");
 }
 
 /**
@@ -846,7 +862,7 @@ function tooltip(on) {
  * @param {Number} button The index of which button was pressed
  */
 function processInput(button) {
-    %this.getField("info").setFocus();
+    this.getField("tooltiptxt").setFocus();
 
     if (gameover) {
         return;
@@ -865,8 +881,11 @@ function processInput(button) {
             gamestate = button;
         }
     } else {
+        % The back button was pressed, only switch to main menu
+        if (button == MENU) {
+        }
         % If an action was selected run it and reset the gamestate
-        if (gamestate == FIGHT) {
+        else if (gamestate == FIGHT) {
             attack(button);
         } else if (gamestate == CHANGE) {
             change(button);
@@ -886,8 +905,14 @@ function run() {
     curEnemy = getEnemy();
     drawAll();
     updateEnemyTxt();
-    % TODO the player should lose something when running
-    printInfoText("You ran from your enemy. Your new enemy is: " + curEnemy[NAME]);
+    printInfoText("You ran from your enemy. Your new enemy is: " + curEnemy[NAME] + ".");
+    % The player creature loses one lvl
+    var creature = curPlayerCreatures[curCreatureIdx];
+    if (creature[LVL] > MIN_LVL) {
+        addInfoText(" " + creature[NAME] + " loses one level.");
+        creature[LVL]--;
+        updatePlayerTxt();
+    }
 }
 
 /**
@@ -1131,6 +1156,7 @@ function updateButtontxt() {
         this.getField("button3txt").value = "Item";
         this.getField("button4txt").value = "Run";
     } else if (gamestate == FIGHT) {
+        % Show all attacks of the current creature
         var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
         for (var i = 0; i < 4; i++) {
             var attack = ATTACK_LIST[attacks[i]];
@@ -1140,10 +1166,15 @@ function updateButtontxt() {
             this.getField(btn).value = attack[NAME] + dmgTxt;
         }
     } else if (gamestate == CHANGE) {
-        this.getField("button1txt").value = curPlayerCreatures[0][NAME];
-        this.getField("button2txt").value = curPlayerCreatures[1][NAME];
-        this.getField("button3txt").value = curPlayerCreatures[2][NAME];
-        this.getField("button4txt").value = curPlayerCreatures[3][NAME];
+        % Show all player creatures with lvl if available
+        for (var i = 0; i < 4; i++) {
+            var btn = "button" + (i + 1) + "txt";
+            var name = curPlayerCreatures[i][NAME];
+            if (name != "Empty") {
+                name += " (Lvl " + curPlayerCreatures[i][LVL] + ")";
+            }
+            this.getField(btn).value = name;
+        }
     } else if (gamestate == ITEMS) {
         this.getField("button1txt").value = ITEM_LIST[curPlayerItems[0]][NAME];
         this.getField("button2txt").value = ITEM_LIST[curPlayerItems[1]][NAME];
