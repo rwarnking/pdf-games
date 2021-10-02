@@ -53,6 +53,8 @@ const FIGHT = 1;
 const CHANGE = 2;
 const ITEMS = 3;
 const RUN = 4;
+const HARD_CHANGE = 5;
+const REPLACE = 6;
 
 % Globals
 % The game field
@@ -883,16 +885,29 @@ function processInput(button) {
     } else {
         % The back button was pressed, only switch to main menu
         if (button == MENU) {
+            if (gamestate == REPLACE) {
+                printInfoText("Did not capture creature!");
+            } else if (gamestate == HARD_CHANGE) {
+                printInfoText("You NEED to select a new creature!");
+                return;
+            }
+            gamestate = MENU;
         }
         % If an action was selected run it and reset the gamestate
         else if (gamestate == FIGHT) {
             attack(button);
+            gamestate = MENU;
         } else if (gamestate == CHANGE) {
             change(button);
+            gamestate = MENU;
+        } else if (gamestate == REPLACE) {
+            replace(button);
+            gamestate = MENU;
         } else if (gamestate == ITEMS) {
-            items(button);
+            gamestate = items(button);
+        } else if (gamestate == HARD_CHANGE) {
+            gamestate = hardChange(button);
         }
-        gamestate = MENU;
     }
     updateButtontxt();
 }
@@ -939,12 +954,14 @@ function attack(idx) {
         var lvlup = checkLvlUp(curCreature);
         if (lvlup) {
             updatePlayerTxt();
-            printInfoText("You have slayn " + curEnemy[NAME] + " and " + curCreature[NAME] + " leveled up.");
+            printInfoText( + " has slayn " + curEnemy[NAME] + " and leveled up.");
         } else {
-            printInfoText("You have slayn " + curEnemy[NAME] + " and got " + exp + " experience.");
+            printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] +
+                " and got " + exp + " experience.");
         }
     } else {
-         printInfoText("You attacked with " + attack[NAME] + "! " + curEnemy[NAME] + " took " + dmg + " damage.");
+         printInfoText(curCreature[NAME] + " attacked with " + attack[NAME] + "! "
+            + curEnemy[NAME] + " took " + dmg + " damage.");
     }
 
     updateEnemyTxt();
@@ -982,6 +999,16 @@ function change(idx) {
     turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
 }
 
+function hardChange(idx) {
+    if (curPlayerCreatures[idx - 1][NAME] == "Empty") {
+        printInfoText("You NEED to select a new creature!");
+        return HARD_CHANGE;
+    } else {
+        change(idx);
+        return MENU;
+    }
+}
+
 /**
  * Selects the chosen item from the backpack and applies its affect.
  * This actions switches the turn to the enemy if a item is used (unless it is a catcher).
@@ -992,17 +1019,13 @@ function items(idx) {
     % If no item at that slot
     if (item[NAME] == "Empty") {
         printInfoText("No item was used.");
-        return;
+        return MENU;
     }
 
     printInfoText("You used " + item[NAME] + ".");
     % Apply the selected item
     if (item[NAME] == "Capture") {
-        if (catchCreature()) {
-            updateEnemyTxt();
-            addInfoText(" Your new enemy is: " + curEnemy[NAME] + ".");
-        }
-        return;
+        return catchCreature();
     }
     if (item[NAME] == "Improve") {
     } else if (item[NAME] == "Weaken") {
@@ -1013,6 +1036,7 @@ function items(idx) {
     % Enemy turn
     turn = ENEMY;
     turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
+    return MENU;
 }
 
 /**
@@ -1024,14 +1048,39 @@ function catchCreature() {
     for (var i = 0; i < curPlayerCreatures.length; i++) {
         if (curPlayerCreatures[i][NAME] == "Empty") {
             curPlayerCreatures[i] = curEnemy;
+
             % Get new enemy
             curEnemy = getEnemy();
+            updateEnemyTxt();
             drawAll();
-            return true;
+            addInfoText(" Your new enemy is: " + curEnemy[NAME] + ".");
+
+            return MENU;
         }
     }
-    % TODO replace creature when there is no spot left
-    return false;
+
+    % Replace creature because there is no spot left
+    updateButtontxt();
+    addInfoText(" You have no free slot, select one creature to be replaced!");
+    return REPLACE;
+}
+
+/**
+ * Replaces the given creature with the enemy creature.
+ * It is possible to replace the currently active player creature.
+ * @param {Number} idx The index of the player creature.
+ */
+function replace(idx) {
+    curPlayerCreatures[idx - 1] = curEnemy;
+    if (idx - 1 == curCreatureIdx) {
+        updatePlayerTxt();
+    }
+
+    % Get new enemy
+    curEnemy = getEnemy();
+    updateEnemyTxt();
+    drawAll();
+    printInfoText("Creature catched! Your new enemy is: " + curEnemy[NAME] + ".");
 }
 
 %%%%%%%%%%%%%%%%%
@@ -1078,10 +1127,13 @@ function enemyTurn() {
             gameover = true;
             printInfoText("No Creatures left, game over!");
         } else {
+            gamestate = HARD_CHANGE;
+            updateButtontxt();
             printInfoText("Your creature has no health left, please select a new creature.");
         }
     } else {
-        printInfoText("You got attacked with " + attack[NAME] + "! " + creature[NAME] + " took " + dmg + " damage.");
+        printInfoText("You got attacked with " + attack[NAME] + "! "
+            + creature[NAME] + " took " + dmg + " damage.");
         updatePlayerTxt();
     }
 }
@@ -1165,7 +1217,7 @@ function updateButtontxt() {
                 + TYPE_STRINGS[attack[TYPE]] + " dmg per lvl)";
             this.getField(btn).value = attack[NAME] + dmgTxt;
         }
-    } else if (gamestate == CHANGE) {
+    } else if (gamestate == CHANGE || gamestate == HARD_CHANGE || gamestate == REPLACE) {
         % Show all player creatures with lvl if available
         for (var i = 0; i < 4; i++) {
             var btn = "button" + (i + 1) + "txt";
