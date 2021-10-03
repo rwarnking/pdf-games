@@ -26,7 +26,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
 % to slow to play
-\def\fieldWidth{15}
+\def\fieldWidth{30}
 \def\fieldHeight{15}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -45,8 +45,11 @@ const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 400;
 const ENEMY_RESPONSE_TIME = 4000;
+const CHANGE_ANIMATION_SPEED = 50;
 
-% Constants
+%%%%%%%%%%%%%%%%%%
+% Game constants %
+%%%%%%%%%%%%%%%%%%
 % Menu states
 const MENU = 0;
 const FIGHT = 1;
@@ -56,7 +59,19 @@ const RUN = 4;
 const HARD_CHANGE = 5;
 const REPLACE = 6;
 
-% Globals
+% Turns
+const PLAYER = 0;
+const ENEMY = 1;
+
+% Animation
+const CENTER_M = FIELD_HEIGHT * 0.5;
+const PADDING_SYMB = " ";
+% https://stackoverflow.com/questions/16885297/
+const EMPTY_LINE = Array(FIELD_WIDTH + 2).join(PADDING_SYMB);
+
+%%%%%%%%%%%%%%%%%%%%
+% Global game data %
+%%%%%%%%%%%%%%%%%%%%
 % The game field
 var gamestate = MENU;
 var gameover = false;
@@ -67,12 +82,16 @@ var curPlayerItems = [0, 0, 0, 0];
 var curEnemy = 0;
 
 % Turn information
-const PLAYER = true;
-const ENEMY = false;
-var turn = PLAYER;
 var turnInterval;
+var turn = PLAYER;
 
-% Creature data
+% Animation data
+var changeAnimationInterval;
+var animationProgress = FIELD_WIDTH;
+
+%%%%%%%%%%%%%%%%%
+% Creature data %
+%%%%%%%%%%%%%%%%%
 % Attributes
 const NAME = 0;
 const HP_GAIN = 1;
@@ -127,22 +146,22 @@ const CREATURE_LIST = new Array(
     ],
     ["OCTOPUS", 3.3, T_WATER, [1, 2, 12, 41], 58,
         [ % https://ascii.co.uk/art/octopus
-            "                   .-'   `'.                           ",
-            "                  /         \\                          ",
-            "                  |         ;                          ",
-            "                  |         |           ___.--,        ",
-            "         _.._     (0) ~ (0) |    _.---'`__.-( )_.      ",
-            "  __.--'`_.. '.__.\\    '--. \\_.-' ,.--'`     `\"\"`      ",
-            "   ,.--'`   ',__ /./;   ;, '.__.'`    __               ",
-            "        .---.__.' / |   |\\   \\__..--\"\"  \"\"\"--.,_       ",
-            "      .'.''-._.-'`_./  /\\ '.  \\ _.-~~~````~~~-._`-.__.'",
-            "      | |  .' _.-' |  |  \\  \\  '.               `~---` ",
-            "       \\ \\/ .'     (  \\   '. '-._)                     ",
-            "        \\/ /        \\  \\    `=.__`~-.                  ",
-            "        / /\\         (  )    / / `\"\".`\\                ",
-            "  , _.-'.'\\ \\        / /    ( )     / /                ",
-            "   `--~`   ( )    .-'.'      '.'.  | |                 ",
-            "            `    '-;`          (-)  '-;                "
+            "                 .-'   `'.                           ",
+            "                /         \\                          ",
+            "                |         ;                          ",
+            "                |         |           ___.--,        ",
+            "       _.._     (0) ~ (0) |    _.---'`__.-( )_.      ",
+            "__.--'`_.. '.__.\\    '--. \\_.-' ,.--'`     `\"\"`      ",
+            " ,.--'`   ',__ /./;   ;, '.__.'`    __               ",
+            "      .---.__.' / |   |\\   \\__..--\"\"  \"\"\"--.,_       ",
+            "    .'.''-._.-'`_./  /\\ '.  \\ _.-~~~````~~~-._`-.__.'",
+            "    | |  .' _.-' |  |  \\  \\  '.               `~---` ",
+            "     \\ \\/ .'     (  \\   '. '-._)                     ",
+            "      \\/ /        \\  \\    `=.__`~-.                  ",
+            "      / /\\         (  )    / / `\"\".`\\                ",
+            ", _.-'.'\\ \\        / /    ( )     / /                ",
+            " `--~`   ( )    .-'.'      '.'.  | |                 ",
+            "          `    '-;`          (-)  '-;                "
         ]
     ],
     ["JELLYFISH", 2.1, T_WATER, [1, 6, 28, 46], 25,
@@ -167,27 +186,27 @@ const CREATURE_LIST = new Array(
             "                 '.'--.--'.-'  ",
             "   .,_--- --.___    \\' r'      ",
             "   ', '-._a      '-' .'        ",
-            "     \\    '-'Y \\._  /         ",
+            "     \\    '-'Y \\._  /          ",
             "      '--;____'--.'-,          ",
             "       /..'       '''          "
         ]
     ],
     ["FISH", 2.7, T_WATER, [1, 3, 5, 8], 35,
         [ % https://ascii.co.uk/art/fish
-            "             |               ",
-            "             |               ",
-            "            ,|.              ",
-            "           ,\\|/.             ",
-            "         ,' .V. `.           ",
-            "        / .     . \\          ",
-            "       /_`       '_\\         ",
-            "      ,' .:     ;, `.        ",
-            "      |@)|  . .  |(@|        ",
-            " ,-._ `._';  .  :`_,' _,-.   ",
-            "'--  `-\\ /,-===-.\\ /-'  --` ",
+            "             |             ",
+            "             |             ",
+            "            ,|.            ",
+            "           ,\\|/.           ",
+            "         ,' .V. `.         ",
+            "        / .     . \\        ",
+            "       /_`       '_\\       ",
+            "      ,' .:     ;, `.      ",
+            "      |@)|  . .  |(@|      ",
+            " ,-._ `._';  .  :`_,' _,-. ",
+            "'--  `-\\ /,-===-.\\ /-'  --`",
             "(----  _| ||___|| |_  ----)",
-            "`._,-'  \\  `-.-'  /  `-._,'  ",
-            "         `-.___,-'           "
+            "`._,-'  \\  `-.-'  /  `-._,'",
+            "         `-.___,-'         "
         ]
     ],
     % Air
@@ -354,7 +373,7 @@ const CREATURE_LIST = new Array(
     ["TULIP", 2.4, T_GRASS, [7,  23, 36, 47], 25,
         [ % https://ascii.co.uk/art/tulips
             "      ,    ",
-            "  /\^/`\\   ",
+            "  /\\\^/`\\   ",
             " | \\/   |  ",
             " | |    |  ",
             " \\ \\    /  ",
@@ -730,7 +749,7 @@ function initialise() {
 
     % Initialise the player and enemy creature
     curCreatureIdx = 0;
-    curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
+    curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL + 10);
     curEnemy = getEnemy();
 
     % Initialise the player items
@@ -739,6 +758,7 @@ function initialise() {
     updateEnemyTxt();
     updatePlayerTxt();
 
+    fill();
     drawAll();
 }
 
@@ -768,12 +788,12 @@ function initialiseButtons() {
     var cell;
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         cell = this.getField("player" + m);
-        cell.textSize = SCREEN_TEXT_WIDTH / (FIELD_WIDTH * 2);
+        cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
         cell.textFont = font.Cour;
         %cell.alignment = "center";
 
         cell = this.getField("enemy" + m);
-        cell.textSize = SCREEN_TEXT_WIDTH / (FIELD_WIDTH * 2);
+        cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
         cell.textFont = font.Cour;
         %cell.alignment = "center";
     }
@@ -810,6 +830,7 @@ function restart() {
     updateButtontxt();
     updateEnemyTxt();
     updatePlayerTxt();
+    fill();
     drawAll();
     printInfoText("Restarted the game!");
 }
@@ -870,6 +891,11 @@ function processInput(button) {
         return;
     }
 
+    if (animationProgress != FIELD_WIDTH) {
+        printInfoText("Wait for animation!");
+        return;
+    }
+
     if (turn != PLAYER) {
         printInfoText("Wait your turn!");
         return;
@@ -918,14 +944,17 @@ function processInput(button) {
  */
 function run() {
     curEnemy = getEnemy();
-    drawAll();
+    drawEnemy();
     updateEnemyTxt();
     printInfoText("You ran from your enemy. Your new enemy is: " + curEnemy[NAME] + ".");
     % The player creature loses one lvl
     var creature = curPlayerCreatures[curCreatureIdx];
     if (creature[LVL] > MIN_LVL) {
         addInfoText(" " + creature[NAME] + " loses one level.");
+        % Level down to discourage the player from running away from a fight
         creature[LVL]--;
+        creature[MAX_HP] -= Math.ceil(creature[HP_GAIN]);
+        creature[CUR_HP] = Math.min(creature[CUR_HP], creature[MAX_HP]);
         updatePlayerTxt();
     }
 }
@@ -954,7 +983,7 @@ function attack(idx) {
         var lvlup = checkLvlUp(curCreature);
         if (lvlup) {
             updatePlayerTxt();
-            printInfoText( + " has slayn " + curEnemy[NAME] + " and leveled up.");
+            printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] + " and leveled up.");
         } else {
             printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] +
                 " and got " + exp + " experience.");
@@ -992,7 +1021,7 @@ function change(idx) {
 
     printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
     updatePlayerTxt();
-    drawAll();
+    drawPlayer();
 
     % Enemy turn
     turn = ENEMY;
@@ -1052,7 +1081,7 @@ function catchCreature() {
             % Get new enemy
             curEnemy = getEnemy();
             updateEnemyTxt();
-            drawAll();
+            drawEnemy();
             addInfoText(" Your new enemy is: " + curEnemy[NAME] + ".");
 
             return MENU;
@@ -1074,12 +1103,13 @@ function replace(idx) {
     curPlayerCreatures[idx - 1] = curEnemy;
     if (idx - 1 == curCreatureIdx) {
         updatePlayerTxt();
+        drawPlayer();
     }
 
     % Get new enemy
     curEnemy = getEnemy();
     updateEnemyTxt();
-    drawAll();
+    drawEnemy();
     printInfoText("Creature catched! Your new enemy is: " + curEnemy[NAME] + ".");
 }
 
@@ -1103,7 +1133,7 @@ function enemyTurn() {
     % If the enemy is dead he is not able to attack and need to be substituted
     if (curEnemy[CUR_HP] == 0) {
         curEnemy = getEnemy();
-        drawAll();
+        drawEnemy();
         updateEnemyTxt();
         printInfoText("Your new enemy is: " + curEnemy[NAME]);
         return;
@@ -1194,6 +1224,57 @@ function inflictDMG(source, target, attack) {
     return dmg;
 }
 
+%%%%%%%%%%%%
+% Spawning %
+%%%%%%%%%%%%
+/**
+ * Create a new enemy with level depending on the currently available
+ * player creatures. Allows for enemys that continously pose a threat to
+ * the player and allow him to level up.
+ */
+function getEnemy() {
+    % Calculate the level depending on the reserve creatures
+    var curLvl = 0;
+    for (var i = 0; i < curPlayerCreatures.length; i++) {
+        if (curPlayerCreatures[i][NAME] != "Empty") {
+            curLvl += curPlayerCreatures[i][LVL];
+        }
+    }
+    curLvl /= curPlayerCreatures.length;
+
+    % Variance
+    var offset = getRandomInt(MIN_LVL * 2);
+    curLvl = curLvl + (MIN_LVL - offset);
+    curLvl = Math.max(MIN_LVL, Math.floor(curLvl));
+
+    return getCreature(curLvl);
+}
+
+/**
+ * Get a random creature with the given level.
+ * @param {Number} curLvl The level of the creature.
+ */
+function getCreature(curLvl) {
+    var creature = getRandomInt(CREATURE_LIST.length);
+
+    var hp = Math.ceil(CREATURE_LIST[creature][HP_GAIN] * curLvl);
+
+    % TODO dont copy everything, have an id to the original list and
+    % extra attributes for the instance variables
+    return [
+        CREATURE_LIST[creature][NAME],
+        CREATURE_LIST[creature][HP_GAIN],
+        CREATURE_LIST[creature][TYPE],
+        CREATURE_LIST[creature][ATKS],
+        CREATURE_LIST[creature][EXP_GAIN],
+        CREATURE_LIST[creature][IMAGE],
+        hp, % MAX_HP
+        hp, % CUR_HP
+        curLvl, % LVL
+        START_EXP % CUR_EXP
+    ];
+}
+
 %%%%%%%%%%%%%%%%%%%%%%%
 % Information updates %
 %%%%%%%%%%%%%%%%%%%%%%%
@@ -1256,113 +1337,164 @@ function updatePlayerTxt() {
     this.getField("playerhp").value = "HP: " + creature[CUR_HP] + " of " + creature[MAX_HP];
 }
 
-%%%%%%%%%%%%
-% Spawning %
-%%%%%%%%%%%%
-/**
- * Create a new enemy with level depending on the currently available
- * player creatures. Allows for enemys that continously pose a threat to
- * the player and allow him to level up.
- */
-function getEnemy() {
-    % Calculate the level depending on the reserve creatures
-    var curLvl = 0;
-    for (var i = 0; i < curPlayerCreatures.length; i++) {
-        if (curPlayerCreatures[i][NAME] != "Empty") {
-            curLvl += curPlayerCreatures[i][LVL];
+%%%%%%%%%%%%%%%%%%%%%
+% Animation %
+%%%%%%%%%%%%%%%%%%%%%
+function frameAll() {
+    frame(["player", "enemy"]);
+}
+
+function framePlayer() {
+    frame(["player"]);
+}
+
+function frameEnemy() {
+    frame(["enemy"]);
+}
+
+function frame(owners) {
+    if (animationProgress < 0) {
+        app.clearInterval(changeAnimationInterval);
+        animationProgress = FIELD_WIDTH;
+        return;
+    }
+
+    for (var idx = 0; idx < owners.length; idx++) {
+        for (var m = 0; m < FIELD_HEIGHT; m++) {
+            shiftFieldLeft(owners[idx] + m);
         }
     }
-    curLvl /= curPlayerCreatures.length;
 
-    % Variance
-    var offset = getRandomInt(MIN_LVL * 2);
-    curLvl = curLvl + (MIN_LVL - offset);
-    curLvl = Math.max(MIN_LVL, Math.floor(curLvl));
-
-    return getCreature(curLvl);
+    animationProgress--;
 }
 
 /**
- * Get a random creature with the given level.
- * @param {Number} curLvl The level of the creature.
+ * Adds the current creature of the given owner to the corresponding
+ * field. The strings are simply concatenated line by line to the current
+ * field value.
+ * @param {Number} owner The owner, being either the player or the enemy.
  */
-function getCreature(curLvl) {
-    var creature = getRandomInt(CREATURE_LIST.length);
+function addCurCreature(owner) {
+    var creature;
+    if (owner == PLAYER) {
+        creature = curPlayerCreatures[curCreatureIdx];
+    } else {
+        creature = curEnemy;
+    }
 
-    var hp = Math.ceil(CREATURE_LIST[creature][HP_GAIN] * curLvl);
+    % Calculate the needed padding to center the current creature.
+    % Uses the complete width and the amount of cells occupied by the creature string.
+    var paddingSize = FIELD_WIDTH - creature[IMAGE][0].length + 1;
+    var paddingSizeLeft = Math.floor(paddingSize * 0.5);
+    var paddingSizeRight = Math.ceil(paddingSize * 0.5);
+    % Create padding string
+    var paddingLeft = "";
+    var paddingRight = "";
+    for (var n = 0; n < paddingSizeLeft; n++) {
+        paddingLeft += PADDING_SYMB;
+    }
+    for (var n = 0; n < paddingSizeRight; n++) {
+        paddingRight += PADDING_SYMB;
+    }
 
-    % TODO dont copy everything, have an id to the original list and
-    % extra attributes for the instance variables
-    return [
-        CREATURE_LIST[creature][NAME],
-        CREATURE_LIST[creature][HP_GAIN],
-        CREATURE_LIST[creature][TYPE],
-        CREATURE_LIST[creature][ATKS],
-        CREATURE_LIST[creature][EXP_GAIN],
-        CREATURE_LIST[creature][IMAGE],
-        hp, % MAX_HP
-        hp, % CUR_HP
-        curLvl, % LVL
-        START_EXP % CUR_EXP
-    ];
+    % Used to center the creature vertically (m)
+    var startM = Math.floor(CENTER_M - creature[IMAGE].length * 0.5);
+
+    % Add the string of the new creature
+    var valueString = "";
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        % Centering the creature and add padding top and bottom
+        if (startM <= m && m < startM + creature[IMAGE].length) {
+            var lineString = creature[IMAGE][m - startM];
+            if (lineString.length > FIELD_WIDTH) {
+                lineString = lineString.substring(0, FIELD_WIDTH + 1);
+            }
+            valueString = paddingLeft + lineString + paddingRight;
+        } else {
+            valueString = EMPTY_LINE;
+        }
+        % Add to the field belonging to the owner
+        if (owner == PLAYER) {
+            addToField("player" + m, valueString);
+        } else {
+            addToField("enemy" + m, valueString);
+        }
+    }
 }
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draw all cells.
+ * Adds the next creature and starts an animated redraw for enemy and player.
  */
 function drawAll() {
-    var creature = curPlayerCreatures[curCreatureIdx];
-    var centerM = FIELD_HEIGHT * 0.5;
-    var startM = Math.floor(centerM - creature[IMAGE].length * 0.5);
+    addCurCreature(PLAYER);
+    addCurCreature(ENEMY);
+    changeAnimationInterval = app.setInterval("frameAll()", CHANGE_ANIMATION_SPEED);
+}
 
-    % Draw player creature
+/**
+ * Adds the next creature and starts an animated redraw for the enemy.
+ */
+function drawEnemy() {
+    addCurCreature(ENEMY);
+    changeAnimationInterval = app.setInterval("frameEnemy()", CHANGE_ANIMATION_SPEED);
+}
+
+/**
+ * Adds the next creature and starts an animated redraw for the player.
+ */
+function drawPlayer() {
+    addCurCreature(PLAYER);
+    changeAnimationInterval = app.setInterval("framePlayer()", CHANGE_ANIMATION_SPEED);
+}
+
+/**
+ * Completely fills the enemy and the player fields with empty lines.
+ */
+function fill() {
     for (var m = 0; m < FIELD_HEIGHT; m++) {
-        if (startM <= m && m < startM + creature[IMAGE].length) {
-            drawPlayer(m, creature[IMAGE][m - startM]);
-        } else {
-            drawPlayer(m, "")
-        }
-    }
-
-    creature = curEnemy;
-    startM = Math.floor(centerM - creature[IMAGE].length * 0.5);
-
-    % Draw enemy creature
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        if (startM <= m && m < startM + creature[IMAGE].length) {
-            drawEnemy(m, creature[IMAGE][m - startM]);
-        } else {
-            drawEnemy(m, "")
-        }
+        setField("enemy" + m, EMPTY_LINE);
+        setField("player" + m, EMPTY_LINE);
     }
 }
 
 /**
- * Redraw the given enemy row.
+ * Shift the value of the given field.
  *
- * @param {Number} m The m position.
- * @param {Number} value The value.
+ * @param {Number} id The id of the field.
  */
-function drawEnemy(m, value) {
-    var cell = this.getField("enemy" + m);
+function shiftFieldLeft(id) {
+    var cell = this.getField(id);
+    cell.delay = true;
+    cell.value = cell.value.substring(1);
+    cell.delay = false;
+}
+
+/**
+ * Set string of the given field.
+ *
+ * @param {Number} id The id of the field.
+ * @param {String} value The value to set.
+ */
+function setField(id, value) {
+    var cell = this.getField(id);
     cell.delay = true;
     cell.value = value;
     cell.delay = false;
 }
 
 /**
- * Redraw the given player row.
+ * Add string to the given field.
  *
- * @param {Number} m The m position.
- * @param {Number} value The value.
+ * @param {Number} id The id of the field.
+ * @param {String} value The value to add.
  */
-function drawPlayer(m, value) {
-    var cell = this.getField("player" + m);
+function addToField(id, value) {
+    var cell = this.getField(id);
     cell.delay = true;
-    cell.value = value;
+    cell.value += value;
     cell.delay = false;
 }
 
