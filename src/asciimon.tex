@@ -28,6 +28,7 @@
 % to slow to play
 \def\fieldWidth{30}
 \def\fieldHeight{15}
+\def\atkAnimCells{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -43,6 +44,7 @@ If your own creature dies you lose, unless you previously caught another one.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const ATK_ANIM_CELLS = AFMakeNumber(\atkAnimCells);
 const SCREEN_TEXT_WIDTH = 400;
 const ENEMY_RESPONSE_TIME = 4000;
 const CHANGE_ANIMATION_SPEED = 50;
@@ -975,6 +977,7 @@ function attack(idx) {
 
     % Calculate dmg
     var dmg = inflictDMG(curCreature, curEnemy, attack);
+
     % If the enemy is beaten add xp and lvl up if needed
     if (curEnemy[CUR_HP] <= 0) {
         curEnemy[CUR_HP] = 0;
@@ -994,6 +997,9 @@ function attack(idx) {
     }
 
     updateEnemyTxt();
+
+    % TODO
+    attackAnimation(attack[TYPE]);
 
     % Enemy turn
     turn = ENEMY;
@@ -1422,6 +1428,337 @@ function addCurCreature(owner) {
     }
 }
 
+const ENEMY_TOP_RECT = this.getField("enemy0").rect;
+const ENEMY_BOT_RECT = this.getField("enemy" + (FIELD_HEIGHT - 1)).rect;
+
+const R = ENEMY_TOP_RECT[2];
+const L = ENEMY_TOP_RECT[0];
+const T = ENEMY_TOP_RECT[1];
+const B = ENEMY_BOT_RECT[3];
+
+const FIELD_HEIGHT_H = (T - B) / 2.0;
+const SIZE_H = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
+const FIELD_WIDTH_H = (R - L) / 2.0;
+
+const CENTER_P = [163, 456];
+const CENTER_E = [L + FIELD_WIDTH_H, B + FIELD_HEIGHT_H];
+const START = [CENTER_P[0] - SIZE_H, CENTER_P[1] + SIZE_H, CENTER_P[0] + SIZE_H, CENTER_P[1] - SIZE_H];
+const END = [CENTER_E[0] - SIZE_H, CENTER_E[1] + SIZE_H, CENTER_E[0] + SIZE_H, CENTER_E[1] - SIZE_H];
+
+const ATK_DURATION = 15;
+const ATK_ANIMATION_SPEED = 75;
+
+const DEAD = -1;
+
+const STATE = 0;
+const POS = 1;
+const SYMB = 2;
+const ROTATION = 3;
+const MASS = 4;
+
+var particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [DEAD, [0, 0, 0, 0], 0, 0, 2]);
+
+var particleSys = {
+    iterationCount: ATK_DURATION - 1,
+    iterationCur: 0,
+    aliveParticles: 0,
+    particleCount: FIELD_WIDTH,
+    particleSymbols: ["X"],
+    particleLifetime: ATK_DURATION - 1,
+    particleMultiline: false,
+    particleBold: false
+};
+
+const X = 0;
+const Y = 1;
+var momentum = [0, 1];
+var velocity=null;
+const GRAVITY = [0, -9.81];
+%const MASS = 1;
+var FORCE = [0, 5];
+
+% https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
+function applyGravityToParticle(p) {
+
+    var position = [0, particles[p][POS][1] - SIZE_H];
+
+    momentum = [momentum[X] + GRAVITY[X] + FORCE[X], momentum[Y] + GRAVITY[Y] + FORCE[Y]];
+    velocity = [momentum[X] / particles[p][MASS], momentum[Y] / particles[p][MASS]];
+    position = [position[X] + velocity[X], position[Y] + velocity[Y]];
+
+    % If position is at floor & momentum heading downward
+    if (position[Y] < B && momentum[Y] < 0) {
+        position[Y] = B;
+        % Bouncing off direction
+        var collisionNormal = [0, 1];
+        var dot = momentum[X] * collisionNormal[X] + momentum[Y] * collisionNormal[Y];
+        % Reflect
+        % momentum = momentum.subtr(collisionNormal.mu(2 * dot));
+        momentum = [momentum[X] - collisionNormal[X] * 2 * dot, momentum[Y] - collisionNormal[Y] * 2 * dot];
+        % Energy loss from bounce.
+        const energyReduction = 0.45
+        momentum = [momentum[X] * energyReduction, momentum[Y] * energyReduction];
+    }
+
+    return position[Y];
+}
+
+function attackAnimation(type) {
+    if (type == T_STONE || true) {
+        particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+        particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+        %particleSys.particleSymbols = ["X", "A", "C"];
+        %particleSys.particleSymbols = ["###\n ###"];%"_\n /M\\\n \\W/"];%, "<>", "_\n |_|"];
+        particleSys.particleSymbols = ["[##]\n [##]", "\n ####", "\n ## #", "\n #  #", "\n #   #", "\n #    #"];
+        %"_\n /M\\\n \\W/"];%, "<>", "_\n |_|"];
+        particleSys.particleMultiline = true;
+        particleSys.particleCount = 1;
+
+        particleSys.emit = function(p) {
+            % if (getRandomInt(100) > 1) {
+            %     return false;
+            % }
+            var xPos = (L + SIZE_H) + getRandomInt((FIELD_WIDTH_H - SIZE_H) * 2.0);
+            var pos = [
+                (L + SIZE_H) + (FIELD_WIDTH_H - SIZE_H) * 2.0 * 0.35,
+                (L + SIZE_H) + (FIELD_WIDTH_H - SIZE_H) * 2.0 * 0.5,
+                (L + SIZE_H) + (FIELD_WIDTH_H - SIZE_H) * 2.0 * 0.65
+            ];
+
+            var xPos = pos[p \% particleSys.particleCount];
+            var xRect = [xPos - SIZE_H, T, xPos + SIZE_H, T];
+
+            particles[p][STATE]++;
+            particles[p][POS] = xRect;
+            %particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
+            particles[p][SYMB] = 0;
+            this.aliveParticles++;
+
+            initParticleField(p);
+            return true;
+        };
+
+        particleSys.remove = function(p) {
+            hideParticleField(p);
+            particles[p][STATE] = DEAD;
+            this.aliveParticles--;
+        };
+
+        % Falling stones move function
+        particleSys.move = function(l, p) {
+            % var yPos = (1.0 - l) * (T - SIZE_H) + l * (B + SIZE_H + 1);
+            % particles[p][POS][1] = yPos + SIZE_H;
+            % particles[p][POS][3] = yPos - SIZE_H - 1;
+
+            var pY = applyGravityToParticle(p);
+            particles[p][POS][1] = pY + SIZE_H;
+            particles[p][POS][3] = pY - SIZE_H - 1;
+
+            if (particles[p][SYMB] > 0 && particles[p][STATE] \% 2 == 0 && particles[p][SYMB] < particleSys.particleSymbols.length - 1) {
+                particles[p][SYMB]++;
+                initParticleField(p); % TODO
+            }
+
+            if (particles[p][POS][3] <= B && particles[p][SYMB] == 0) {
+                particles[p][SYMB] = 1;
+                particles[p][MASS] = 1;
+                initParticleField(p); % TODO
+            }
+
+            % if (l >= 0.99) {
+            %     particles[p][SYMB] = 1;
+            %     initParticleField(p); % TODO
+            % }
+        };
+
+        % Shoot move function
+        % particleSys.move = function(l, p) {
+        %     for (var j = 0; j < particles[p][POS].length; j++) {
+        %         particles[p][POS][j] = START[j] * (1.0 - l) + END[j] * l;
+        %     }
+        % };
+    } else if (type == T_WATER || true) {
+        particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+        particleSys.particleLifetime = (ATK_DURATION - 1) * 4;
+        particleSys.particleSymbols = ["(", " )", "(", "(", "(", " )", " )", "(", " )", " )"];%, "~"];
+        particleSys.particleBold = true;
+        particleSys.particleCount = FIELD_WIDTH / 2.0;
+
+        particleSys.emit = function(p) {
+            var xPos = L + SIZE_H + p * SIZE_H * 2;
+            var xRect = [xPos - SIZE_H, 0, xPos + SIZE_H, 0];
+
+            particles[p][STATE]++;
+            particles[p][POS] = xRect;
+            particles[p][SYMB] = p \% particleSys.particleSymbols.length;
+            %if (p \% 3 != 2) {
+                particles[p][ROTATION] = 90;
+            %}
+            this.aliveParticles++;
+
+            initParticleField(p);
+            return true;
+        };
+
+        particleSys.remove = function(p) {
+            hideParticleField(p);
+            particles[p][STATE] = DEAD;
+            this.aliveParticles--;
+        };
+
+        particleSys.move = function(l, p) {
+            var yPos = (1.0 - l) * (B + SIZE_H + 1) + l * (T - SIZE_H);
+            particles[p][POS][1] = yPos + SIZE_H;
+            particles[p][POS][3] = yPos - SIZE_H - 1;
+
+            particles[p][SYMB] = (particles[p][SYMB] + 1) \% particleSys.particleSymbols.length;
+            % TODO dont use init here
+            initParticleField(p);
+        };
+    } else if (type == T_FIRE) {
+    } else if (type == T_AIR) {
+    } else if (type == T_FLUFF) {
+    } else if (type == T_GRASS) {
+    } else {
+        % T_GHOST
+        % Circular move function
+        particleSys.move = function(l, p) {
+            const R = FIELD_WIDTH_H;
+            const ANGLE = (Math.PI * 2.0) / particles.length;
+
+            var offsetX = R * Math.cos(p * ANGLE + l * Math.PI * 2.0);
+            var offsetY = R * Math.sin(p * ANGLE + l * Math.PI * 2.0);
+            var offset = [offsetX, offsetY, offsetX, offsetY];
+
+            var pos = [0, 0, 0, 0];
+            for (var j = 0; j < pos.length; j++) {
+                particles[p][POS][j] = END[j] + (1.0 - l) * offset[j];
+            }
+        }
+    }
+
+    attackInterval = app.setInterval("processParticles()", ATK_ANIMATION_SPEED);
+}
+
+function processParticles() {
+    var finished = particleSys.iterationCount < particleSys.iterationCur;
+    if (finished && particleSys.aliveParticles == 0) {
+        app.clearInterval(attackInterval);
+        particleSys.iterationCur = 0;
+        return;
+    }
+
+    for (var p = 0; p < Math.min(particles.length, particleSys.particleCount); p++) {
+        if (!finished && particles[p][STATE] == DEAD) {
+            if (!particleSys.emit(p)) {
+                continue;
+            }
+        } else if (particleSys.particleLifetime < particles[p][STATE]) {
+            particleSys.remove(p);
+            continue;
+        }
+
+        var l = particles[p][STATE] / particleSys.particleLifetime;
+
+        particleSys.move(l, p);
+        moveParticleField(p);
+
+        particles[p][STATE]++;
+    }
+
+    particleSys.iterationCur++;
+}
+
+function moveParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+    particle.rect = particles[p][POS];
+}
+
+function initParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+    particle.hidden = false;
+    particle.textSize = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 1.2;
+    particle.textFont = font.Cour;
+    particle.alignment = "center";
+    particle.rotation = particles[p][ROTATION];
+
+    var textIdx = particles[p][SYMB];
+
+    if (particleSys.particleMultiline || particleSys.particleBold) {
+        var spans = new Array();
+        spans[0] = new Object();
+        spans[0].text = particleSys.particleSymbols[textIdx];
+        if (particleSys.particleBold) {
+            spans[0].fontWeight = 700;
+        }
+
+        particle.richText = true;
+        particle.richValue = spans;
+    } else {
+        particle.richText = false;
+        particle.value = particleSys.particleSymbols[textIdx];
+    }
+}
+
+function hideParticleField(p) {
+            var particle = this.getField("atkanim" + p);
+            particle.hidden = true;
+}
+
+function waterAnimation() {
+    if (animationProgress2 < 0 && aliveParticles == 0) {
+        app.clearInterval(attackInterval);
+        animationProgress2 = ATK_DURATION;
+        return;
+    }
+
+    var emitbool = ((animationProgress2 \% 3) == 0) && animationProgress2 > 0;
+
+    %for (var i = 0; i < ATK_ANIM_CELLS; i++) {
+    for (var p = 0; p < particles.length; p++) {
+        if (particles[p] == DEAD) {
+            if (emitbool) {
+                emitbool = false;
+                emit(p);
+            } else {
+                continue;
+            }
+        } else if (particles[p] == particleLifetime) {
+            particles[p] = DEAD;
+            aliveParticles--;
+            var particle = this.getField("atkanim" + p);
+            particle.hidden = true;
+            continue;
+        }
+
+        var particle = this.getField("atkanim" + p);
+
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        var l = particles[p] / particleLifetime;
+        var pos = [0, 0, 0, 0];
+        for (var j = 0; j < pos.length; j++) {
+            pos[j] = END[j];%START[j] * (1.0 - l) + END[j] * l;
+        }
+
+        particle.rect = pos;
+        particles[p]++;
+    }
+    animationProgress2--;
+    printInfoText(animationProgress2);
+}
+
+function emit(p) {
+    var particle = this.getField("atkanim" + p);
+    particle.delay = true;
+    particle.value = "w";
+    particle.delay = false;
+
+    particle.hidden = false;
+    particles[p] = 0;
+    aliveParticles++;
+}
+
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
@@ -1667,6 +2004,14 @@ function addInfoText(text) {
                 \\
             \end{tabularx}
         \end{center}
+
+        \xintFor* #1 in {\xintSeq{0}{\atkAnimCells-1}} \do {%
+            \TextField[%
+                width=1cm, height=1cm,%
+                bordercolor=, backgroundcolor=, name=atkanim#1, readonly=true%
+                %bordercolor=gray, name=atkanim#1, readonly=true%
+            ]{}%
+        }%
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
 
