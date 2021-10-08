@@ -633,8 +633,6 @@ const CREATURE_LIST = new Array(
             "\\,/   ,\\|,.  \\,/"
         ]
     ]
-
-    % https://ascii.co.uk/art/fire
 );
 
 const DMG = 1;
@@ -1473,6 +1471,7 @@ var particleSys = {
     iterationCount: ATK_DURATION - 1,
     iterationCur: 0,
     aliveParticles: 0,
+    alignment: "center",
     particleCount: FIELD_WIDTH,
     particleSymbols: ["X"],
     particleLifetime: ATK_DURATION - 1,
@@ -1531,17 +1530,18 @@ function applyGravityToParticle(p) {
 }
 
 function attackAnimation(type) {
-    if (type == T_STONE && false) {
-        stoneParticles();
-    } else if (type == T_WATER || true) {
+    if (type == T_WATER && false) {
         waterParticles();
-    % } else if (type == T_FIRE) {
     % } else if (type == T_AIR) {
-    % } else if (type == T_FLUFF) {
-    % } else if (type == T_GRASS) {
-    } else {
-        % T_GHOST
+    } else if (type == T_STONE && false) {
+        stoneParticles();
+    %} else if (type == T_GRASS) {
+    } else if (type == T_GHOST) {
         ghostParticles();
+    % } else if (type == T_FLUFF) {
+    } else {
+        % T_FIRE
+        fireParticles();
     }
 
     % Shoot move function
@@ -1650,8 +1650,6 @@ function stoneParticles() {
         particles[p][MASS] = 2;
         particles[p][MOMENTUM] = mom[p \% particleSys.particleCount];
 
-
-
         this.aliveParticles++;
 
         initParticleField(p);
@@ -1689,6 +1687,78 @@ function ghostParticles() {
         particles[p][POS][X] = CENTER_E[X] + (1.0 - l) * offsetX;
         particles[p][POS][Y] = CENTER_E[Y] + (1.0 - l) * offsetY;
     }
+}
+
+function fireParticles() {
+    particleSys.frameTime = 250;
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.alignment = "left";
+
+    % https://ascii.co.uk/art/fire
+    % Prevent bracket issues
+    "((((((((((((";
+    particleSys.particleSymbols = [
+        "       (                           ",
+        "       )                 '    .    ",
+        "         *          )     .        ",
+        "   ( .    ) .     ('  )  (    )  * ",
+        "    .*)  (  )   ,  )  ,    )  (.   ",
+        " ).   ( . :(   )  ( , ')   .'  ),( ",
+        "(_,)  _), _) .(_, )  (, ) '_),.(' )",
+        %
+        "       ?            )    .         ",
+        "       '          (           '    ",
+        "        \"                 '        ",
+        "      )  (  '      ) :    )   (    ",
+        "  .  ' (   ) .   ' ( . ' (     )'  ",
+        " ('    )  ' )  (   )   )   '   )(  ",
+        "(#_)_ _),_ ) '(_: )  (* )_ _)*'(  )",
+        %
+        "       .           ?               ",
+        "                  '           *    ",
+        "         .                         ",
+        "   ( *    )        )     (     :   ",
+        "    ')   ( ) '    (  '  )      ('  ",
+        " ('     ( '  . (   )   (   '   )(  ",
+        "( _) __('#_)  ('_ )  ( .) __)*'(  )",
+        %
+        "                   .               ",
+        "       :                           ",
+        "    ,   (                (         ",
+        "   ).     )    .   )  .   )    ( , ",
+        "  . (   )  (      (      (  *    ) ",
+        " (   )  '   )  (.  )    (      ( ) ",
+        "(  )  _) : )' (  _(  ). )  _(#_(  )"
+    ];
+    ")))";
+
+    %particleSys.particleBold = true;
+    particleSys.particleCount = 7;
+
+    particleSys.emit = function(p) {
+        const h = particles[p][HEIGHT];
+        var yPos = B + h + p * h * 2.0;
+        var lines = particleSys.particleCount;
+        var frames = particleSys.particleSymbols.length / lines;
+
+        particles[p][STATE]++;
+        particles[p][POS] = [CENTER_E[X], yPos];
+        particles[p][SYMB] = (lines - p - 1) \% particleSys.particleSymbols.length;
+        particles[p][WIDTH] = FIELD_WIDTH_H;
+        this.aliveParticles++;
+
+        initParticleField(p);
+        return true;
+    };
+
+    particleSys.move = function(l, p) {
+        var lines = particleSys.particleCount;
+        var frames = particleSys.particleSymbols.length / lines;
+        particles[p][SYMB] = (lines - p - 1) + lines * (particles[p][STATE] \% frames);
+        % TODO dont use init here
+        initParticleField(p);
+    };
 }
 
 function processParticles() {
@@ -1737,7 +1807,7 @@ function initParticleField(p) {
     particle.hidden = false;
     particle.textSize = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 1.2;
     particle.textFont = font.Cour;
-    particle.alignment = "center";
+    particle.alignment = particleSys.alignment;
     particle.rotation = particles[p][ROTATION];
 
     var textIdx = particles[p][SYMB];
