@@ -1446,7 +1446,6 @@ const CENTER_E = [L + FIELD_WIDTH_H, B + FIELD_HEIGHT_H];
 %const END = [CENTER_E[0] - SIZE_H, CENTER_E[1] + SIZE_H, CENTER_E[0] + SIZE_H, CENTER_E[1] - SIZE_H];
 
 const ATK_DURATION = 15;
-const ATK_ANIMATION_SPEED = 75;
 
 const DEAD = -1;
 
@@ -1456,18 +1455,24 @@ const SYMB = 2;
 const ROTATION = 3;
 const MASS = 4;
 const MOMENTUM = 5;
+const WIDTH = 6;
+const HEIGHT = 7;
 
 const X = 0;
 const Y = 1;
 
-var particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [DEAD, [0, 0], 0, 0, 2, [0, 0]]);
+var particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
+    DEAD, [0, 0],
+    0, 0,
+    2, [0, 0],
+    FIELD_WIDTH_H / FIELD_HEIGHT, FIELD_HEIGHT_H / FIELD_HEIGHT
+]);
 
 var particleSys = {
+    frameTime: 75,
     iterationCount: ATK_DURATION - 1,
     iterationCur: 0,
     aliveParticles: 0,
-    % TODO this is in one direction -> (FIELD_HEIGHT_H / FIELD_HEIGHT)
-    particleRadius: FIELD_WIDTH_H / FIELD_HEIGHT,
     particleCount: FIELD_WIDTH,
     particleSymbols: ["X"],
     particleLifetime: ATK_DURATION - 1,
@@ -1495,7 +1500,7 @@ var particleSys = {
  * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
  */
 function applyGravityToParticle(p) {
-    const s = particleSys.particleRadius;
+    const h = particles[p][HEIGHT];
     const g = particleSys.gravity;
     const f = particleSys.force;
     const m = particles[p][MASS];
@@ -1510,8 +1515,8 @@ function applyGravityToParticle(p) {
     pos = [pos[X] + v[X], pos[Y] + v[Y]];
 
     % If position is at floor & momentum heading downward
-    if (pos[Y] < B + s && mom[Y] < 0) {
-        pos[Y] = B + s;
+    if (pos[Y] < B + h && mom[Y] < 0) {
+        pos[Y] = B + h;
         % Bouncing off direction
         var collisionNormal = [0, 1];
         var dot = mom[X] * collisionNormal[X] + mom[Y] * collisionNormal[Y];
@@ -1546,10 +1551,11 @@ function attackAnimation(type) {
     %     }
     % };
 
-    attackInterval = app.setInterval("processParticles()", ATK_ANIMATION_SPEED);
+    attackInterval = app.setInterval("processParticles()", particleSys.frameTime);
 }
 
 function waterParticles() {
+    particleSys.frameTime = 15;
     particleSys.iterationCount = (ATK_DURATION - 1) * 2;
     particleSys.particleLifetime = (ATK_DURATION - 1) * 4;
     particleSys.particleSymbols = ["(", " )", "(", "(", "(", " )", " )", "(", " )", " )", ""];
@@ -1564,6 +1570,7 @@ function waterParticles() {
             particles[p][STATE]++;
             particles[p][POS] = [CENTER_E[X], 0];
             particles[p][SYMB] = particleSys.particleSymbols.length - 1;
+            particles[p][WIDTH] = FIELD_WIDTH_H;
 
             this.aliveParticles++;
 
@@ -1572,7 +1579,9 @@ function waterParticles() {
             return true;
         }
 
-        var xPos = L + particleSys.particleRadius + (p - 1) * particleSys.particleRadius * 2.0;
+        %particles[p][HEIGHT] = particles[p][WIDTH];
+        const w = particles[p][WIDTH];
+        var xPos = L + w + (p - 1) * w * 2.0;
 
         particles[p][STATE]++;
         particles[p][POS] = [xPos, 0];
@@ -1585,15 +1594,19 @@ function waterParticles() {
     };
 
     particleSys.move = function(l, p) {
-        var yPos = (1.0 - l) * (B + particleSys.particleRadius + 1) + l * (T - particleSys.particleRadius);
-        particles[p][POS][Y] = yPos;
+        % Height and pos of the top line
+        const h = particles[1][HEIGHT];
+        const top = (B + FIELD_HEIGHT_H * 2.0 * 0.75 - h);
+        var yPos = (1.0 - l) * (B + h + 1) + l * top;
 
         if (p == 0) {
-            particles[p][POS][Y] = B + (yPos - B) / 2.0;
+            particles[p][HEIGHT] = (yPos - h * 0.5 - B) * 0.5;
+            particles[p][POS][Y] = B + particles[p][HEIGHT];
             initParticleField(p);
             return;
         }
 
+        particles[p][POS][Y] = yPos;
         particles[p][SYMB] = (particles[p][SYMB] + 1) \% (particleSys.particleSymbols.length - 1);
         % TODO dont use init here
         initParticleField(p);
@@ -1606,19 +1619,23 @@ function stoneParticles() {
     particleSys.particleSymbols = ["[##]\n [##]", "\n ####", "\n ## #", "\n #  #", "\n #   #", "\n #    #"];
     particleSys.particleMultiline = true;
     particleSys.particleCount = 3;
-    particleSys.particleRadius = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
 
     particleSys.emit = function(p) {
         % if (getRandomInt(100) > 1) {
         %     return false;
         % }
-        %var xPos = (L + particleSys.particleRadius) + getRandomInt((FIELD_WIDTH_H - particleSys.particleRadius) * 2.0);
-        const s = (L + particleSys.particleRadius);
-        const w = (FIELD_WIDTH_H - particleSys.particleRadius) * 2.0;
+        %var xPos = (L + particles[p][WIDTH]) + getRandomInt((FIELD_WIDTH_H - particles[p][WIDTH]) * 2.0);
+
+        % Create a particle with same width as height
+        particles[p][WIDTH] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
+        particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
+
+        const s = (L + particles[p][WIDTH]);
+        const w = (FIELD_WIDTH_H - particles[p][WIDTH]) * 2.0;
         const pos = [
-            [s + w * 0.25, T - particleSys.particleRadius],
+            [s + w * 0.25, T - particles[p][HEIGHT]],
             [s + w * 0.5, T],
-            [s + w * 0.75, T - particleSys.particleRadius]
+            [s + w * 0.75, T - particles[p][HEIGHT]]
         ];
         const mom = [
             [-2, 2],
@@ -1632,6 +1649,9 @@ function stoneParticles() {
         particles[p][SYMB] = 0;
         particles[p][MASS] = 2;
         particles[p][MOMENTUM] = mom[p \% particleSys.particleCount];
+
+
+
         this.aliveParticles++;
 
         initParticleField(p);
@@ -1640,7 +1660,7 @@ function stoneParticles() {
 
     % Falling stones move function
     particleSys.move = function(l, p) {
-        % var yPos = (1.0 - l) * (T - particleSys.particleRadius) + l * (B + particleSys.particleRadius + 1);
+        % var yPos = (1.0 - l) * (T - particles[p][HEIGHT]) + l * (B + particles[p][HEIGHT] + 1);
         particles[p][POS] = applyGravityToParticle(p);
 
         if (particles[p][SYMB] > 0 && particles[p][STATE] \% 2 == 0 && particles[p][SYMB] < particleSys.particleSymbols.length - 1) {
@@ -1648,7 +1668,7 @@ function stoneParticles() {
             initParticleField(p); % TODO
         }
 
-        if (particles[p][POS][Y] <= B + particleSys.particleRadius && particles[p][SYMB] == 0) {
+        if (particles[p][POS][Y] <= B + particles[p][HEIGHT] && particles[p][SYMB] == 0) {
             particles[p][SYMB] = 1;
             particles[p][MASS] = 1;
             initParticleField(p); % TODO
@@ -1705,8 +1725,9 @@ function moveParticleField(p) {
 
     const x = particles[p][POS][X];
     const y = particles[p][POS][Y];
-    const s = particleSys.particleRadius;
-    var rect = [x - s, y + s, x + s, y - s];
+    const w = particles[p][WIDTH];
+    const h = particles[p][HEIGHT];
+    var rect = [x - w, y + h, x + w, y - h];
 
     particle.rect = rect;
 }
