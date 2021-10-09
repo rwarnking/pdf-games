@@ -1532,7 +1532,8 @@ function applyGravityToParticle(p) {
 function attackAnimation(type) {
     if (type == T_WATER && false) {
         waterParticles();
-    % } else if (type == T_AIR) {
+    } else if (type == T_AIR || true) {
+        airParticles();
     } else if (type == T_STONE && false) {
         stoneParticles();
     %} else if (type == T_GRASS) {
@@ -1550,6 +1551,10 @@ function attackAnimation(type) {
     %         particles[p][POS][j] = START[j] * (1.0 - l) + END[j] * l;
     %     }
     % };
+
+    for (var p = 0; p < Math.min(particles.length, particleSys.particleCount); p++) {
+        initParticleField(p);
+    }
 
     attackInterval = app.setInterval("processParticles()", particleSys.frameTime);
 }
@@ -1610,6 +1615,91 @@ function waterParticles() {
         particles[p][SYMB] = (particles[p][SYMB] + 1) \% (particleSys.particleSymbols.length - 1);
         % TODO dont use init here
         initParticleField(p);
+    };
+}
+
+function airParticles() {
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.particleSymbols = ["--", ">>", "->", "~>", "~~"];
+    particleSys.particleCount = 20;
+    % TODO reset particleSys
+    particleSys.gravity = [0, 0];
+    particleSys.force = [5, 0];
+
+    particleSys.emit = function(p) {
+        % Create a particle with same width as height
+        particles[p][WIDTH] = (FIELD_WIDTH_H / FIELD_WIDTH) * 2.5;
+        %particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
+
+        const memberCount = 4;
+        const groupIdx = Math.floor(p / memberCount);
+        const leader = memberCount * groupIdx;
+
+        % This is a leader particle
+        var yPos, pos;
+        if (p == leader) {
+            if (getRandomInt(100) > 20) {
+                return false;
+            }
+
+            % Do not emit this leader if the last particle is not dead yet
+            if (particles[leader + memberCount - 1][STATE] != DEAD) {
+                return false;
+            }
+
+            yPos = B + particles[p][HEIGHT] + getRandomInt((FIELD_HEIGHT_H - particles[p][HEIGHT]) * 2.0);
+            pos = [L + particles[p][WIDTH], yPos];
+        } else {
+            pos = [particles[p - 1][POS][X], particles[p - 1][POS][Y]];
+            pos[X] -= 2.0 * particles[p][WIDTH];
+            if (pos[X] < L + particles[p][WIDTH] || particles[p - 1][STATE] == DEAD) {
+                return false;
+            }
+        }
+
+        particles[p][STATE]++;
+        particles[p][POS] = pos;
+        particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
+        particles[p][MASS] = 1;
+        particles[p][MOMENTUM] = [2, 0];
+
+        this.aliveParticles++;
+
+        initParticleField(p);
+        return true;
+    };
+
+    % Falling stones move function
+    particleSys.move = function(l, p) {
+        const memberCount = 4;
+        const groupIdx = Math.floor(p / memberCount);
+        const leader = memberCount * groupIdx;
+
+        var pos;
+        % This is a leader particle
+        if (p == leader) {
+            pos = applyGravityToParticle(p);
+        } else {
+            pos = [particles[p - 1][POS][X], particles[p][POS][Y]];
+            % If the leader is already outofbounds
+            if (pos[X] >= R - particles[p][WIDTH]) {
+                pos[X] -= 2.0 * particles[p][WIDTH];
+                % If the particle is near the leader
+                if (particles[p][POS][X] == pos[X]) {
+                    pos[X] = R - particles[p][WIDTH];
+                    particles[p][STATE] = particleSys.particleLifetime;
+                }
+            } else {
+                pos[X] -= 2.0 * particles[p][WIDTH];
+            }
+        }
+
+        if (pos[X] > R - particles[p][WIDTH]) {
+            particles[p][STATE] = particleSys.particleLifetime;
+            pos[X] = R - particles[p][WIDTH];
+        }
+        particles[p][POS] = pos;
     };
 }
 
@@ -1770,8 +1860,17 @@ function processParticles() {
     }
 
     for (var p = 0; p < Math.min(particles.length, particleSys.particleCount); p++) {
-        if (!finished && particles[p][STATE] == DEAD) {
-            if (!particleSys.emit(p)) {
+        % If the particle is dead ...
+        if (particles[p][STATE] == DEAD) {
+            % ... check whether new particles should be emitted
+            if (!finished) {
+                % ... do not process this particle if emitting it failed
+                if (!particleSys.emit(p)) {
+                    continue;
+                }
+            }
+            % ... if not do not process this particle
+            else {
                 continue;
             }
         } else if (particleSys.particleLifetime < particles[p][STATE]) {
@@ -1783,6 +1882,7 @@ function processParticles() {
 
         particleSys.move(l, p);
         moveParticleField(p);
+        refreshValueOfField(p);
 
         particles[p][STATE]++;
     }
@@ -1828,63 +1928,16 @@ function initParticleField(p) {
     }
 }
 
-function hideParticleField(p) {
-            var particle = this.getField("atkanim" + p);
-            particle.hidden = true;
-}
-
-function waterAnimation() {
-    if (animationProgress2 < 0 && aliveParticles == 0) {
-        app.clearInterval(attackInterval);
-        animationProgress2 = ATK_DURATION;
-        return;
-    }
-
-    var emitbool = ((animationProgress2 \% 3) == 0) && animationProgress2 > 0;
-
-    %for (var i = 0; i < ATK_ANIM_CELLS; i++) {
-    for (var p = 0; p < particles.length; p++) {
-        if (particles[p] == DEAD) {
-            if (emitbool) {
-                emitbool = false;
-                emit(p);
-            } else {
-                continue;
-            }
-        } else if (particles[p] == particleLifetime) {
-            particles[p] = DEAD;
-            aliveParticles--;
-            var particle = this.getField("atkanim" + p);
-            particle.hidden = true;
-            continue;
-        }
-
-        var particle = this.getField("atkanim" + p);
-
-        % height 842, width 596
-        % upper-left x, upper-left y, lower-right x and lower-right y
-        var l = particles[p] / particleLifetime;
-        var pos = [0, 0, 0, 0];
-        for (var j = 0; j < pos.length; j++) {
-            pos[j] = END[j];%START[j] * (1.0 - l) + END[j] * l;
-        }
-
-        particle.rect = pos;
-        particles[p]++;
-    }
-    animationProgress2--;
-    printInfoText(animationProgress2);
-}
-
-function emit(p) {
+function refreshValueOfField(p) {
     var particle = this.getField("atkanim" + p);
-    particle.delay = true;
-    particle.value = "w";
-    particle.delay = false;
+    particle.value = particle.value;
+}
 
-    particle.hidden = false;
-    particles[p] = 0;
-    aliveParticles++;
+
+function hideParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+
+    particle.hidden = true;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -2135,9 +2188,9 @@ function addInfoText(text) {
 
         \xintFor* #1 in {\xintSeq{0}{\atkAnimCells-1}} \do {%
             \TextField[%
-                width=1cm, height=1cm,%
-                bordercolor=, backgroundcolor=, name=atkanim#1, readonly=true%
-                %bordercolor=gray, name=atkanim#1, readonly=true%
+                %width=1cm, height=1cm,%
+                bordercolor=, backgroundcolor=, name=atkanim#1, readonly=true, borderwidth=0pt, hidden%
+                %backgroundcolor=gray, name=atkanim#1, readonly=true, hidden, borderwidth=0pt, bordersep=0pt%
             ]{}%
         }%
 
