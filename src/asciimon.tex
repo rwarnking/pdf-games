@@ -1537,7 +1537,8 @@ function attackAnimation(type) {
         airParticles();
     } else if (type == T_STONE && false) {
         stoneParticles();
-    %} else if (type == T_GRASS) {
+    } else if (type == T_GRASS || true) {
+        grassParticles();
     } else if (type == T_GHOST && false) {
         ghostParticles();
     } else if (type == T_FLUFF || true) {
@@ -1546,13 +1547,6 @@ function attackAnimation(type) {
         % T_FIRE
         fireParticles();
     }
-
-    % Shoot move function
-    % particleSys.move = function(l, p) {
-    %     for (var j = 0; j < particles[p][POS].length; j++) {
-    %         particles[p][POS][j] = START[j] * (1.0 - l) + END[j] * l;
-    %     }
-    % };
 
     attackInterval = app.setInterval("processParticles()", particleSys.frameTime);
 }
@@ -1751,6 +1745,35 @@ function stoneParticles() {
             particles[p][MASS] = 1;
         }
     };
+}
+
+function grassParticles() {
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleSymbols = ["()", "#", "{}"];
+
+    particleSys.emit = function(p) {
+        if (getRandomInt(100) > 5) {
+            return false;
+        }
+
+        const offset = 70;
+        const offsetY = -offset * 0.5 + getRandomInt(offset);
+        particles[p][POS][Y] = CENTER_P[Y] + offsetY;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
+        particles[p][ROTATION] = 90;
+
+        particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
+        particles[p][STATE]++;
+
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(l, p) {
+        particles[p][POS][X] = CENTER_P[X] * (1.0 - l) + CENTER_E[X] * l;
+        particles[p][POS][Y] += ((CENTER_E[Y] - CENTER_P[Y]) / particleSys.particleLifetime);
+    }
 }
 
 function ghostParticles() {
