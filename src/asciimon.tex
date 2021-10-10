@@ -1455,6 +1455,7 @@ const MASS = 4;
 const MOMENTUM = 5;
 const WIDTH = 6;
 const HEIGHT = 7;
+const SIZE = 8;
 
 const X = 0;
 const Y = 1;
@@ -1463,7 +1464,8 @@ var particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
     DEAD, [0, 0],
     0, 0,
     2, [0, 0],
-    FIELD_WIDTH_H / FIELD_HEIGHT, FIELD_HEIGHT_H / FIELD_HEIGHT
+    FIELD_WIDTH_H / FIELD_HEIGHT, FIELD_HEIGHT_H / FIELD_HEIGHT,
+    (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 1.3
 ]);
 
 var particleSys = {
@@ -1531,14 +1533,15 @@ function applyGravityToParticle(p) {
 function attackAnimation(type) {
     if (type == T_WATER && false) {
         waterParticles();
-    } else if (type == T_AIR || true) {
+    } else if (type == T_AIR && false) {
         airParticles();
     } else if (type == T_STONE && false) {
         stoneParticles();
     %} else if (type == T_GRASS) {
-    } else if (type == T_GHOST) {
+    } else if (type == T_GHOST && false) {
         ghostParticles();
-    % } else if (type == T_FLUFF) {
+    } else if (type == T_FLUFF || true) {
+        fluffParticles();
     } else {
         % T_FIRE
         fireParticles();
@@ -1596,7 +1599,9 @@ function waterParticles() {
         var yPos = (1.0 - l) * (B + h + 1) + l * top;
 
         if (p == 0) {
-            particles[p][HEIGHT] = (yPos - h * 0.5 - B) * 0.5;
+            % Since the alignment of the brackeds is somewhat weird the box needs to be
+            % shifted by half a wavefrontheight
+            particles[p][HEIGHT] = (yPos + h * 0.5 - B) * 0.5;
             particles[p][POS][Y] = B + particles[p][HEIGHT];
             return;
         }
@@ -1618,7 +1623,6 @@ function airParticles() {
     particleSys.emit = function(p) {
         % Create a particle with same width as height
         particles[p][WIDTH] = (FIELD_WIDTH_H / FIELD_WIDTH) * 2.5;
-        %particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
 
         const memberCount = 4;
         const groupIdx = Math.floor(p / memberCount);
@@ -1706,6 +1710,7 @@ function stoneParticles() {
         % Create a particle with same width as height
         particles[p][WIDTH] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
         particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
 
         const s = (L + particles[p][WIDTH]);
         const w = (FIELD_WIDTH_H - particles[p][WIDTH]) * 2.0;
@@ -1760,6 +1765,47 @@ function ghostParticles() {
 
         particles[p][POS][X] = CENTER_E[X] + (1.0 - l) * offsetX;
         particles[p][POS][Y] = CENTER_E[Y] + (1.0 - l) * offsetY;
+    }
+}
+
+function fluffParticles() {
+    particleSys.iterationCount = (ATK_DURATION - 1) * 1.6;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 1.6;
+
+    particleSys.particleSymbols = [
+        ".-:' ;`-.\n (         )\n (           )\n (         )\n `-'._._.'", ""
+    ];
+
+    particleSys.particleMultiline = true;
+    particleSys.particleCount = 1;
+
+    % TODO reset particleSys
+    particleSys.force = [0, 0];
+
+    particleSys.emit = function(p) {
+        particles[p][WIDTH] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
+        particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 3.0;
+        particles[p][POS] = [CENTER_P[X] - particles[p][WIDTH], B + particles[p][HEIGHT] + 10];
+        particles[p][MOMENTUM] = [40, 15 * 6.0];
+
+        particles[p][STATE]++;
+        this.aliveParticles++;
+        return true;
+    }
+
+    % Throw move function
+    particleSys.move = function(l, p) {
+        particles[p][POS] = applyGravityToParticle(p);
+
+        particles[p][SIZE] *= 1.07;
+        particles[p][WIDTH] *= 1.07;
+        particles[p][HEIGHT] *= 1.07;
+
+        if (particles[p][POS][X] >= CENTER_E[X] && particles[p][POS][Y] <= CENTER_E[Y]) {
+            particles[p][MOMENTUM] = [0, 0];
+            particleSys.gravity = [0, 0];
+        }
     }
 }
 
@@ -1887,13 +1933,13 @@ function showAndUpdateParticleField(p) {
     var particle = this.getField("atkanim" + p);
 
     particle.hidden = false;
-    particle.textSize = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 1.2;
     particle.textFont = font.Cour;
     particle.alignment = particleSys.alignment;
+    particle.textSize = particles[p][SIZE];
     particle.rotation = particles[p][ROTATION];
 
     var textIdx = particles[p][SYMB];
-
+    particle.value = particleSys.particleSymbols[textIdx];
     if (particleSys.particleMultiline || particleSys.particleBold) {
         var spans = new Array();
         spans[0] = new Object();
