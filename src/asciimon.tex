@@ -1484,7 +1484,6 @@ var particleSys = {
     emit: function(p) {
         particles[p][STATE]++;
         this.aliveParticles++;
-        initParticleField(p);
         return true;
     },
     remove: function(p) {
@@ -1552,10 +1551,6 @@ function attackAnimation(type) {
     %     }
     % };
 
-    for (var p = 0; p < Math.min(particles.length, particleSys.particleCount); p++) {
-        initParticleField(p);
-    }
-
     attackInterval = app.setInterval("processParticles()", particleSys.frameTime);
 }
 
@@ -1579,12 +1574,9 @@ function waterParticles() {
 
             this.aliveParticles++;
 
-            initParticleField(p);
-
             return true;
         }
 
-        %particles[p][HEIGHT] = particles[p][WIDTH];
         const w = particles[p][WIDTH];
         var xPos = L + w + (p - 1) * w * 2.0;
 
@@ -1594,7 +1586,6 @@ function waterParticles() {
         particles[p][ROTATION] = 90;
         this.aliveParticles++;
 
-        initParticleField(p);
         return true;
     };
 
@@ -1607,14 +1598,11 @@ function waterParticles() {
         if (p == 0) {
             particles[p][HEIGHT] = (yPos - h * 0.5 - B) * 0.5;
             particles[p][POS][Y] = B + particles[p][HEIGHT];
-            initParticleField(p);
             return;
         }
 
         particles[p][POS][Y] = yPos;
         particles[p][SYMB] = (particles[p][SYMB] + 1) \% (particleSys.particleSymbols.length - 1);
-        % TODO dont use init here
-        initParticleField(p);
     };
 }
 
@@ -1666,7 +1654,6 @@ function airParticles() {
 
         this.aliveParticles++;
 
-        initParticleField(p);
         return true;
     };
 
@@ -1742,7 +1729,6 @@ function stoneParticles() {
 
         this.aliveParticles++;
 
-        initParticleField(p);
         return true;
     };
 
@@ -1753,13 +1739,11 @@ function stoneParticles() {
 
         if (particles[p][SYMB] > 0 && particles[p][STATE] \% 2 == 0 && particles[p][SYMB] < particleSys.particleSymbols.length - 1) {
             particles[p][SYMB]++;
-            initParticleField(p); % TODO
         }
 
         if (particles[p][POS][Y] <= B + particles[p][HEIGHT] && particles[p][SYMB] == 0) {
             particles[p][SYMB] = 1;
             particles[p][MASS] = 1;
-            initParticleField(p); % TODO
         }
     };
 }
@@ -1838,7 +1822,6 @@ function fireParticles() {
         particles[p][WIDTH] = FIELD_WIDTH_H;
         this.aliveParticles++;
 
-        initParticleField(p);
         return true;
     };
 
@@ -1846,8 +1829,6 @@ function fireParticles() {
         var lines = particleSys.particleCount;
         var frames = particleSys.particleSymbols.length / lines;
         particles[p][SYMB] = (lines - p - 1) + lines * (particles[p][STATE] \% frames);
-        % TODO dont use init here
-        initParticleField(p);
     };
 }
 
@@ -1882,7 +1863,7 @@ function processParticles() {
 
         particleSys.move(l, p);
         moveParticleField(p);
-        refreshValueOfField(p);
+        showAndUpdateParticleField(p);
 
         particles[p][STATE]++;
     }
@@ -1902,8 +1883,9 @@ function moveParticleField(p) {
     particle.rect = rect;
 }
 
-function initParticleField(p) {
+function showAndUpdateParticleField(p) {
     var particle = this.getField("atkanim" + p);
+
     particle.hidden = false;
     particle.textSize = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 1.2;
     particle.textFont = font.Cour;
@@ -1928,15 +1910,8 @@ function initParticleField(p) {
     }
 }
 
-function refreshValueOfField(p) {
-    var particle = this.getField("atkanim" + p);
-    particle.value = particle.value;
-}
-
-
 function hideParticleField(p) {
     var particle = this.getField("atkanim" + p);
-
     particle.hidden = true;
 }
 
