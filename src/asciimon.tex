@@ -1460,40 +1460,46 @@ const SIZE = 8;
 const X = 0;
 const Y = 1;
 
-var particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
-    DEAD, [0, 0],
-    0, 0,
-    2, [0, 0],
-    FIELD_WIDTH_H / FIELD_HEIGHT, FIELD_HEIGHT_H / FIELD_HEIGHT,
-    (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 1.3
-]);
+var particles;
+var particleSys;
 
-var particleSys = {
-    frameTime: 75,
-    iterationCount: ATK_DURATION - 1,
-    iterationCur: 0,
-    aliveParticles: 0,
-    alignment: "center",
-    particleCount: FIELD_WIDTH,
-    particleSymbols: ["X"],
-    particleLifetime: ATK_DURATION - 1,
-    particleMultiline: false,
-    particleBold: false,
-    gravity: [0, -9.81],
-    force: [0, 5],
-    energyReduction: 0.45,
-    % FUNCTIONS
-    emit: function(p) {
-        particles[p][STATE]++;
-        this.aliveParticles++;
-        return true;
-    },
-    remove: function(p) {
-        hideParticleField(p);
-        particles[p][STATE] = DEAD;
-        this.aliveParticles--;
-    }
-};
+function defaultParticleSys() {
+    particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
+        DEAD, [0, 0], % STATE, POS
+        0, 0, % SYMB, ROTATION
+        2, [0, 0],  % MASS, MOMENTUM
+        FIELD_WIDTH_H / FIELD_HEIGHT, % WIDTH
+        FIELD_HEIGHT_H / FIELD_HEIGHT, % HEIGHT
+        (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 1.3 % SIZE
+    ]);
+
+    particleSys = {
+        frameTime: 75,
+        iterationCount: ATK_DURATION - 1,
+        iterationCur: 0,
+        aliveParticles: 0,
+        alignment: "center",
+        particleCount: FIELD_WIDTH,
+        particleSymbols: ["X"],
+        particleLifetime: ATK_DURATION - 1,
+        particleMultiline: false,
+        particleBold: false,
+        gravity: [0, -9.81],
+        force: [0, 5],
+        energyReduction: 0.45,
+        % FUNCTIONS
+        emit: function(p) {
+            particles[p][STATE]++;
+            this.aliveParticles++;
+            return true;
+        },
+        remove: function(p) {
+            hideParticleField(p);
+            particles[p][STATE] = DEAD;
+            this.aliveParticles--;
+        }
+    };
+}
 
 /**
  * Very similar to an implementation that can be found here:
@@ -1531,20 +1537,21 @@ function applyGravityToParticle(p) {
 }
 
 function attackAnimation(type) {
-    if (type == T_WATER && false) {
+    defaultParticleSys();
+
+    if (type == T_WATER) {
         waterParticles();
-    } else if (type == T_AIR && false) {
+    } else if (type == T_AIR) {
         airParticles();
-    } else if (type == T_STONE && false) {
+    } else if (type == T_STONE) {
         stoneParticles();
-    } else if (type == T_GRASS || true) {
+    } else if (type == T_GRASS) {
         grassParticles();
-    } else if (type == T_GHOST && false) {
+    } else if (type == T_GHOST) {
         ghostParticles();
-    } else if (type == T_FLUFF || true) {
+    } else if (type == T_FLUFF) {
         fluffParticles();
-    } else {
-        % T_FIRE
+    } else { % T_FIRE
         fireParticles();
     }
 
