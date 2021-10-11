@@ -46,7 +46,7 @@ const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const ATK_ANIM_CELLS = AFMakeNumber(\atkAnimCells);
 const SCREEN_TEXT_WIDTH = 400;
-const ENEMY_RESPONSE_TIME = 4000;
+const ENEMY_RESPONSE_TIME = 500;
 const CHANGE_ANIMATION_SPEED = 50;
 
 %%%%%%%%%%%%%%%%%%
@@ -814,6 +814,11 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
+    if (animationProgress != FIELD_WIDTH || particleSys.aliveParticles != 0) {
+        printInfoText("Wait for animation!");
+        return;
+    }
+
     gameover = false;
     gamestate = MENU;
     turn = PLAYER;
@@ -891,7 +896,7 @@ function processInput(button) {
         return;
     }
 
-    if (animationProgress != FIELD_WIDTH) {
+    if (animationProgress != FIELD_WIDTH || particleSys.aliveParticles != 0) {
         printInfoText("Wait for animation!");
         return;
     }
@@ -976,6 +981,9 @@ function attack(idx) {
     % Calculate dmg
     var dmg = inflictDMG(curCreature, curEnemy, attack);
 
+    % Start the attack animation with the enemy as target
+    attackAnimation(attack[TYPE], PLAYER);
+
     % If the enemy is beaten add xp and lvl up if needed
     if (curEnemy[CUR_HP] <= 0) {
         curEnemy[CUR_HP] = 0;
@@ -995,9 +1003,6 @@ function attack(idx) {
     }
 
     updateEnemyTxt();
-
-    % TODO
-    attackAnimation(attack[TYPE]);
 
     % Enemy turn
     turn = ENEMY;
@@ -1129,6 +1134,10 @@ function replace(idx) {
  * unless he has none left then he lost the game.
  */
 function enemyTurn() {
+    if (particleSys.aliveParticles != 0) {
+        return;
+    }
+
     % Switch turn
     turn = PLAYER;
     % Clear the interval, since the enemy should only attack once
@@ -1147,6 +1156,9 @@ function enemyTurn() {
     var attacks = curEnemy[ATKS];
     var attackIdx = getRandomInt(attacks.length);
     var attack = ATTACK_LIST[attacks[attackIdx]];
+
+    % Start the attack animation with the player as target
+    attackAnimation(attack[TYPE], ENEMY);
 
     var creature = curPlayerCreatures[curCreatureIdx];
     var dmg = inflictDMG(curEnemy, creature, attack);
@@ -1461,7 +1473,7 @@ const X = 0;
 const Y = 1;
 
 var particles;
-var particleSys;
+var particleSys = { aliveParticles: 0 };
 
 function defaultParticleSys() {
     particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
@@ -1475,6 +1487,8 @@ function defaultParticleSys() {
 
     particleSys = {
         frameTime: 75,
+        source: CENTER_P,
+        target: CENTER_E,
         iterationCount: ATK_DURATION - 1,
         iterationCur: 0,
         aliveParticles: 0,
@@ -1505,7 +1519,7 @@ function defaultParticleSys() {
  * Very similar to an implementation that can be found here:
  * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
  */
-function applyGravityToParticle(p) {
+function applyGravityToParticle(p, floor) {
     const h = particles[p][HEIGHT];
     const g = particleSys.gravity;
     const f = particleSys.force;
@@ -1521,8 +1535,8 @@ function applyGravityToParticle(p) {
     pos = [pos[X] + v[X], pos[Y] + v[Y]];
 
     % If position is at floor & momentum heading downward
-    if (pos[Y] < B + h && mom[Y] < 0) {
-        pos[Y] = B + h;
+    if (pos[Y] < floor + h && mom[Y] < 0) {
+        pos[Y] = floor + h;
         % Bouncing off direction
         var collisionNormal = [0, 1];
         var dot = mom[X] * collisionNormal[X] + mom[Y] * collisionNormal[Y];
@@ -1536,7 +1550,7 @@ function applyGravityToParticle(p) {
     return pos;
 }
 
-function attackAnimation(type) {
+function attackAnimation(type, dir) {
     defaultParticleSys();
 
     if (type == T_WATER) {
@@ -1546,7 +1560,7 @@ function attackAnimation(type) {
     } else if (type == T_STONE) {
         stoneParticles();
     } else if (type == T_GRASS) {
-        grassParticles();
+        grassParticles(dir);
     } else if (type == T_GHOST) {
         ghostParticles();
     } else if (type == T_FLUFF) {
@@ -1671,7 +1685,7 @@ function airParticles() {
         var pos;
         % This is a leader particle
         if (p == leader) {
-            pos = applyGravityToParticle(p);
+            pos = applyGravityToParticle(p, B);
         } else {
             pos = [particles[p - 1][POS][X], particles[p][POS][Y]];
             % If the leader is already outofbounds
@@ -1703,11 +1717,6 @@ function stoneParticles() {
     particleSys.particleCount = 3;
 
     particleSys.emit = function(p) {
-        % if (getRandomInt(100) > 1) {
-        %     return false;
-        % }
-        %var xPos = (L + particles[p][WIDTH]) + getRandomInt((FIELD_WIDTH_H - particles[p][WIDTH]) * 2.0);
-
         % Create a particle with same width as height
         particles[p][WIDTH] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
         particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
@@ -1728,7 +1737,6 @@ function stoneParticles() {
 
         particles[p][STATE]++;
         particles[p][POS] = pos[p \% particleSys.particleCount];
-        %particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
         particles[p][SYMB] = 0;
         particles[p][MASS] = 2;
         particles[p][MOMENTUM] = mom[p \% particleSys.particleCount];
@@ -1740,8 +1748,7 @@ function stoneParticles() {
 
     % Falling stones move function
     particleSys.move = function(l, p) {
-        % var yPos = (1.0 - l) * (T - particles[p][HEIGHT]) + l * (B + particles[p][HEIGHT] + 1);
-        particles[p][POS] = applyGravityToParticle(p);
+        particles[p][POS] = applyGravityToParticle(p, B);
 
         if (particles[p][SYMB] > 0 && particles[p][STATE] \% 2 == 0 && particles[p][SYMB] < particleSys.particleSymbols.length - 1) {
             particles[p][SYMB]++;
@@ -1754,9 +1761,14 @@ function stoneParticles() {
     };
 }
 
-function grassParticles() {
+function grassParticles(dir) {
     particleSys.iterationCount = (ATK_DURATION - 1) * 2;
     particleSys.particleSymbols = ["()", "#", "{}"];
+
+    if (dir == ENEMY) {
+        particleSys.source = CENTER_E;
+        particleSys.target = CENTER_P;
+    }
 
     particleSys.emit = function(p) {
         if (getRandomInt(100) > 5) {
@@ -1765,7 +1777,7 @@ function grassParticles() {
 
         const offset = 70;
         const offsetY = -offset * 0.5 + getRandomInt(offset);
-        particles[p][POS][Y] = CENTER_P[Y] + offsetY;
+        particles[p][POS][Y] = particleSys.source[Y] + offsetY;
         particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
         particles[p][ROTATION] = 90;
 
@@ -1778,8 +1790,10 @@ function grassParticles() {
     };
 
     particleSys.move = function(l, p) {
-        particles[p][POS][X] = CENTER_P[X] * (1.0 - l) + CENTER_E[X] * l;
-        particles[p][POS][Y] += ((CENTER_E[Y] - CENTER_P[Y]) / particleSys.particleLifetime);
+        var s = particleSys.source;
+        var t = particleSys.target;
+        particles[p][POS][X] = s[X] * (1.0 - l) + t[X] * l;
+        particles[p][POS][Y] += ((t[Y] - s[Y]) / particleSys.particleLifetime);
     }
 }
 
@@ -1826,7 +1840,7 @@ function fluffParticles() {
 
     % Throw move function
     particleSys.move = function(l, p) {
-        particles[p][POS] = applyGravityToParticle(p);
+        particles[p][POS] = applyGravityToParticle(p, B);
 
         particles[p][SIZE] *= 1.07;
         particles[p][WIDTH] *= 1.07;
