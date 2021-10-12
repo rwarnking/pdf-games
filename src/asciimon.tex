@@ -982,7 +982,7 @@ function attack(idx) {
     var dmg = inflictDMG(curCreature, curEnemy, attack);
 
     % Start the attack animation with the enemy as target
-    attackAnimation(attack[TYPE], PLAYER);
+    attackAnimation(attack[TYPE], ENEMY);
 
     % If the enemy is beaten add xp and lvl up if needed
     if (curEnemy[CUR_HP] <= 0) {
@@ -1158,7 +1158,7 @@ function enemyTurn() {
     var attack = ATTACK_LIST[attacks[attackIdx]];
 
     % Start the attack animation with the player as target
-    attackAnimation(attack[TYPE], ENEMY);
+    attackAnimation(attack[TYPE], PLAYER);
 
     var creature = curPlayerCreatures[curCreatureIdx];
     var dmg = inflictDMG(curEnemy, creature, attack);
@@ -1446,14 +1446,9 @@ const L = ENEMY_TOP_RECT[0];
 const T = ENEMY_TOP_RECT[1];
 const B = ENEMY_BOT_RECT[3];
 
-const FIELD_HEIGHT_H = (T - B) / 2.0;
+const FIELD_HEIGHT_H = (T - B) / 2.0; % TODO canvas half height
 %const SIZE_H = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
 const FIELD_WIDTH_H = (R - L) / 2.0;
-
-const CENTER_P = [163, 456];
-const CENTER_E = [L + FIELD_WIDTH_H, B + FIELD_HEIGHT_H];
-%const START = [CENTER_P[0] - SIZE_H, CENTER_P[1] + SIZE_H, CENTER_P[0] + SIZE_H, CENTER_P[1] - SIZE_H];
-%const END = [CENTER_E[0] - SIZE_H, CENTER_E[1] + SIZE_H, CENTER_E[0] + SIZE_H, CENTER_E[1] - SIZE_H];
 
 const ATK_DURATION = 15;
 
@@ -1474,8 +1469,34 @@ const Y = 1;
 
 var particles;
 var particleSys = { aliveParticles: 0 };
+var canvas;
+
+function setCanvasData() {
+    const PLAYER_TOP_RECT = this.getField("player0").rect;
+    const PLAYER_BOT_RECT = this.getField("player" + (FIELD_HEIGHT - 1)).rect;
+    const L_P = PLAYER_TOP_RECT[0];
+    const B_P = PLAYER_BOT_RECT[3];
+
+    const ENEMY_TOP_RECT = this.getField("enemy0").rect;
+    const ENEMY_BOT_RECT = this.getField("enemy" + (FIELD_HEIGHT - 1)).rect;
+    const L_E = ENEMY_TOP_RECT[0];
+    const B_E = ENEMY_BOT_RECT[3];
+
+    canvas = {
+        c: [
+            [L_P + FIELD_WIDTH_H, B_P + FIELD_HEIGHT_H], % Player
+            [L_E + FIELD_WIDTH_H, B_E + FIELD_HEIGHT_H] % Enemy
+        ],
+        l: [L_P, L_E],
+        r: [PLAYER_TOP_RECT[2], ENEMY_TOP_RECT[2]],
+        t: [PLAYER_TOP_RECT[1], ENEMY_TOP_RECT[1]],
+        b: [B_P, B_E]
+    };
+}
 
 function defaultParticleSys() {
+    setCanvasData(); % TODO
+
     particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
         DEAD, [0, 0], % STATE, POS
         0, 0, % SYMB, ROTATION
@@ -1487,8 +1508,6 @@ function defaultParticleSys() {
 
     particleSys = {
         frameTime: 75,
-        source: CENTER_P,
-        target: CENTER_E,
         iterationCount: ATK_DURATION - 1,
         iterationCur: 0,
         aliveParticles: 0,
@@ -1550,29 +1569,29 @@ function applyGravityToParticle(p, floor) {
     return pos;
 }
 
-function attackAnimation(type, dir) {
+function attackAnimation(type, target) {
     defaultParticleSys();
 
     if (type == T_WATER) {
-        waterParticles();
+        waterParticles(target);
     } else if (type == T_AIR) {
-        airParticles();
+        airParticles(target);
     } else if (type == T_STONE) {
-        stoneParticles();
+        stoneParticles(target);
     } else if (type == T_GRASS) {
-        grassParticles(dir);
+        grassParticles(target);
     } else if (type == T_GHOST) {
-        ghostParticles();
+        ghostParticles(target);
     } else if (type == T_FLUFF) {
-        fluffParticles();
+        fluffParticles(target);
     } else { % T_FIRE
-        fireParticles();
+        fireParticles(target);
     }
 
     attackInterval = app.setInterval("processParticles()", particleSys.frameTime);
 }
 
-function waterParticles() {
+function waterParticles(target) {
     particleSys.frameTime = 15;
     particleSys.iterationCount = (ATK_DURATION - 1) * 2;
     particleSys.particleLifetime = (ATK_DURATION - 1) * 4;
@@ -1586,7 +1605,7 @@ function waterParticles() {
     particleSys.emit = function(p) {
         if (p == 0) {
             particles[p][STATE]++;
-            particles[p][POS] = [CENTER_E[X], 0];
+            particles[p][POS] = [canvas.c[target][X], 0];
             particles[p][SYMB] = particleSys.particleSymbols.length - 1;
             particles[p][WIDTH] = FIELD_WIDTH_H;
 
@@ -1596,7 +1615,7 @@ function waterParticles() {
         }
 
         const w = particles[p][WIDTH];
-        var xPos = L + w + (p - 1) * w * 2.0;
+        var xPos = canvas.l[target] + w + (p - 1) * w * 2.0;
 
         particles[p][STATE]++;
         particles[p][POS] = [xPos, 0];
@@ -1610,14 +1629,15 @@ function waterParticles() {
     particleSys.move = function(l, p) {
         % Height and pos of the top line
         const h = particles[1][HEIGHT];
-        const top = (B + FIELD_HEIGHT_H * 2.0 * 0.75 - h);
-        var yPos = (1.0 - l) * (B + h + 1) + l * top;
+        const bot = canvas.b[target];
+        const top = (bot + FIELD_HEIGHT_H * 2.0 * 0.75 - h);
+        var yPos = (1.0 - l) * (bot + h + 1) + l * top;
 
         if (p == 0) {
             % Since the alignment of the brackeds is somewhat weird the box needs to be
             % shifted by half a wavefrontheight
-            particles[p][HEIGHT] = (yPos + h * 0.5 - B) * 0.5;
-            particles[p][POS][Y] = B + particles[p][HEIGHT];
+            particles[p][HEIGHT] = (yPos + h * 0.5 - bot) * 0.5;
+            particles[p][POS][Y] = bot + particles[p][HEIGHT];
             return;
         }
 
@@ -1626,7 +1646,7 @@ function waterParticles() {
     };
 }
 
-function airParticles() {
+function airParticles(target) {
     particleSys.iterationCount = (ATK_DURATION - 1) * 2;
     particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
     particleSys.particleSymbols = ["--", ">>", "->", "~>", "~~"];
@@ -1643,9 +1663,13 @@ function airParticles() {
         const groupIdx = Math.floor(p / memberCount);
         const leader = memberCount * groupIdx;
 
+        const bot = canvas.b[target];
+        const left = canvas.l[target];
+
         % This is a leader particle
         var yPos, pos;
         if (p == leader) {
+            % Emission percentage
             if (getRandomInt(100) > 20) {
                 return false;
             }
@@ -1655,12 +1679,12 @@ function airParticles() {
                 return false;
             }
 
-            yPos = B + particles[p][HEIGHT] + getRandomInt((FIELD_HEIGHT_H - particles[p][HEIGHT]) * 2.0);
-            pos = [L + particles[p][WIDTH], yPos];
+            yPos = bot + particles[p][HEIGHT] + getRandomInt((FIELD_HEIGHT_H - particles[p][HEIGHT]) * 2.0);
+            pos = [left + particles[p][WIDTH], yPos];
         } else {
             pos = [particles[p - 1][POS][X], particles[p - 1][POS][Y]];
             pos[X] -= 2.0 * particles[p][WIDTH];
-            if (pos[X] < L + particles[p][WIDTH] || particles[p - 1][STATE] == DEAD) {
+            if (pos[X] < left + particles[p][WIDTH] || particles[p - 1][STATE] == DEAD) {
                 return false;
             }
         }
@@ -1682,18 +1706,21 @@ function airParticles() {
         const groupIdx = Math.floor(p / memberCount);
         const leader = memberCount * groupIdx;
 
+        const bot = canvas.b[target];
+        const right = canvas.r[target];
+
         var pos;
         % This is a leader particle
         if (p == leader) {
-            pos = applyGravityToParticle(p, B);
+            pos = applyGravityToParticle(p, bot);
         } else {
             pos = [particles[p - 1][POS][X], particles[p][POS][Y]];
             % If the leader is already outofbounds
-            if (pos[X] >= R - particles[p][WIDTH]) {
+            if (pos[X] >= right - particles[p][WIDTH]) {
                 pos[X] -= 2.0 * particles[p][WIDTH];
                 % If the particle is near the leader
                 if (particles[p][POS][X] == pos[X]) {
-                    pos[X] = R - particles[p][WIDTH];
+                    pos[X] = right - particles[p][WIDTH];
                     particles[p][STATE] = particleSys.particleLifetime;
                 }
             } else {
@@ -1701,15 +1728,15 @@ function airParticles() {
             }
         }
 
-        if (pos[X] > R - particles[p][WIDTH]) {
+        if (pos[X] > right - particles[p][WIDTH]) {
             particles[p][STATE] = particleSys.particleLifetime;
-            pos[X] = R - particles[p][WIDTH];
+            pos[X] = right - particles[p][WIDTH];
         }
         particles[p][POS] = pos;
     };
 }
 
-function stoneParticles() {
+function stoneParticles(target) {
     particleSys.iterationCount = (ATK_DURATION - 1) * 2;
     particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
     particleSys.particleSymbols = ["[##]\n [##]", "\n ####", "\n ## #", "\n #  #", "\n #   #", "\n #    #"];
@@ -1722,12 +1749,13 @@ function stoneParticles() {
         particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
         particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
 
-        const s = (L + particles[p][WIDTH]);
+        const s = (canvas.l[target] + particles[p][WIDTH]);
         const w = (FIELD_WIDTH_H - particles[p][WIDTH]) * 2.0;
+        const top = canvas.t[target];
         const pos = [
-            [s + w * 0.25, T - particles[p][HEIGHT]],
-            [s + w * 0.5, T],
-            [s + w * 0.75, T - particles[p][HEIGHT]]
+            [s + w * 0.25, top - particles[p][HEIGHT]],
+            [s + w * 0.5, top],
+            [s + w * 0.75, top - particles[p][HEIGHT]]
         ];
         const mom = [
             [-2, 2],
@@ -1748,27 +1776,23 @@ function stoneParticles() {
 
     % Falling stones move function
     particleSys.move = function(l, p) {
-        particles[p][POS] = applyGravityToParticle(p, B);
+        const bot = canvas.b[target];
+        particles[p][POS] = applyGravityToParticle(p, bot);
 
         if (particles[p][SYMB] > 0 && particles[p][STATE] \% 2 == 0 && particles[p][SYMB] < particleSys.particleSymbols.length - 1) {
             particles[p][SYMB]++;
         }
 
-        if (particles[p][POS][Y] <= B + particles[p][HEIGHT] && particles[p][SYMB] == 0) {
+        if (particles[p][POS][Y] <= bot + particles[p][HEIGHT] && particles[p][SYMB] == 0) {
             particles[p][SYMB] = 1;
             particles[p][MASS] = 1;
         }
     };
 }
 
-function grassParticles(dir) {
+function grassParticles(target) {
     particleSys.iterationCount = (ATK_DURATION - 1) * 2;
     particleSys.particleSymbols = ["()", "#", "{}"];
-
-    if (dir == ENEMY) {
-        particleSys.source = CENTER_E;
-        particleSys.target = CENTER_P;
-    }
 
     particleSys.emit = function(p) {
         if (getRandomInt(100) > 5) {
@@ -1777,7 +1801,7 @@ function grassParticles(dir) {
 
         const offset = 70;
         const offsetY = -offset * 0.5 + getRandomInt(offset);
-        particles[p][POS][Y] = particleSys.source[Y] + offsetY;
+        particles[p][POS][Y] = canvas.c[(target + 1) \% 2][Y] + offsetY;
         particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
         particles[p][ROTATION] = 90;
 
@@ -1790,14 +1814,14 @@ function grassParticles(dir) {
     };
 
     particleSys.move = function(l, p) {
-        var s = particleSys.source;
-        var t = particleSys.target;
+        var s = canvas.c[(target + 1) \% 2];
+        var t = canvas.c[target];
         particles[p][POS][X] = s[X] * (1.0 - l) + t[X] * l;
         particles[p][POS][Y] += ((t[Y] - s[Y]) / particleSys.particleLifetime);
     }
 }
 
-function ghostParticles() {
+function ghostParticles(target) {
     % Circular move function
     particleSys.move = function(l, p) {
         const R_X = FIELD_WIDTH_H;
@@ -1807,12 +1831,12 @@ function ghostParticles() {
         const offsetX = R_X * Math.cos(p * ANGLE + l * Math.PI * 2.0);
         const offsetY = R_Y * Math.sin(p * ANGLE + l * Math.PI * 2.0);
 
-        particles[p][POS][X] = CENTER_E[X] + (1.0 - l) * offsetX;
-        particles[p][POS][Y] = CENTER_E[Y] + (1.0 - l) * offsetY;
+        particles[p][POS][X] = canvas.c[target][X] + (1.0 - l) * offsetX;
+        particles[p][POS][Y] = canvas.c[target][Y] + (1.0 - l) * offsetY;
     }
 }
 
-function fluffParticles() {
+function fluffParticles(target) {
     particleSys.iterationCount = (ATK_DURATION - 1) * 1.6;
     particleSys.particleLifetime = (ATK_DURATION - 1) * 1.6;
 
@@ -1830,8 +1854,13 @@ function fluffParticles() {
         particles[p][WIDTH] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
         particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
         particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 3.0;
-        particles[p][POS] = [CENTER_P[X] - particles[p][WIDTH], B + particles[p][HEIGHT] + 10];
-        particles[p][MOMENTUM] = [40, 15 * 6.0];
+        particles[p][POS] = canvas.c[(target + 1) \% 2];
+
+        if (target == PLAYER) {
+            particles[p][MOMENTUM] = [-35, 15 * 4.0];
+        } else {
+            particles[p][MOMENTUM] = [40, 15 * 6.5];
+        }
 
         particles[p][STATE]++;
         this.aliveParticles++;
@@ -1840,20 +1869,23 @@ function fluffParticles() {
 
     % Throw move function
     particleSys.move = function(l, p) {
-        particles[p][POS] = applyGravityToParticle(p, B);
+        particles[p][POS] = applyGravityToParticle(p, 0.0);
 
         particles[p][SIZE] *= 1.07;
         particles[p][WIDTH] *= 1.07;
         particles[p][HEIGHT] *= 1.07;
 
-        if (particles[p][POS][X] >= CENTER_E[X] && particles[p][POS][Y] <= CENTER_E[Y]) {
+        if (particles[p][POS][X] >= canvas.l[target] &&
+            particles[p][POS][X] <= canvas.r[target] &&
+            particles[p][POS][Y] <= canvas.c[target][Y]
+        ) {
             particles[p][MOMENTUM] = [0, 0];
             particleSys.gravity = [0, 0];
         }
     }
 }
 
-function fireParticles() {
+function fireParticles(target) {
     particleSys.frameTime = 250;
     particleSys.iterationCount = (ATK_DURATION - 1) * 2;
     particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
@@ -1902,12 +1934,13 @@ function fireParticles() {
 
     particleSys.emit = function(p) {
         const h = particles[p][HEIGHT];
-        var yPos = B + h + p * h * 2.0;
+        const bot = canvas.b[target];
+        var yPos = bot + h + p * h * 2.0;
         var lines = particleSys.particleCount;
         var frames = particleSys.particleSymbols.length / lines;
 
         particles[p][STATE]++;
-        particles[p][POS] = [CENTER_E[X], yPos];
+        particles[p][POS] = [canvas.c[target][X], yPos];
         particles[p][SYMB] = (lines - p - 1) \% particleSys.particleSymbols.length;
         particles[p][WIDTH] = FIELD_WIDTH_H;
         this.aliveParticles++;
@@ -1926,7 +1959,6 @@ function processParticles() {
     var finished = particleSys.iterationCount < particleSys.iterationCur;
     if (finished && particleSys.aliveParticles == 0) {
         app.clearInterval(attackInterval);
-        particleSys.iterationCur = 0;
         return;
     }
 
@@ -1949,6 +1981,7 @@ function processParticles() {
             continue;
         }
 
+        % TODO move
         var l = particles[p][STATE] / particleSys.particleLifetime;
 
         particleSys.move(l, p);
