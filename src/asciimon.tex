@@ -41,18 +41,20 @@ top is the enemy. Each turn both creatures are supposed to attack each other unt
 one of them has no health left. If the enemy is beaten a new creature is selected.\
 If your own creature dies you lose, unless you previously caught another one.";
 
+% TODO bug when capturing creature (own creature moves even though it was not changed)
+
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const ATK_ANIM_CELLS = AFMakeNumber(\atkAnimCells);
 const SCREEN_TEXT_WIDTH = 400;
-const ENEMY_RESPONSE_TIME = 500;
+const ROUND_ANIMATION_SPEED = 100;
 const CHANGE_ANIMATION_SPEED = 50;
 
 %%%%%%%%%%%%%%%%%%
 % Game constants %
 %%%%%%%%%%%%%%%%%%
-% Menu states
+% Gui states
 const MENU = 0;
 const FIGHT = 1;
 const CHANGE = 2;
@@ -60,6 +62,18 @@ const ITEMS = 3;
 const RUN = 4;
 const HARD_CHANGE = 5;
 const REPLACE = 6;
+const ITEM_SELECT = 7;
+
+% Round states
+const ACTION_IDLE = -1
+const ACTION_P_CHOOSE = 0;
+const ACTION_P_ATTACK = 1;
+const ACTION_E_HP_UPDATE = 3;
+const ACTION_E_CHOOSE = 4;
+const ACTION_E_ATTACK = 5;
+const ACTION_P_HP_UPDATE = 6;
+const ACTION_P_CHANGE = 7;
+const ACTION_END = 8;
 
 % Turns
 const PLAYER = 0;
@@ -71,25 +85,57 @@ const PADDING_SYMB = " ";
 % https://stackoverflow.com/questions/16885297/
 const EMPTY_LINE = Array(FIELD_WIDTH + 2).join(PADDING_SYMB);
 
+% Particle duration and state indicator
+const ATK_DURATION = 15;
+const DEAD = -1;
+
+% Particle data keys
+const STATE = 0;
+const POS = 1;
+const SYMB = 2;
+const ROTATION = 3;
+const MASS = 4;
+const MOMENTUM = 5;
+const WIDTH = 6;
+const HEIGHT = 7;
+const SIZE = 8;
+
+% For easy access of 2D vector data
+const X = 0;
+const Y = 1;
+
 %%%%%%%%%%%%%%%%%%%%
 % Global game data %
 %%%%%%%%%%%%%%%%%%%%
-% The game field
-var gamestate = MENU;
+% The current gamestate variables
+var guiState = MENU;
+var turnState = ACTION_END;
 var gameover = false;
-% Creature data
+% Used for saving selections that were made while processing previous inputs
+var selection;
+% Save idx of the last attack for reuse in subsequent turnStates
+var lastAttackIdx = 0;
+
+% Animation data
+% Interval for saving the creature change visualization
+var changeAnimationInterval;
+% Current state of the animation
+var animationProgress = FIELD_WIDTH;
+% The interval for processing a round (uses the turnState to terminate)
+var roundInterval;
+
+% Array of all particles and their data
+var particles;
+% Information-Object with the current particle system data
+var particleSys = { aliveParticles: 0 };
+% Information-Object with data concerning the canvas dimensions
+var canvas;
+
+% Player and enemy data (creatures and items)
 var curCreatureIdx = 0;
 var curPlayerCreatures = [["Empty"], ["Empty"], ["Empty"], ["Empty"]];
 var curPlayerItems = [0, 0, 0, 0];
 var curEnemy = 0;
-
-% Turn information
-var turnInterval;
-var turn = PLAYER;
-
-% Animation data
-var changeAnimationInterval;
-var animationProgress = FIELD_WIDTH;
 
 %%%%%%%%%%%%%%%%%
 % Creature data %
@@ -118,6 +164,7 @@ const T_GHOST = 4;
 const T_FLUFF = 5;
 const T_FIRE = 6;
 
+% For showing the creature type in the gui
 const TYPE_STRINGS = new Array(
     "Water", "Air", "Stone", "Grass", "Ghost", "Fluff", "Fire"
 );
@@ -134,7 +181,6 @@ const DMG_MATRIX = [
     [0.8, 0.4, 2.0, 2.0, 0.3, 2.0, 0.4], % Fire
 ];
 
-% https://ascii.co.uk/art
 % http://www.asciiworld.com/index.html
 const CREATURE_LIST = new Array(
     % Water
@@ -635,6 +681,8 @@ const CREATURE_LIST = new Array(
     ]
 );
 
+% Attack access constants
+% NAME = 0, TYPE = 2
 const DMG = 1;
 
 % https://www.fantasynamegenerators.com/anime-attack-names.php
@@ -701,23 +749,23 @@ const ATTACK_LIST = new Array(
     ["Dual Explosion", 3.0, T_FIRE] % 50 - HANDGRANADE
 );
 
+% Item access constants
+% NAME = 0
+const DESC = 1;
+% const COUNT = 1; % TODO
+
+% Array of all available items
 const ITEM_LIST = new Array(
-    ["Empty", 0],
-    ["Potion", 50],
-    ["Capture", 30],
-    ["Improve", 10],
-    ["Weaken", 10],
-    ["lalala", 0]
+    ["Empty", ""],
+    ["Capsule", "Capture the enemy"],
+    ["Drink", "Heals to full"],
+    ["Weaken", "Deals a random amount of the enemy hp as dmg"],
+    ["Levelliquid", "Gain two level"]
 );
 
+% Table defining the needed exp for the different level.
+% It is generated at runtime (once).
 const EXP_TABLE = [];
-
-% Color data
-const COLORS = new Array(
-    %[ "RGB", 0.843, 0.078, 0.058 ],
-    %[ "RGB", 0.203, 0.603, 0.054 ],
-    %[ "RGB", 0.078, 0.305, 0.560 ]
-);
 
 %%%%%%%%%%
 % Helper %
@@ -739,7 +787,6 @@ function getRandomInt(max) {
 function initialise() {
     % Init the GUI
     initialiseButtons();
-
     updateButtontxt();
 
     % Init exp table
@@ -753,18 +800,24 @@ function initialise() {
     curEnemy = getEnemy();
 
     % Initialise the player items
-    curPlayerItems[0] = 2;
+    curPlayerItems[0] = 1;
+    curPlayerItems[1] = 2;
+    curPlayerItems[2] = 3;
+    curPlayerItems[3] = 4;
 
     updateEnemyTxt();
     updatePlayerTxt();
 
+    % Used mainly for attack animation
+    setCanvasData();
+    % Draw first creatures
     fill();
     drawAll();
 }
 
 /**
  * Initialise all buttons from the GUI.
- * For example add callbacks and set the correct colors.
+ * For example add callbacks and set the correct font and text size.
  */
 function initialiseButtons() {
     % Disables the rectangle around a button after the click
@@ -790,12 +843,10 @@ function initialiseButtons() {
         cell = this.getField("player" + m);
         cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
         cell.textFont = font.Cour;
-        %cell.alignment = "center";
 
         cell = this.getField("enemy" + m);
         cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
         cell.textFont = font.Cour;
-        %cell.alignment = "center";
     }
 
     % Info field setup
@@ -814,22 +865,25 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
-    if (animationProgress != FIELD_WIDTH || particleSys.aliveParticles != 0) {
+    % Restart only if no animation is running
+    if (animationProgress != FIELD_WIDTH) {
         printInfoText("Wait for animation!");
         return;
     }
 
+    % Gamestate
     gameover = false;
-    gamestate = MENU;
-    turn = PLAYER;
+    guiState = MENU;
 
     % Initialise the player and enemy creature
     curCreatureIdx = 0;
     curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
     curEnemy = getEnemy();
 
-    % Initialise the player items
-    curPlayerItems[0] = 2;
+    % Initialise the player items to empty
+    for (var i = 0; i < 4; i++) {
+        curPlayerItems[i] = 0;
+    }
 
     % Update GUI
     updateButtontxt();
@@ -880,72 +934,293 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%
-% Player actions %
-%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%
+% Input processing %
+%%%%%%%%%%%%%%%%%%%%
 /**
  * If a menu button is pressed check which action needs to be taken.
- * This depends on the current gamestate.
- * If the enemy did not make a move, the input is ignored.
+ * This depends on the current guiState and can trigger a 'round',
+ * where player and enemy actions are processed automatically.
+ *
  * @param {Number} button The index of which button was pressed
  */
 function processInput(button) {
     this.getField("tooltiptxt").setFocus();
 
-    if (gameover) {
-        return;
-    }
-
-    if (animationProgress != FIELD_WIDTH || particleSys.aliveParticles != 0) {
+    if (animationProgress != FIELD_WIDTH) {
         printInfoText("Wait for animation!");
         return;
     }
 
-    if (turn != PLAYER) {
-        printInfoText("Wait your turn!");
+    if (gameover) {
         return;
     }
 
-    % If the menu was active the possible actions need to be shown
-    if (gamestate == MENU) {
-        if (button == RUN) {
-            run();
-        } else {
-            gamestate = button;
+    % Nothing is currently processed, advance gui
+    if (turnState == ACTION_END) {
+        % Do not allow the player to play without replacing dead creatures
+        if (guiState != CHANGE && curPlayerCreatures[curCreatureIdx][NAME] == "Empty") {
+            guiState = CHANGE;
+            printInfoText("You NEED to select a new creature!");
+        }
+        % If the menu was active the possible actions need to be shown
+        else if (guiState == MENU) {
+            if (button == RUN) {
+                run();
+            } else {
+                guiState = button;
+            }
+        }
+        % Process gui input that was not in the main menu
+        else {
+            % Save the guiState so it can be overridden if necessary
+            var lastState = guiState;
+            guiState = MENU;
+            % Special cases
+            % The back button was pressed, only switch to main menu
+            if (button == MENU) {
+                printInfoText("Return to main menu!");
+            } else if (lastState == ITEMS) {
+                % Check if item needs another selection (of a creature for example)
+                var item = ITEM_LIST[curPlayerItems[button - 1]];
+                if (item[NAME] == "Weaken" || item[NAME] == "Empty") {
+                    turnState = ACTION_IDLE;
+                    var callback = "executeRound(" + lastState + "," + button + ")";
+                    roundInterval = app.setInterval(callback, ROUND_ANIMATION_SPEED);
+                } else {
+                    % Save selected item
+                    selection = button;
+                    guiState = ITEM_SELECT;
+                }
+            } else {
+                % Input triggers a "round"
+                turnState = ACTION_IDLE;
+                var callback = "executeRound(" + lastState + "," + button + ")";
+                roundInterval = app.setInterval(callback, ROUND_ANIMATION_SPEED);
+            }
         }
     } else {
-        % The back button was pressed, only switch to main menu
-        if (button == MENU) {
-            if (gamestate == REPLACE) {
-                printInfoText("Did not capture creature!");
-            } else if (gamestate == HARD_CHANGE) {
-                printInfoText("You NEED to select a new creature!");
-                return;
-            }
-            gamestate = MENU;
-        }
-        % If an action was selected run it and reset the gamestate
-        else if (gamestate == FIGHT) {
-            attack(button);
-            gamestate = MENU;
-        } else if (gamestate == CHANGE) {
-            change(button);
-            gamestate = MENU;
-        } else if (gamestate == REPLACE) {
-            replace(button);
-            gamestate = MENU;
-        } else if (gamestate == ITEMS) {
-            gamestate = items(button);
-        } else if (gamestate == HARD_CHANGE) {
-            gamestate = hardChange(button);
-        }
+        printInfoText("Wait for the current round to finish!");
     }
     updateButtontxt();
 }
 
 /**
+ * This function determines the program flow,
+ * by processing the current state of the round and the taken gui action.
+ * The usual order is:
+ * 1. Player turn
+ * 2. Enemy turn
+ * A turn can contain an attack, item usage or creature change.
+ * Dead creatures can not make a turn and need to be replaced.
+ * @param {Number} action The last taken action in the GUI (FIGHT, ITEM, CHANGE).
+ * @param {Number} idx The current pressed button.
+ */
+function executeRound(action, idx) {
+    % Do not allow a round when a creature is currently replaced
+    if (animationProgress != FIELD_WIDTH) {
+        return;
+    }
+
+    if (turnState == ACTION_IDLE) {
+        turnState++;
+    }
+    % If finished clear the interval
+    else if (turnState == ACTION_END) {
+        app.clearInterval(roundInterval);
+        return;
+    }
+    % Reconstruct chosen player action (fight, change, item)
+    else if (turnState == ACTION_P_CHOOSE) {
+        if (action == FIGHT) {
+            % Setup attack particles
+            % Reset particle system to default
+            defaultParticleSys();
+            % Access the attack
+            var curCreature = curPlayerCreatures[curCreatureIdx];
+            var attacks = curCreature[ATKS];
+            lastAttackIdx = attacks[idx - 1];
+            var attackData = ATTACK_LIST[lastAttackIdx];
+            printInfoText(
+                curCreature[NAME] + " (Player) attacks the enemy with " + attackData[NAME] + "!"
+            );
+            % Set attack specific data
+            attackAnimation(attackData[TYPE], ENEMY);
+
+            turnState = ACTION_P_ATTACK;
+        } else if (action == CHANGE) {
+            turnState = change(idx);
+        } else if (action == ITEM_SELECT) {
+            % Items that need a selection via the gui
+            turnState = itemSelect(idx);
+        } else if (action == ITEMS) {
+            % Items that are applied to the current player creature
+            turnState = itemApply(idx);
+        }
+    }
+    % Start the attack animation with the enemy as target
+    else if (turnState == ACTION_P_ATTACK) {
+        if (!particleSys.finished()) {
+            processParticles();
+        } else {
+            turnState = ACTION_E_HP_UPDATE;
+        }
+    }
+    % Apply damage to enemy
+    else if (turnState == ACTION_E_HP_UPDATE) {
+        attackEnemy(lastAttackIdx);
+        turnState = ACTION_E_CHOOSE;
+    }
+    % Select what the enemy will do
+    else if (turnState == ACTION_E_CHOOSE) {
+        % If the enemy is dead he is not able to attack and needs to be substituted
+        if (curEnemy[CUR_HP] == 0) {
+            changeEnemy();
+            turnState = ACTION_END;
+            return;
+        }
+
+        % Setup attack particles
+        % Reset particle system to default
+        defaultParticleSys();
+        % Access the attack
+        var attacks = curEnemy[ATKS];
+        lastAttackIdx = attacks[getRandomInt(attacks.length)];
+        var attackData = ATTACK_LIST[lastAttackIdx];
+        printInfoText(curEnemy[NAME] + " (Enemy) attacks with " + attackData[NAME] + "! ");
+
+        attackAnimation(attackData[TYPE], PLAYER);
+        turnState = ACTION_E_ATTACK;
+    }
+    % Start the attack animation with the enemy as target
+    else if (turnState == ACTION_E_ATTACK) {
+        % Start the attack animation with the enemy as target
+        if (!particleSys.finished()) {
+            processParticles();
+        } else {
+            turnState = ACTION_P_HP_UPDATE;
+        }
+    }
+    % Apply damage to player
+    else if (turnState == ACTION_P_HP_UPDATE) {
+        turnState = attackPlayer(lastAttackIdx);
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Player actions          %
+% Fight, swap, run, items %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * This action runs the selected attack on the enemy creature.
+ * For this the enemy hp are reduced by the damage from the attack.
+ * If the enemy is beaten, the player creature gets exp and has the
+ * chance of leveling up.
+ * @param {Number} idx The index of the attack selected.
+ */
+function attackEnemy(idx) {
+    % Access the attack
+    var curCreature = curPlayerCreatures[curCreatureIdx];
+    var attacks = curCreature[ATKS];
+    var attackData = ATTACK_LIST[idx];
+
+    % Calculate dmg
+    var dmg = inflictDMG(curCreature, curEnemy, attackData);
+    updateEnemyTxt();
+
+    % If the enemy is beaten add xp and lvl up if needed
+    if (curEnemy[CUR_HP] == 0) {
+        var exp = addEXP(curEnemy, curCreature);
+        var lvlup = checkLvlUp(curCreature);
+        if (lvlup) {
+            updatePlayerTxt();
+            printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] + " and leveled up.");
+        } else {
+            printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] +
+                " and got " + exp + " experience.");
+        }
+    } else {
+        printInfoText(curEnemy[NAME] + " took " + dmg + " damage.");
+    }
+}
+
+/**
+ * This action runs the selected attack on the player creature.
+ * For this the creature hp are reduced by the damage from the attack.
+ * If the creature is beaten, it is deleted and the player needs to
+ * select a new creature in the next round. For this the guiState is altered.
+ * If the player has no creatures left the game is marked as over.
+ * @param {Number} idx The index of the attack selected.
+ */
+function attackPlayer(idx) {
+    % Get attack data
+    var attacks = curEnemy[ATKS];
+    var attack = ATTACK_LIST[idx];
+
+    var creature = curPlayerCreatures[curCreatureIdx];
+    var dmg = inflictDMG(curEnemy, creature, attack);
+    updatePlayerTxt();
+
+    % If the player creature is dead remove it from the player creatures
+    if (creature[CUR_HP] == 0) {
+        curPlayerCreatures[curCreatureIdx] = ["Empty"];
+        % If the player has no creatures left the game is over
+        if (noCreatureLeft()) {
+            gameover = true;
+            printInfoText("No Creatures left, game over!");
+        } else {
+            guiState = CHANGE;
+            updateButtontxt();
+            printInfoText("Your creature has no health left, please select a new creature.");
+        }
+    } else {
+        printInfoText(creature[NAME] + " took " + dmg + " damage.");
+    }
+
+    return ACTION_END;
+}
+
+/**
+ * Select one creature from the player creature list as a substitute for
+ * the current creature. Does only work if there is an other creature
+ * then the current one.
+ * @param {Number} idx The index of the new creature.
+ */
+function change(idx) {
+    var creature = curPlayerCreatures[idx - 1];
+    var oldName = curPlayerCreatures[curCreatureIdx][NAME];
+
+    % If there is no creature or the same one is selected the swap can not be done
+    if (creature[NAME] == "Empty" || curCreatureIdx == idx - 1) {
+        printInfoText("Creature was not switched.");
+        return ACTION_END;
+    }
+
+    curCreatureIdx = idx - 1;
+
+    printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
+    updatePlayerTxt();
+    drawPlayer();
+
+    % TODO if enemy died before return ACTION_END
+    return ACTION_E_CHOOSE;
+}
+
+/**
+ * Replace the enemy creature with a new one and redraw.
+ */
+function changeEnemy() {
+    curEnemy = getEnemy();
+    drawEnemy();
+    updateEnemyTxt();
+    printInfoText("Your new enemy is: " + curEnemy[NAME]);
+}
+
+/**
  * With this action the player indicates that he does not want to
  * fight the current enemy. Therefore he flees and gets a new enemy.
+ * This action reduces the level of the current creature by one if it is
+ * atleast level 6.
  */
 function run() {
     curEnemy = getEnemy();
@@ -965,228 +1240,107 @@ function run() {
 }
 
 /**
- * This action runs the selected attack on the enemy creature.
- * For this the enemy hp are reduced by the damage from the arrack.
- * If the enemy is beaten, the player creature gets xp and has the
- * chance of leveling up.
- * This actions switches the turn to the enemy.
- * @ param {Number} idx The index of the attack selected.
+ * Selects the chosen item from the backpack and applies its affect.
+ * Processes items that are not targeted on creatures in the player list,
+ * but rather on the enemy or the current player creature.
+ * (The difference is to 'itemSelect' one gui step.)
+ * Processes:
+ * Empty (ends current round),
+ * Weaken (Triggers attack)
+ * @param {Number} idx The item slot in the backpack (1-4).
  */
-function attack(idx) {
-    % Access the attack
-    var curCreature = curPlayerCreatures[curCreatureIdx];
-    var attacks = curCreature[ATKS];
-    var attack = ATTACK_LIST[attacks[idx - 1]];
+function itemApply(idx) {
+    var item = ITEM_LIST[curPlayerItems[idx - 1]];
+    printInfoText("You used " + item[NAME] + ".");
 
-    % Calculate dmg
-    var dmg = inflictDMG(curCreature, curEnemy, attack);
+    if (item[NAME] == "Empty") {
+        printInfoText("No item was used.");
+    } else if (item[NAME] == "Weaken") {
+        % Setup attack particles
+        % Reset particle system to default
+        defaultParticleSys();
+        % Access the attack
+        var curCreature = curPlayerCreatures[curCreatureIdx];
+        var attacks = curCreature[ATKS];
+        var attackData = ATTACK_LIST[attacks[idx - 1]];
+        % Set attack specific data
+        attackAnimation(attackData[TYPE], ENEMY);
 
-    % Start the attack animation with the enemy as target
-    attackAnimation(attack[TYPE], ENEMY);
-
-    % If the enemy is beaten add xp and lvl up if needed
-    if (curEnemy[CUR_HP] <= 0) {
-        curEnemy[CUR_HP] = 0;
-
-        var exp = addEXP(curEnemy, curCreature);
-        var lvlup = checkLvlUp(curCreature);
-        if (lvlup) {
-            updatePlayerTxt();
-            printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] + " and leveled up.");
-        } else {
-            printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] +
-                " and got " + exp + " experience.");
-        }
-    } else {
-         printInfoText(curCreature[NAME] + " attacked with " + attack[NAME] + "! "
-            + curEnemy[NAME] + " took " + dmg + " damage.");
+        return ACTION_P_ATTACK;
     }
 
-    updateEnemyTxt();
-
-    % Enemy turn
-    turn = ENEMY;
-    turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
-}
-
-/**
- * Select one creature from your creature list as a substitute for
- * the current creature. Does only work if there is an other creature
- * then the current one.
- * This actions switches the turn to the enemy if a switch is made.
- * @param {Number} idx The index of the new creature.
- */
-function change(idx) {
-    var creature = curPlayerCreatures[idx - 1];
-    var oldName = curPlayerCreatures[curCreatureIdx][NAME];
-
-    % If there is no creature or the same one is selected the swap can not be done
-    if (creature[NAME] == "Empty" || curCreatureIdx == idx - 1) {
-        printInfoText("Creature was not switched.");
-        return;
-    }
-
-    curCreatureIdx = idx - 1;
-
-    printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
-    updatePlayerTxt();
-    drawPlayer();
-
-    % Enemy turn
-    turn = ENEMY;
-    turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
-}
-
-function hardChange(idx) {
-    if (curPlayerCreatures[idx - 1][NAME] == "Empty") {
-        printInfoText("You NEED to select a new creature!");
-        return HARD_CHANGE;
-    } else {
-        change(idx);
-        return MENU;
-    }
+    return ACTION_END;
 }
 
 /**
  * Selects the chosen item from the backpack and applies its affect.
- * This actions switches the turn to the enemy if a item is used (unless it is a catcher).
- * @param {Number} idx The index of the chosen item.
+ * Processes items that are targeted on creatures in the player list.
+ * (The difference to 'itemApply' is one gui step.)
+ * Processes:
+ * Capsule (ends current round),
+ * Drink (Triggers attack)
+ * Levelliquid (Triggers attack)
+ * @param {Number} idx The item slot in the backpack (1-4).
  */
-function items(idx) {
-    var item = ITEM_LIST[curPlayerItems[idx - 1]];
+function itemSelect(idx) {
+    var item = ITEM_LIST[curPlayerItems[selection - 1]];
     % If no item at that slot
     if (item[NAME] == "Empty") {
         printInfoText("No item was used.");
-        return MENU;
+        return ACTION_END;
     }
 
     printInfoText("You used " + item[NAME] + ".");
-    % Apply the selected item
-    if (item[NAME] == "Capture") {
-        return catchCreature();
-    }
-    if (item[NAME] == "Improve") {
-    } else if (item[NAME] == "Weaken") {
-    } else if (item[NAME] == "Potion") {
-    } else if (item[NAME] == "lalala") {
+
+    % Capsule does work for empty slots
+    if (item[NAME] == "Capsule") {
+        catchCreature(idx);
+        return ACTION_END;
     }
 
-    % Enemy turn
-    turn = ENEMY;
-    turnInterval = app.setInterval("enemyTurn()", ENEMY_RESPONSE_TIME);
-    return MENU;
-}
-
-/**
- * Add the current enemy creature to your own creature list.
- * If there are already four creature select one to replace it.
- */
-function catchCreature() {
-    % Search for an emty space
-    for (var i = 0; i < curPlayerCreatures.length; i++) {
-        if (curPlayerCreatures[i][NAME] == "Empty") {
-            curPlayerCreatures[i] = curEnemy;
-
-            % Get new enemy
-            curEnemy = getEnemy();
-            updateEnemyTxt();
-            drawEnemy();
-            addInfoText(" Your new enemy is: " + curEnemy[NAME] + ".");
-
-            return MENU;
-        }
+    % Check for if an empty slot was selected
+    if (curPlayerCreatures[idx - 1][NAME] == "Empty") {
+        printInfoText("No creature selected! No item was used.");
+        return ACTION_END;
     }
 
-    % Replace creature because there is no spot left
-    updateButtontxt();
-    addInfoText(" You have no free slot, select one creature to be replaced!");
-    return REPLACE;
+    var selCreature = curPlayerCreatures[idx - 1];
+    if (item[NAME] == "Drink") {
+        % Heal
+        selCreature[CUR_HP] = selCreature[MAX_HP];
+    } else if (item[NAME] == "Levelliquid") {
+        % Increase level by 2
+        selCreature[CUR_EXP] = EXP_TABLE[selCreature[LVL] - MIN_LVL + 2];
+        checkLvlUp(selCreature);
+        checkLvlUp(selCreature);
+    }
+
+    updatePlayerTxt();
+    return ACTION_E_CHOOSE;
 }
 
 /**
  * Replaces the given creature with the enemy creature.
  * It is possible to replace the currently active player creature.
- * @param {Number} idx The index of the player creature.
+ * @param {Number} idx The index of the creature to be replaced (1-4).
  */
-function replace(idx) {
+function catchCreature(idx) {
     curPlayerCreatures[idx - 1] = curEnemy;
     if (idx - 1 == curCreatureIdx) {
         updatePlayerTxt();
-        drawPlayer();
     }
 
     % Get new enemy
     curEnemy = getEnemy();
     updateEnemyTxt();
-    drawEnemy();
+    % Draw both in case the currently active creature was replaced
+    drawAll();
     printInfoText("Creature catched! Your new enemy is: " + curEnemy[NAME] + ".");
 }
 
-%%%%%%%%%%%%%%%%%
-% Enemy actions %
-%%%%%%%%%%%%%%%%%
-/**
- * Calculates the enemys turn. If the current creature has
- * less or equal to zero health a new enemy creature is spawned
- * and the turn shifts back to the player.
- * Otherwise an attack onto the player occurs.
- * If the player creature is beaten, the player needs to chose a new one,
- * unless he has none left then he lost the game.
- */
-function enemyTurn() {
-    if (particleSys.aliveParticles != 0) {
-        return;
-    }
-
-    % Switch turn
-    turn = PLAYER;
-    % Clear the interval, since the enemy should only attack once
-    app.clearInterval(turnInterval);
-
-    % If the enemy is dead he is not able to attack and need to be substituted
-    if (curEnemy[CUR_HP] == 0) {
-        curEnemy = getEnemy();
-        drawEnemy();
-        updateEnemyTxt();
-        printInfoText("Your new enemy is: " + curEnemy[NAME]);
-        return;
-    }
-
-    % Get attack data
-    var attacks = curEnemy[ATKS];
-    var attackIdx = getRandomInt(attacks.length);
-    var attack = ATTACK_LIST[attacks[attackIdx]];
-
-    % Start the attack animation with the player as target
-    attackAnimation(attack[TYPE], PLAYER);
-
-    var creature = curPlayerCreatures[curCreatureIdx];
-    var dmg = inflictDMG(curEnemy, creature, attack);
-    % If the player creature is dead remove it from the player creatures
-    if (creature[CUR_HP] <= 0) {
-        creature[CUR_HP] = 0;
-        updatePlayerTxt();
-
-        curPlayerCreatures[curCreatureIdx] = ["Empty"];
-        % If the player has no creatures left the game is over
-        if (noCreatureLeft()) {
-            gameover = true;
-            printInfoText("No Creatures left, game over!");
-        } else {
-            gamestate = HARD_CHANGE;
-            updateButtontxt();
-            printInfoText("Your creature has no health left, please select a new creature.");
-        }
-    } else {
-        printInfoText("You got attacked with " + attack[NAME] + "! "
-            + creature[NAME] + " took " + dmg + " damage.");
-        updatePlayerTxt();
-    }
-}
-
-%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%
 % Helper %
-%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%
 /**
  * Check if the player has no creatures left.
  */
@@ -1201,7 +1355,7 @@ function noCreatureLeft() {
 
 /**
  * Check if the player creature has leveled up, by comparing
- * its current experience to the needed xp of the next lvl.
+ * its current experience to the needed exp of the next level.
  * @param {Array} creature The data of the creature.
  */
 function checkLvlUp(creature) {
@@ -1229,14 +1383,14 @@ function addEXP(source, target) {
 
 /**
  * Apply damage to the target creature depending on
- * the attack and the source creature lvl.
+ * the attack and the source creature level.
  * Takes also into account the type of both creatures.
  */
 function inflictDMG(source, target, attack) {
     var creatureMul = DMG_MATRIX[source[TYPE]][target[TYPE]];
     var attackMul = DMG_MATRIX[attack[TYPE]][target[TYPE]];
     var dmg = Math.ceil(attack[DMG] * source[LVL] * creatureMul * attackMul);
-    target[CUR_HP] -= dmg;
+    target[CUR_HP] = Math.max(0, target[CUR_HP] - dmg);
     return dmg;
 }
 
@@ -1245,22 +1399,25 @@ function inflictDMG(source, target, attack) {
 %%%%%%%%%%%%
 /**
  * Create a new enemy with level depending on the currently available
- * player creatures. Allows for enemys that continously pose a threat to
+ * player creatures. Allows for enemies that continuously pose a threat to
  * the player and allow him to level up.
  */
 function getEnemy() {
     % Calculate the level depending on the reserve creatures
     var curLvl = 0;
+    var count = 0;
     for (var i = 0; i < curPlayerCreatures.length; i++) {
         if (curPlayerCreatures[i][NAME] != "Empty") {
             curLvl += curPlayerCreatures[i][LVL];
+            count++;
         }
     }
-    curLvl /= curPlayerCreatures.length;
+    curLvl /= count;
 
     % Variance
-    var offset = getRandomInt(MIN_LVL * 2);
-    curLvl = curLvl + (MIN_LVL - offset);
+    const mul = 2.5;
+    var offset = count * mul * 0.5 - getRandomInt(count * mul + 1);
+    curLvl += offset;
     curLvl = Math.max(MIN_LVL, Math.floor(curLvl));
 
     return getCreature(curLvl);
@@ -1299,12 +1456,12 @@ function getCreature(curLvl) {
  * current menu state.
  */
 function updateButtontxt() {
-    if (gamestate == MENU) {
+    if (guiState == MENU) {
         this.getField("button1txt").value = "Fight";
         this.getField("button2txt").value = "Change";
         this.getField("button3txt").value = "Item";
         this.getField("button4txt").value = "Run";
-    } else if (gamestate == FIGHT) {
+    } else if (guiState == FIGHT) {
         % Show all attacks of the current creature
         var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
         for (var i = 0; i < 4; i++) {
@@ -1314,7 +1471,7 @@ function updateButtontxt() {
                 + TYPE_STRINGS[attack[TYPE]] + " dmg per lvl)";
             this.getField(btn).value = attack[NAME] + dmgTxt;
         }
-    } else if (gamestate == CHANGE || gamestate == HARD_CHANGE || gamestate == REPLACE) {
+    } else if (guiState == ITEM_SELECT || guiState == CHANGE) {
         % Show all player creatures with lvl if available
         for (var i = 0; i < 4; i++) {
             var btn = "button" + (i + 1) + "txt";
@@ -1324,22 +1481,17 @@ function updateButtontxt() {
             }
             this.getField(btn).value = name;
         }
-    } else if (gamestate == ITEMS) {
-        this.getField("button1txt").value = ITEM_LIST[curPlayerItems[0]][NAME];
-        this.getField("button2txt").value = ITEM_LIST[curPlayerItems[1]][NAME];
-        this.getField("button3txt").value = ITEM_LIST[curPlayerItems[2]][NAME];
-        this.getField("button4txt").value = ITEM_LIST[curPlayerItems[3]][NAME];
+    } else if (guiState == ITEMS) {
+        % Show all items that are available
+        for (var i = 0; i < 4; i++) {
+            var btn = "button" + (i + 1) + "txt";
+            var name = ITEM_LIST[curPlayerItems[i]][NAME];
+            if (name != "Empty") {
+                name += " (" + ITEM_LIST[curPlayerItems[i]][DESC] + ")";
+            }
+            this.getField(btn).value = name;
+        }
     }
-}
-
-/**
- * Updates the enemy information displayed by the gui.
- */
-function updateEnemyTxt() {
-    this.getField("enemyname").value = curEnemy[NAME];
-    this.getField("enemystatus").value =
-        "Type: " + TYPE_STRINGS[curEnemy[TYPE]] + " - Level: " + curEnemy[LVL];
-    this.getField("enemyhp").value = "HP: " + curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
 }
 
 /**
@@ -1353,21 +1505,734 @@ function updatePlayerTxt() {
     this.getField("playerhp").value = "HP: " + creature[CUR_HP] + " of " + creature[MAX_HP];
 }
 
-%%%%%%%%%%%%%%%%%%%%%
-% Animation %
-%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Updates the enemy information displayed by the gui.
+ */
+function updateEnemyTxt() {
+    this.getField("enemyname").value = curEnemy[NAME];
+    this.getField("enemystatus").value =
+        "Type: " + TYPE_STRINGS[curEnemy[TYPE]] + " - Level: " + curEnemy[LVL];
+    this.getField("enemyhp").value = "HP: " + curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
+}
+
+%%%%%%%%%%%%%%%%%%%%
+% Attack animation %
+%%%%%%%%%%%%%%%%%%%%
+/**
+ * (Re)set the particle array and the particleSys object to its
+ * default state. Also resets the physics attributes and the functions.
+ */
+function defaultParticleSys() {
+    particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
+        DEAD, [0, 0], % STATE, POS
+        0, 0, % SYMB, ROTATION
+        2, [0, 0],  % MASS, MOMENTUM
+        canvas.halfWidth / FIELD_HEIGHT, % WIDTH
+        canvas.halfHeight / FIELD_HEIGHT, % HEIGHT
+        (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 1.3 % SIZE
+    ]);
+
+    % Needed because the water changes the fill color
+    var particle = this.getField("atkanim" + 0);
+    particle.fillColor = color.transparent;
+
+    particleSys = {
+        iterationCount: ATK_DURATION - 1,
+        iterationCur: 0,
+        aliveParticles: 0,
+        alignment: "center",
+        particleCount: FIELD_WIDTH,
+        particleSymbols: ["X"],
+        particleLifetime: ATK_DURATION - 1,
+        particleMultiline: false,
+        particleBold: false,
+        gravity: [0, -9.81],
+        force: [0, 5],
+        energyReduction: 0.45,
+        % FUNCTIONS
+        emit: function(p) {
+            particles[p][STATE]++;
+            this.aliveParticles++;
+            return true;
+        },
+        remove: function(p) {
+            hideParticleField(p);
+            particles[p][STATE] = DEAD;
+            this.aliveParticles--;
+        },
+        finished: function() {
+            var finished = this.iterationCount < this.iterationCur;
+            return finished && this.aliveParticles == 0;
+        }
+    };
+}
+
+/**
+ * Sets the canvas object to contain information about the sizes,
+ * borders and the center of both canvas elements.
+ */
+function setCanvasData() {
+    const PLAYER_TOP_RECT = this.getField("player0").rect;
+    const PLAYER_BOT_RECT = this.getField("player" + (FIELD_HEIGHT - 1)).rect;
+    const L_P = PLAYER_TOP_RECT[0];
+    const B_P = PLAYER_BOT_RECT[3];
+
+    const ENEMY_TOP_RECT = this.getField("enemy0").rect;
+    const ENEMY_BOT_RECT = this.getField("enemy" + (FIELD_HEIGHT - 1)).rect;
+    const L_E = ENEMY_TOP_RECT[0];
+    const B_E = ENEMY_BOT_RECT[3];
+
+    const halfHeight = (PLAYER_TOP_RECT[1] - B_P) * 0.5;
+    const halfWidth = (PLAYER_TOP_RECT[2] - L_P) * 0.5;
+
+    canvas = {
+        c: [ % center
+            [L_P + halfWidth, B_P + halfHeight], % Player
+            [L_E + halfWidth, B_E + halfHeight] % Enemy
+        ],
+        l: [L_P, L_E],
+        r: [PLAYER_TOP_RECT[2], ENEMY_TOP_RECT[2]],
+        t: [PLAYER_TOP_RECT[1], ENEMY_TOP_RECT[1]],
+        b: [B_P, B_E],
+        halfHeight: halfHeight,
+        halfWidth: halfWidth,
+    };
+}
+
+/**
+ * Alters the position of the given particlce by using gravity.
+ * The floor can be used to achieve a jumping motion.
+ * Very similar the implementation found here:
+ * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
+ * @param {Number} p The particle index.
+ * @param {Number} floor The y position at which the floor should be.
+ */
+function applyGravityToParticle(p, floor) {
+    const h = particles[p][HEIGHT];
+    const g = particleSys.gravity;
+    const f = particleSys.force;
+    const m = particles[p][MASS];
+    var pos = particles[p][POS];
+    var mom = particles[p][MOMENTUM];
+
+    % Momentum += gravity + force
+    mom = [mom[X] + g[X] + f[X], mom[Y] + g[Y] + f[Y]];
+    % Velocity = momentum / mass
+    var v = [mom[X] / m, mom[Y] / m];
+    % Position += velocity
+    pos = [pos[X] + v[X], pos[Y] + v[Y]];
+
+    % If position is at floor & momentum heading downward
+    if (pos[Y] < floor + h && mom[Y] < 0) {
+        pos[Y] = floor + h;
+        % Bouncing off direction
+        var collisionNormal = [0, 1];
+        var dot = mom[X] * collisionNormal[X] + mom[Y] * collisionNormal[Y];
+        % Reflect
+        mom = [mom[X] - collisionNormal[X] * 2 * dot, mom[Y] - collisionNormal[Y] * 2 * dot];
+        % Energy loss from bounce.
+        mom = [mom[X] * particleSys.energyReduction, mom[Y] * particleSys.energyReduction];
+    }
+
+    particles[p][MOMENTUM] = mom;
+    return pos;
+}
+
+/**
+ * Initialize the particle system data depending on the type.
+ * A target can be chosen. This will use the data
+ * from the corresponding canvas element.
+ * @param {Number} type The type of the chosen animation.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function attackAnimation(type, target) {
+    if (type == T_WATER) {
+        waterParticles(target);
+    } else if (type == T_AIR) {
+        airParticles(target);
+    } else if (type == T_STONE) {
+        stoneParticles(target);
+    } else if (type == T_GRASS) {
+        grassParticles(target);
+    } else if (type == T_GHOST) {
+        ghostParticles(target);
+    } else if (type == T_FLUFF) {
+        fluffParticles(target);
+    } else { % T_FIRE
+        fireParticles(target);
+    }
+}
+
+/**
+ * Sets up a water particle system, in which a body of water is
+ * slowly rising above the target canvas.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function waterParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.particleSymbols = ["(", " )", "(", "(", "(", " )", " )", "(", " )", " )", ""];
+    particleSys.particleBold = true;
+    particleSys.particleCount = FIELD_WIDTH / 2.0 + 1;
+
+    % Prepare a particle as an white overlay to conceal the target creature
+    var particle = this.getField("atkanim" + 0);
+    particle.fillColor = color.white;
+
+    % Override functions
+    particleSys.emit = function(p) {
+        % Special case for the overlay particle
+        % Different size, pos and symbol
+        if (p == 0) {
+            particles[p][STATE]++;
+            particles[p][POS] = [canvas.c[target][X], 0];
+            particles[p][SYMB] = particleSys.particleSymbols.length - 1;
+            particles[p][WIDTH] = canvas.halfWidth;
+
+            this.aliveParticles++;
+
+            return true;
+        }
+
+        const w = particles[p][WIDTH];
+        var xPos = canvas.l[target] + w + (p - 1) * w * 2.0;
+        % Init particle - rotation ...
+        particles[p][STATE]++;
+        particles[p][POS] = [xPos, 0];
+        particles[p][SYMB] = p \% (particleSys.particleSymbols.length - 1);
+        particles[p][ROTATION] = 90;
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(l, p) {
+        % Height and pos of the top line
+        const h = particles[1][HEIGHT];
+        const bot = canvas.b[target];
+        const top = (bot + canvas.halfHeight * 2.0 * 0.75 - h);
+        var yPos = (1.0 - l) * (bot + h + 1) + l * top;
+
+        % Special case for the overlay particle
+        if (p == 0) {
+            % Since the alignment of the brackets is somewhat weird the box needs to be
+            % shifted by half a wavefrontheight
+            particles[p][HEIGHT] = (yPos + h * 0.5 - bot) * 0.5;
+            particles[p][POS][Y] = bot + particles[p][HEIGHT];
+            return;
+        }
+
+        particles[p][POS][Y] = yPos;
+        % Shift the symbol to get the appearance of moving waves
+        particles[p][SYMB] = (particles[p][SYMB] + 1) \% (particleSys.particleSymbols.length - 1);
+    };
+}
+
+/**
+ * Sets up a air particle system, in which lines cross the target canvas,
+ * similar to action lines.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function airParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.particleSymbols = ["--", ">>", "->", "~>", "~~"];
+    particleSys.particleCount = 20;
+    % Alter the physics since the particles should accelerate to the right
+    particleSys.gravity = [0, 0];
+    particleSys.force = [5, 0];
+
+    % Emit a particle that is part of a group containing 'memberCount' many particles
+    particleSys.emit = function(p) {
+        % Create a particle with same width as height
+        particles[p][WIDTH] = (canvas.halfWidth / FIELD_WIDTH) * 2.5;
+
+        % Determine the leader to which the particle belongs
+        const memberCount = 4;
+        const groupIdx = Math.floor(p / memberCount);
+        const leader = memberCount * groupIdx;
+
+        const bot = canvas.b[target];
+        const left = canvas.l[target];
+
+        % This is a leader particle
+        var yPos, pos;
+        if (p == leader) {
+            % Emission percentage
+            if (getRandomInt(100) > 20) {
+                return false;
+            }
+
+            % Do not emit this leader if the last particle is not dead yet
+            if (particles[leader + memberCount - 1][STATE] != DEAD) {
+                return false;
+            }
+
+            % Get random y pos
+            yPos = bot + particles[p][HEIGHT] +
+                getRandomInt((canvas.halfHeight - particles[p][HEIGHT]) * 2.0);
+            pos = [left + particles[p][WIDTH], yPos];
+        } else {
+            % Place the particle directly behind his leading particle
+            pos = [particles[p - 1][POS][X], particles[p - 1][POS][Y]];
+            pos[X] -= 2.0 * particles[p][WIDTH];
+            % If the particle would be placed out of bounds, wait for the next opportunity
+            % If the leader is still dead do not emit
+            if (pos[X] < left + particles[p][WIDTH] || particles[p - 1][STATE] == DEAD) {
+                return false;
+            }
+        }
+
+        % Init particle
+        particles[p][STATE]++;
+        particles[p][POS] = pos;
+        particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
+        particles[p][MASS] = 1;
+        particles[p][MOMENTUM] = [2, 0];
+
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(l, p) {
+        % Determine the leader to which the particle belongs
+        const memberCount = 4;
+        const groupIdx = Math.floor(p / memberCount);
+        const leader = memberCount * groupIdx;
+
+        const bot = canvas.b[target];
+        const right = canvas.r[target];
+
+        var pos;
+        % This is a leader particle
+        if (p == leader) {
+            % Move particle to the right
+            pos = applyGravityToParticle(p, bot);
+        } else {
+            % Take the x position of the leader particle
+            pos = [particles[p - 1][POS][X], particles[p][POS][Y]];
+            % If the leader is already outofbounds
+            if (pos[X] >= right - particles[p][WIDTH]) {
+                pos[X] -= 2.0 * particles[p][WIDTH];
+                % If the particle is near the leader, move to max
+                if (particles[p][POS][X] == pos[X]) {
+                    pos[X] = right - particles[p][WIDTH];
+                    particles[p][STATE] = particleSys.particleLifetime;
+                }
+            } else {
+                pos[X] -= 2.0 * particles[p][WIDTH];
+            }
+        }
+
+        % If the particle is out of bounds, mark the particle as finished
+        % And hard set the position, such that the particle does not move
+        if (pos[X] > right - particles[p][WIDTH]) {
+            particles[p][STATE] = particleSys.particleLifetime;
+            pos[X] = right - particles[p][WIDTH];
+        }
+        particles[p][POS] = pos;
+    };
+}
+
+/**
+ * Sets up a stone particle system, in which three blobs fall to the floor
+ * of the target canvas and jump while they break into dust.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function stoneParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.particleSymbols = [
+        "[##]\n [##]", "\n ####", "\n ## #", "\n #  #", "\n #   #", "\n #    #"
+    ];
+    % Allow for stones that are bigger than one line
+    particleSys.particleMultiline = true;
+    particleSys.particleCount = 3;
+
+    particleSys.emit = function(p) {
+        % Create a particle with same width as height
+        particles[p][WIDTH] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][HEIGHT] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
+
+        const s = (canvas.l[target] + particles[p][WIDTH]);
+        const w = (canvas.halfWidth - particles[p][WIDTH]) * 2.0;
+        const top = canvas.t[target];
+        % Determine the start position
+        const pos = [
+            [s + w * 0.25, top - particles[p][HEIGHT]],
+            [s + w * 0.5, top],
+            [s + w * 0.75, top - particles[p][HEIGHT]]
+        ];
+        % Have different movement paths
+        const mom = [
+            [-2, 2],
+            [0, 2],
+            [2, 2]
+        ]
+
+        particles[p][STATE]++;
+        particles[p][POS] = pos[p \% particleSys.particleCount];
+        particles[p][SYMB] = 0;
+        particles[p][MASS] = 2;
+        particles[p][MOMENTUM] = mom[p \% particleSys.particleCount];
+
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    % Falling stones move function
+    particleSys.move = function(l, p) {
+        const bot = canvas.b[target];
+        % Just apply physics, let them fall and bounce of the ground
+        particles[p][POS] = applyGravityToParticle(p, bot);
+
+        % If the particle has started dissolving, set to next step
+        if (particles[p][SYMB] > 0 &&
+            particles[p][SYMB] < particleSys.particleSymbols.length - 1 &&
+            particles[p][STATE] \% 2 == 0
+        ) {
+            particles[p][SYMB]++;
+        }
+
+        % If the particle reaches the floor start dissolving
+        if (particles[p][POS][Y] <= bot + particles[p][HEIGHT] && particles[p][SYMB] == 0) {
+            particles[p][SYMB] = 1;
+            particles[p][MASS] = 1;
+        }
+    };
+}
+
+/**
+ * Sets up a grass particle system, in which two iterations of
+ * particles in form of leaves are getting shot at the target.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function grassParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    % Array of leave symbols
+    particleSys.particleSymbols = ["()", "#", "{}"];
+
+    particleSys.emit = function(p) {
+        % Emission percentage
+        if (getRandomInt(100) > 5) {
+            return false;
+        }
+
+        % Alter the starting point of the particles in the y direction
+        const offset = 70;
+        const offsetY = -offset * 0.5 + getRandomInt(offset);
+        particles[p][POS][Y] = canvas.c[(target + 1) \% 2][Y] + offsetY;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
+        particles[p][ROTATION] = 90;
+
+        particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
+        particles[p][STATE]++;
+
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(l, p) {
+        % Move the particles linearly along the vector from the source to the target
+        var s = canvas.c[(target + 1) \% 2];
+        var t = canvas.c[target];
+        particles[p][POS][X] = s[X] * (1.0 - l) + t[X] * l;
+        particles[p][POS][Y] += ((t[Y] - s[Y]) / particleSys.particleLifetime);
+    }
+}
+
+/**
+ * Sets up a ghost particle system, in which a circle of
+ * particles moves in a rotating motion to the center of the target canvas.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function ghostParticles(target) {
+    % Circular move function
+    particleSys.move = function(l, p) {
+        const R_X = canvas.halfWidth;
+        const R_Y = canvas.halfWidth;
+        const ANGLE = (Math.PI * 2.0) / particles.length;
+
+        % Circle motion
+        const offsetX = R_X * Math.cos(p * ANGLE + l * Math.PI * 2.0);
+        const offsetY = R_Y * Math.sin(p * ANGLE + l * Math.PI * 2.0);
+
+        particles[p][POS][X] = canvas.c[target][X] + (1.0 - l) * offsetX;
+        particles[p][POS][Y] = canvas.c[target][Y] + (1.0 - l) * offsetY;
+    }
+}
+
+/**
+ * Sets up a fluff particle system, in which one fluff ball
+ * (miniSheep, cloud) is thrown at the target canvas center point (uses physics).
+ * @param {Number} target The target-idx of the canvas.
+ */
+function fluffParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 1.6;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 1.6;
+    % The mini sheep / cloud / fluff ball
+    particleSys.particleSymbols = [
+        ".-:' ;`-.\n (         )\n (           )\n (         )\n `-'._._.'", ""
+    ];
+    particleSys.particleMultiline = true;
+    particleSys.particleCount = 1;
+    % Adjust physics
+    particleSys.force = [0, 0];
+
+    particleSys.emit = function(p) {
+        particles[p][WIDTH] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][HEIGHT] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 3.0;
+        particles[p][POS] = canvas.c[(target + 1) \% 2];
+
+        % Different physics since the canvas elements are not equal in height
+        if (target == PLAYER) {
+            particles[p][MOMENTUM] = [-35, 15 * 4.0];
+        } else {
+            particles[p][MOMENTUM] = [40, 15 * 6.5];
+        }
+
+        particles[p][STATE]++;
+        this.aliveParticles++;
+        return true;
+    }
+
+    % Throw move function
+    particleSys.move = function(l, p) {
+        particles[p][POS] = applyGravityToParticle(p, 0.0);
+
+        % Increase the object over time to get something similar to an fluff explosion
+        particles[p][SIZE] *= 1.07;
+        particles[p][WIDTH] *= 1.07;
+        particles[p][HEIGHT] *= 1.07;
+        % Disable physics if the center of the target canvas is reached
+        if (particles[p][POS][X] >= canvas.l[target] &&
+            particles[p][POS][X] <= canvas.r[target] &&
+            particles[p][POS][Y] <= canvas.c[target][Y]
+        ) {
+            particles[p][MOMENTUM] = [0, 0];
+            particleSys.gravity = [0, 0];
+        }
+    }
+}
+
+/**
+ * Sets up a fire particle system, in which ascii-fire
+ * is overlayed over the target canvas.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function fireParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.alignment = "left";
+
+    % The different fire steps
+    % https://ascii.co.uk/art/fire
+    % Prevent bracket issues
+    "((((((((((((";
+    particleSys.particleSymbols = [
+        "       (                           ",
+        "       )                 '    .    ",
+        "         *          )     .        ",
+        "   ( .    ) .     ('  )  (    )  * ",
+        "    .*)  (  )   ,  )  ,    )  (.   ",
+        " ).   ( . :(   )  ( , ')   .'  ),( ",
+        "(_,)  _), _) .(_, )  (, ) '_),.(' )",
+        %
+        "       ?            )    .         ",
+        "       '          (           '    ",
+        "        \"                 '        ",
+        "      )  (  '      ) :    )   (    ",
+        "  .  ' (   ) .   ' ( . ' (     )'  ",
+        " ('    )  ' )  (   )   )   '   )(  ",
+        "(#_)_ _),_ ) '(_: )  (* )_ _)*'(  )",
+        %
+        "       .           ?               ",
+        "                  '           *    ",
+        "         .                         ",
+        "   ( *    )        )     (     :   ",
+        "    ')   ( ) '    (  '  )      ('  ",
+        " ('     ( '  . (   )   (   '   )(  ",
+        "( _) __('#_)  ('_ )  ( .) __)*'(  )",
+        %
+        "                   .               ",
+        "       :                           ",
+        "    ,   (                (         ",
+        "   ).     )    .   )  .   )    ( , ",
+        "  . (   )  (      (      (  *    ) ",
+        " (   )  '   )  (.  )    (      ( ) ",
+        "(  )  _) : )' (  _(  ). )  _(#_(  )"
+    ];
+    ")))";
+    % Particles equal linecount
+    particleSys.particleCount = 7;
+
+    particleSys.emit = function(p) {
+        % Bottom aligned
+        const h = particles[p][HEIGHT];
+        const bot = canvas.b[target];
+        var yPos = bot + h + p * h * 2.0;
+        var lines = particleSys.particleCount;
+
+        particles[p][STATE]++;
+        particles[p][POS] = [canvas.c[target][X], yPos];
+        particles[p][SYMB] = (lines - p - 1) \% particleSys.particleSymbols.length;
+        particles[p][WIDTH] = canvas.halfWidth;
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(l, p) {
+        % Increase current particle value (select next frame to show)
+        var lines = particleSys.particleCount;
+        var frames = particleSys.particleSymbols.length / lines;
+        particles[p][SYMB] = (lines - p - 1) + lines * (particles[p][STATE] \% frames);
+    };
+}
+
+/**
+ * Process the currently active particle system,
+ * by iterating all active particles.
+ * If an active particle is also dead and emit is attempted.
+ * Otherwise the particle is updated and moved.
+ */
+function processParticles() {
+    for (var p = 0; p < Math.min(particles.length, particleSys.particleCount); p++) {
+        % If the particle is dead ...
+        if (particles[p][STATE] == DEAD) {
+            % ... check whether new particles should be emitted
+            var finished = particleSys.iterationCount < particleSys.iterationCur;
+            if (!finished) {
+                % ... do not process this particle if emitting it failed
+                if (!particleSys.emit(p)) {
+                    continue;
+                }
+            }
+            % ... if not do not process this particle
+            else {
+                continue;
+            }
+        } else if (particleSys.particleLifetime < particles[p][STATE]) {
+            particleSys.remove(p);
+            continue;
+        }
+
+        % TODO move
+        var l = particles[p][STATE] / particleSys.particleLifetime;
+
+        particleSys.move(l, p);
+        % Draw the particle rectangle
+        moveParticleField(p);
+        % Process particle content and appearance
+        showAndUpdateParticleField(p);
+
+        particles[p][STATE]++;
+    }
+
+    particleSys.iterationCur++;
+}
+
+/**
+ * Adjust the visualization rectangle of the given particle,
+ * by using position, width and height.
+ * @param {Number} p The particle index.
+ */
+function moveParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+
+    const x = particles[p][POS][X];
+    const y = particles[p][POS][Y];
+    const w = particles[p][WIDTH];
+    const h = particles[p][HEIGHT];
+    var rect = [x - w, y + h, x + w, y - h];
+
+    particle.rect = rect;
+}
+
+/**
+ * Adjust the value and appearance of the given particle.
+ * For example: multiline, textfont, textsize, rotation.
+ * @param {Number} p The particle index.
+ */
+function showAndUpdateParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+
+    particle.hidden = false;
+    particle.textFont = font.Cour;
+    particle.alignment = particleSys.alignment;
+    particle.textSize = particles[p][SIZE];
+    particle.rotation = particles[p][ROTATION];
+
+    var textIdx = particles[p][SYMB];
+    particle.value = particleSys.particleSymbols[textIdx];
+    % Determine if richText is needed
+    if (particleSys.particleMultiline || particleSys.particleBold) {
+        var spans = new Array();
+        spans[0] = new Object();
+        spans[0].text = particleSys.particleSymbols[textIdx];
+        if (particleSys.particleBold) {
+            spans[0].fontWeight = 700;
+        }
+
+        particle.richText = true;
+        particle.richValue = spans;
+    } else {
+        particle.richText = false;
+        particle.value = particleSys.particleSymbols[textIdx];
+    }
+}
+
+/**
+ * Hide the given particle.
+ * @param {Number} p The particle index.
+ */
+function hideParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+    particle.hidden = true;
+}
+
+%%%%%%%%%%%%%%%%%%%%
+% Player animation %
+%%%%%%%%%%%%%%%%%%%%
+/**
+ * Show next frame for player and enemy canvas.
+ */
 function frameAll() {
     frame(["player", "enemy"]);
 }
 
+/**
+ * Show next frame for the player canvas.
+ */
 function framePlayer() {
     frame(["player"]);
 }
 
+/**
+ * Show next frame for the enemy canvas.
+ */
 function frameEnemy() {
     frame(["enemy"]);
 }
 
+/**
+ * Shows next frame for all given canvas, by shifting all lines
+ * of the current canvas values.
+ * If the animation is completed (all lines where shifted x times),
+ * the animation interval is cleared.
+ * @param {Array} owners The canvas owner which shall be shifted.
+ */
 function frame(owners) {
     if (animationProgress < 0) {
         app.clearInterval(changeAnimationInterval);
@@ -1376,6 +2241,7 @@ function frame(owners) {
     }
 
     for (var idx = 0; idx < owners.length; idx++) {
+        % Shift all lines
         for (var m = 0; m < FIELD_HEIGHT; m++) {
             shiftFieldLeft(owners[idx] + m);
         }
@@ -1385,9 +2251,8 @@ function frame(owners) {
 }
 
 /**
- * Adds the current creature of the given owner to the corresponding
- * field. The strings are simply concatenated line by line to the current
- * field value.
+ * Adds the current creature of the given owner to the corresponding field.
+ * The strings are simply concatenated line by line to the current field value.
  * @param {Number} owner The owner, being either the player or the enemy.
  */
 function addCurCreature(owner) {
@@ -1436,606 +2301,6 @@ function addCurCreature(owner) {
             addToField("enemy" + m, valueString);
         }
     }
-}
-
-const ENEMY_TOP_RECT = this.getField("enemy0").rect;
-const ENEMY_BOT_RECT = this.getField("enemy" + (FIELD_HEIGHT - 1)).rect;
-
-const R = ENEMY_TOP_RECT[2];
-const L = ENEMY_TOP_RECT[0];
-const T = ENEMY_TOP_RECT[1];
-const B = ENEMY_BOT_RECT[3];
-
-const FIELD_HEIGHT_H = (T - B) / 2.0; % TODO canvas half height
-%const SIZE_H = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
-const FIELD_WIDTH_H = (R - L) / 2.0;
-
-const ATK_DURATION = 15;
-
-const DEAD = -1;
-
-const STATE = 0;
-const POS = 1;
-const SYMB = 2;
-const ROTATION = 3;
-const MASS = 4;
-const MOMENTUM = 5;
-const WIDTH = 6;
-const HEIGHT = 7;
-const SIZE = 8;
-
-const X = 0;
-const Y = 1;
-
-var particles;
-var particleSys = { aliveParticles: 0 };
-var canvas;
-
-function setCanvasData() {
-    const PLAYER_TOP_RECT = this.getField("player0").rect;
-    const PLAYER_BOT_RECT = this.getField("player" + (FIELD_HEIGHT - 1)).rect;
-    const L_P = PLAYER_TOP_RECT[0];
-    const B_P = PLAYER_BOT_RECT[3];
-
-    const ENEMY_TOP_RECT = this.getField("enemy0").rect;
-    const ENEMY_BOT_RECT = this.getField("enemy" + (FIELD_HEIGHT - 1)).rect;
-    const L_E = ENEMY_TOP_RECT[0];
-    const B_E = ENEMY_BOT_RECT[3];
-
-    canvas = {
-        c: [
-            [L_P + FIELD_WIDTH_H, B_P + FIELD_HEIGHT_H], % Player
-            [L_E + FIELD_WIDTH_H, B_E + FIELD_HEIGHT_H] % Enemy
-        ],
-        l: [L_P, L_E],
-        r: [PLAYER_TOP_RECT[2], ENEMY_TOP_RECT[2]],
-        t: [PLAYER_TOP_RECT[1], ENEMY_TOP_RECT[1]],
-        b: [B_P, B_E]
-    };
-}
-
-function defaultParticleSys() {
-    setCanvasData(); % TODO
-
-    particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
-        DEAD, [0, 0], % STATE, POS
-        0, 0, % SYMB, ROTATION
-        2, [0, 0],  % MASS, MOMENTUM
-        FIELD_WIDTH_H / FIELD_HEIGHT, % WIDTH
-        FIELD_HEIGHT_H / FIELD_HEIGHT, % HEIGHT
-        (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 1.3 % SIZE
-    ]);
-
-    particleSys = {
-        frameTime: 75,
-        iterationCount: ATK_DURATION - 1,
-        iterationCur: 0,
-        aliveParticles: 0,
-        alignment: "center",
-        particleCount: FIELD_WIDTH,
-        particleSymbols: ["X"],
-        particleLifetime: ATK_DURATION - 1,
-        particleMultiline: false,
-        particleBold: false,
-        gravity: [0, -9.81],
-        force: [0, 5],
-        energyReduction: 0.45,
-        % FUNCTIONS
-        emit: function(p) {
-            particles[p][STATE]++;
-            this.aliveParticles++;
-            return true;
-        },
-        remove: function(p) {
-            hideParticleField(p);
-            particles[p][STATE] = DEAD;
-            this.aliveParticles--;
-        }
-    };
-}
-
-/**
- * Very similar to an implementation that can be found here:
- * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
- */
-function applyGravityToParticle(p, floor) {
-    const h = particles[p][HEIGHT];
-    const g = particleSys.gravity;
-    const f = particleSys.force;
-    const m = particles[p][MASS];
-    var pos = particles[p][POS];
-    var mom = particles[p][MOMENTUM];
-
-    % Momentum += gravity + force
-    mom = [mom[X] + g[X] + f[X], mom[Y] + g[Y] + f[Y]];
-    % Velocity = momentum / mass
-    var v = [mom[X] / m, mom[Y] / m];
-    % Position += velocity
-    pos = [pos[X] + v[X], pos[Y] + v[Y]];
-
-    % If position is at floor & momentum heading downward
-    if (pos[Y] < floor + h && mom[Y] < 0) {
-        pos[Y] = floor + h;
-        % Bouncing off direction
-        var collisionNormal = [0, 1];
-        var dot = mom[X] * collisionNormal[X] + mom[Y] * collisionNormal[Y];
-        % Reflect
-        mom = [mom[X] - collisionNormal[X] * 2 * dot, mom[Y] - collisionNormal[Y] * 2 * dot];
-        % Energy loss from bounce.
-        mom = [mom[X] * particleSys.energyReduction, mom[Y] * particleSys.energyReduction];
-    }
-
-    particles[p][MOMENTUM] = mom;
-    return pos;
-}
-
-function attackAnimation(type, target) {
-    defaultParticleSys();
-
-    if (type == T_WATER) {
-        waterParticles(target);
-    } else if (type == T_AIR) {
-        airParticles(target);
-    } else if (type == T_STONE) {
-        stoneParticles(target);
-    } else if (type == T_GRASS) {
-        grassParticles(target);
-    } else if (type == T_GHOST) {
-        ghostParticles(target);
-    } else if (type == T_FLUFF) {
-        fluffParticles(target);
-    } else { % T_FIRE
-        fireParticles(target);
-    }
-
-    attackInterval = app.setInterval("processParticles()", particleSys.frameTime);
-}
-
-function waterParticles(target) {
-    particleSys.frameTime = 15;
-    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
-    particleSys.particleLifetime = (ATK_DURATION - 1) * 4;
-    particleSys.particleSymbols = ["(", " )", "(", "(", "(", " )", " )", "(", " )", " )", ""];
-    particleSys.particleBold = true;
-    particleSys.particleCount = FIELD_WIDTH / 2.0 + 1;
-
-    var particle = this.getField("atkanim" + 0);
-    particle.fillColor = color.white;
-
-    particleSys.emit = function(p) {
-        if (p == 0) {
-            particles[p][STATE]++;
-            particles[p][POS] = [canvas.c[target][X], 0];
-            particles[p][SYMB] = particleSys.particleSymbols.length - 1;
-            particles[p][WIDTH] = FIELD_WIDTH_H;
-
-            this.aliveParticles++;
-
-            return true;
-        }
-
-        const w = particles[p][WIDTH];
-        var xPos = canvas.l[target] + w + (p - 1) * w * 2.0;
-
-        particles[p][STATE]++;
-        particles[p][POS] = [xPos, 0];
-        particles[p][SYMB] = p \% (particleSys.particleSymbols.length - 1);
-        particles[p][ROTATION] = 90;
-        this.aliveParticles++;
-
-        return true;
-    };
-
-    particleSys.move = function(l, p) {
-        % Height and pos of the top line
-        const h = particles[1][HEIGHT];
-        const bot = canvas.b[target];
-        const top = (bot + FIELD_HEIGHT_H * 2.0 * 0.75 - h);
-        var yPos = (1.0 - l) * (bot + h + 1) + l * top;
-
-        if (p == 0) {
-            % Since the alignment of the brackeds is somewhat weird the box needs to be
-            % shifted by half a wavefrontheight
-            particles[p][HEIGHT] = (yPos + h * 0.5 - bot) * 0.5;
-            particles[p][POS][Y] = bot + particles[p][HEIGHT];
-            return;
-        }
-
-        particles[p][POS][Y] = yPos;
-        particles[p][SYMB] = (particles[p][SYMB] + 1) \% (particleSys.particleSymbols.length - 1);
-    };
-}
-
-function airParticles(target) {
-    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
-    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
-    particleSys.particleSymbols = ["--", ">>", "->", "~>", "~~"];
-    particleSys.particleCount = 20;
-    % TODO reset particleSys
-    particleSys.gravity = [0, 0];
-    particleSys.force = [5, 0];
-
-    particleSys.emit = function(p) {
-        % Create a particle with same width as height
-        particles[p][WIDTH] = (FIELD_WIDTH_H / FIELD_WIDTH) * 2.5;
-
-        const memberCount = 4;
-        const groupIdx = Math.floor(p / memberCount);
-        const leader = memberCount * groupIdx;
-
-        const bot = canvas.b[target];
-        const left = canvas.l[target];
-
-        % This is a leader particle
-        var yPos, pos;
-        if (p == leader) {
-            % Emission percentage
-            if (getRandomInt(100) > 20) {
-                return false;
-            }
-
-            % Do not emit this leader if the last particle is not dead yet
-            if (particles[leader + memberCount - 1][STATE] != DEAD) {
-                return false;
-            }
-
-            yPos = bot + particles[p][HEIGHT] + getRandomInt((FIELD_HEIGHT_H - particles[p][HEIGHT]) * 2.0);
-            pos = [left + particles[p][WIDTH], yPos];
-        } else {
-            pos = [particles[p - 1][POS][X], particles[p - 1][POS][Y]];
-            pos[X] -= 2.0 * particles[p][WIDTH];
-            if (pos[X] < left + particles[p][WIDTH] || particles[p - 1][STATE] == DEAD) {
-                return false;
-            }
-        }
-
-        particles[p][STATE]++;
-        particles[p][POS] = pos;
-        particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
-        particles[p][MASS] = 1;
-        particles[p][MOMENTUM] = [2, 0];
-
-        this.aliveParticles++;
-
-        return true;
-    };
-
-    % Falling stones move function
-    particleSys.move = function(l, p) {
-        const memberCount = 4;
-        const groupIdx = Math.floor(p / memberCount);
-        const leader = memberCount * groupIdx;
-
-        const bot = canvas.b[target];
-        const right = canvas.r[target];
-
-        var pos;
-        % This is a leader particle
-        if (p == leader) {
-            pos = applyGravityToParticle(p, bot);
-        } else {
-            pos = [particles[p - 1][POS][X], particles[p][POS][Y]];
-            % If the leader is already outofbounds
-            if (pos[X] >= right - particles[p][WIDTH]) {
-                pos[X] -= 2.0 * particles[p][WIDTH];
-                % If the particle is near the leader
-                if (particles[p][POS][X] == pos[X]) {
-                    pos[X] = right - particles[p][WIDTH];
-                    particles[p][STATE] = particleSys.particleLifetime;
-                }
-            } else {
-                pos[X] -= 2.0 * particles[p][WIDTH];
-            }
-        }
-
-        if (pos[X] > right - particles[p][WIDTH]) {
-            particles[p][STATE] = particleSys.particleLifetime;
-            pos[X] = right - particles[p][WIDTH];
-        }
-        particles[p][POS] = pos;
-    };
-}
-
-function stoneParticles(target) {
-    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
-    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
-    particleSys.particleSymbols = ["[##]\n [##]", "\n ####", "\n ## #", "\n #  #", "\n #   #", "\n #    #"];
-    particleSys.particleMultiline = true;
-    particleSys.particleCount = 3;
-
-    particleSys.emit = function(p) {
-        % Create a particle with same width as height
-        particles[p][WIDTH] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
-        particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
-        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
-
-        const s = (canvas.l[target] + particles[p][WIDTH]);
-        const w = (FIELD_WIDTH_H - particles[p][WIDTH]) * 2.0;
-        const top = canvas.t[target];
-        const pos = [
-            [s + w * 0.25, top - particles[p][HEIGHT]],
-            [s + w * 0.5, top],
-            [s + w * 0.75, top - particles[p][HEIGHT]]
-        ];
-        const mom = [
-            [-2, 2],
-            [0, 2],
-            [2, 2]
-        ]
-
-        particles[p][STATE]++;
-        particles[p][POS] = pos[p \% particleSys.particleCount];
-        particles[p][SYMB] = 0;
-        particles[p][MASS] = 2;
-        particles[p][MOMENTUM] = mom[p \% particleSys.particleCount];
-
-        this.aliveParticles++;
-
-        return true;
-    };
-
-    % Falling stones move function
-    particleSys.move = function(l, p) {
-        const bot = canvas.b[target];
-        particles[p][POS] = applyGravityToParticle(p, bot);
-
-        if (particles[p][SYMB] > 0 && particles[p][STATE] \% 2 == 0 && particles[p][SYMB] < particleSys.particleSymbols.length - 1) {
-            particles[p][SYMB]++;
-        }
-
-        if (particles[p][POS][Y] <= bot + particles[p][HEIGHT] && particles[p][SYMB] == 0) {
-            particles[p][SYMB] = 1;
-            particles[p][MASS] = 1;
-        }
-    };
-}
-
-function grassParticles(target) {
-    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
-    particleSys.particleSymbols = ["()", "#", "{}"];
-
-    particleSys.emit = function(p) {
-        if (getRandomInt(100) > 5) {
-            return false;
-        }
-
-        const offset = 70;
-        const offsetY = -offset * 0.5 + getRandomInt(offset);
-        particles[p][POS][Y] = canvas.c[(target + 1) \% 2][Y] + offsetY;
-        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
-        particles[p][ROTATION] = 90;
-
-        particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
-        particles[p][STATE]++;
-
-        this.aliveParticles++;
-
-        return true;
-    };
-
-    particleSys.move = function(l, p) {
-        var s = canvas.c[(target + 1) \% 2];
-        var t = canvas.c[target];
-        particles[p][POS][X] = s[X] * (1.0 - l) + t[X] * l;
-        particles[p][POS][Y] += ((t[Y] - s[Y]) / particleSys.particleLifetime);
-    }
-}
-
-function ghostParticles(target) {
-    % Circular move function
-    particleSys.move = function(l, p) {
-        const R_X = FIELD_WIDTH_H;
-        const R_Y = FIELD_WIDTH_H;
-        const ANGLE = (Math.PI * 2.0) / particles.length;
-
-        const offsetX = R_X * Math.cos(p * ANGLE + l * Math.PI * 2.0);
-        const offsetY = R_Y * Math.sin(p * ANGLE + l * Math.PI * 2.0);
-
-        particles[p][POS][X] = canvas.c[target][X] + (1.0 - l) * offsetX;
-        particles[p][POS][Y] = canvas.c[target][Y] + (1.0 - l) * offsetY;
-    }
-}
-
-function fluffParticles(target) {
-    particleSys.iterationCount = (ATK_DURATION - 1) * 1.6;
-    particleSys.particleLifetime = (ATK_DURATION - 1) * 1.6;
-
-    particleSys.particleSymbols = [
-        ".-:' ;`-.\n (         )\n (           )\n (         )\n `-'._._.'", ""
-    ];
-
-    particleSys.particleMultiline = true;
-    particleSys.particleCount = 1;
-
-    % TODO reset particleSys
-    particleSys.force = [0, 0];
-
-    particleSys.emit = function(p) {
-        particles[p][WIDTH] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
-        particles[p][HEIGHT] = (FIELD_HEIGHT_H / FIELD_HEIGHT) * 2.0;
-        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 3.0;
-        particles[p][POS] = canvas.c[(target + 1) \% 2];
-
-        if (target == PLAYER) {
-            particles[p][MOMENTUM] = [-35, 15 * 4.0];
-        } else {
-            particles[p][MOMENTUM] = [40, 15 * 6.5];
-        }
-
-        particles[p][STATE]++;
-        this.aliveParticles++;
-        return true;
-    }
-
-    % Throw move function
-    particleSys.move = function(l, p) {
-        particles[p][POS] = applyGravityToParticle(p, 0.0);
-
-        particles[p][SIZE] *= 1.07;
-        particles[p][WIDTH] *= 1.07;
-        particles[p][HEIGHT] *= 1.07;
-
-        if (particles[p][POS][X] >= canvas.l[target] &&
-            particles[p][POS][X] <= canvas.r[target] &&
-            particles[p][POS][Y] <= canvas.c[target][Y]
-        ) {
-            particles[p][MOMENTUM] = [0, 0];
-            particleSys.gravity = [0, 0];
-        }
-    }
-}
-
-function fireParticles(target) {
-    particleSys.frameTime = 250;
-    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
-    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
-    particleSys.alignment = "left";
-
-    % https://ascii.co.uk/art/fire
-    % Prevent bracket issues
-    "((((((((((((";
-    particleSys.particleSymbols = [
-        "       (                           ",
-        "       )                 '    .    ",
-        "         *          )     .        ",
-        "   ( .    ) .     ('  )  (    )  * ",
-        "    .*)  (  )   ,  )  ,    )  (.   ",
-        " ).   ( . :(   )  ( , ')   .'  ),( ",
-        "(_,)  _), _) .(_, )  (, ) '_),.(' )",
-        %
-        "       ?            )    .         ",
-        "       '          (           '    ",
-        "        \"                 '        ",
-        "      )  (  '      ) :    )   (    ",
-        "  .  ' (   ) .   ' ( . ' (     )'  ",
-        " ('    )  ' )  (   )   )   '   )(  ",
-        "(#_)_ _),_ ) '(_: )  (* )_ _)*'(  )",
-        %
-        "       .           ?               ",
-        "                  '           *    ",
-        "         .                         ",
-        "   ( *    )        )     (     :   ",
-        "    ')   ( ) '    (  '  )      ('  ",
-        " ('     ( '  . (   )   (   '   )(  ",
-        "( _) __('#_)  ('_ )  ( .) __)*'(  )",
-        %
-        "                   .               ",
-        "       :                           ",
-        "    ,   (                (         ",
-        "   ).     )    .   )  .   )    ( , ",
-        "  . (   )  (      (      (  *    ) ",
-        " (   )  '   )  (.  )    (      ( ) ",
-        "(  )  _) : )' (  _(  ). )  _(#_(  )"
-    ];
-    ")))";
-
-    %particleSys.particleBold = true;
-    particleSys.particleCount = 7;
-
-    particleSys.emit = function(p) {
-        const h = particles[p][HEIGHT];
-        const bot = canvas.b[target];
-        var yPos = bot + h + p * h * 2.0;
-        var lines = particleSys.particleCount;
-        var frames = particleSys.particleSymbols.length / lines;
-
-        particles[p][STATE]++;
-        particles[p][POS] = [canvas.c[target][X], yPos];
-        particles[p][SYMB] = (lines - p - 1) \% particleSys.particleSymbols.length;
-        particles[p][WIDTH] = FIELD_WIDTH_H;
-        this.aliveParticles++;
-
-        return true;
-    };
-
-    particleSys.move = function(l, p) {
-        var lines = particleSys.particleCount;
-        var frames = particleSys.particleSymbols.length / lines;
-        particles[p][SYMB] = (lines - p - 1) + lines * (particles[p][STATE] \% frames);
-    };
-}
-
-function processParticles() {
-    var finished = particleSys.iterationCount < particleSys.iterationCur;
-    if (finished && particleSys.aliveParticles == 0) {
-        app.clearInterval(attackInterval);
-        return;
-    }
-
-    for (var p = 0; p < Math.min(particles.length, particleSys.particleCount); p++) {
-        % If the particle is dead ...
-        if (particles[p][STATE] == DEAD) {
-            % ... check whether new particles should be emitted
-            if (!finished) {
-                % ... do not process this particle if emitting it failed
-                if (!particleSys.emit(p)) {
-                    continue;
-                }
-            }
-            % ... if not do not process this particle
-            else {
-                continue;
-            }
-        } else if (particleSys.particleLifetime < particles[p][STATE]) {
-            particleSys.remove(p);
-            continue;
-        }
-
-        % TODO move
-        var l = particles[p][STATE] / particleSys.particleLifetime;
-
-        particleSys.move(l, p);
-        moveParticleField(p);
-        showAndUpdateParticleField(p);
-
-        particles[p][STATE]++;
-    }
-
-    particleSys.iterationCur++;
-}
-
-function moveParticleField(p) {
-    var particle = this.getField("atkanim" + p);
-
-    const x = particles[p][POS][X];
-    const y = particles[p][POS][Y];
-    const w = particles[p][WIDTH];
-    const h = particles[p][HEIGHT];
-    var rect = [x - w, y + h, x + w, y - h];
-
-    particle.rect = rect;
-}
-
-function showAndUpdateParticleField(p) {
-    var particle = this.getField("atkanim" + p);
-
-    particle.hidden = false;
-    particle.textFont = font.Cour;
-    particle.alignment = particleSys.alignment;
-    particle.textSize = particles[p][SIZE];
-    particle.rotation = particles[p][ROTATION];
-
-    var textIdx = particles[p][SYMB];
-    particle.value = particleSys.particleSymbols[textIdx];
-    if (particleSys.particleMultiline || particleSys.particleBold) {
-        var spans = new Array();
-        spans[0] = new Object();
-        spans[0].text = particleSys.particleSymbols[textIdx];
-        if (particleSys.particleBold) {
-            spans[0].fontWeight = 700;
-        }
-
-        particle.richText = true;
-        particle.richValue = spans;
-    } else {
-        particle.richText = false;
-        particle.value = particleSys.particleSymbols[textIdx];
-    }
-}
-
-function hideParticleField(p) {
-    var particle = this.getField("atkanim" + p);
-    particle.hidden = true;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -2115,7 +2380,8 @@ function addToField(id, value) {
 }
 
 /**
- * Print information about the winner and the gamestate.
+ * Print information to the information-gui.
+ * @param {String} text The text to print.
  */
 function printInfoText(text) {
     var field = this.getField("info");
@@ -2126,6 +2392,7 @@ function printInfoText(text) {
 
 /**
  * Add information to the information-gui.
+ * @param {String} text The text to add.
  */
 function addInfoText(text) {
     var field = this.getField("info");
@@ -2286,9 +2553,8 @@ function addInfoText(text) {
 
         \xintFor* #1 in {\xintSeq{0}{\atkAnimCells-1}} \do {%
             \TextField[%
-                %width=1cm, height=1cm,%
-                bordercolor=, backgroundcolor=, name=atkanim#1, readonly=true, borderwidth=0pt, hidden%
-                %backgroundcolor=gray, name=atkanim#1, readonly=true, hidden, borderwidth=0pt, bordersep=0pt%
+                bordercolor=, backgroundcolor=,
+                name=atkanim#1, readonly=true, borderwidth=0pt, hidden
             ]{}%
         }%
 
