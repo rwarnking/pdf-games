@@ -41,8 +41,6 @@ top is the enemy. Each turn both creatures are supposed to attack each other unt
 one of them has no health left. If the enemy is beaten a new creature is selected.\
 If your own creature dies you lose, unless you previously caught another one.";
 
-% TODO bug when capturing creature (own creature moves even though it was not changed)
-
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
@@ -123,6 +121,13 @@ var changeAnimationInterval;
 var animationProgress = FIELD_WIDTH;
 % The interval for processing a round (uses the turnState to terminate)
 var roundInterval;
+% For the text animation
+var animatedString = "";
+% For healthbar animation
+% The currently shown hp
+var guiHP = [0, 0];
+% Max bars in the healthbar
+const MAX_HP_SYMBS = 36;
 
 % Array of all particles and their data
 var particles;
@@ -866,7 +871,7 @@ function initialiseButtons() {
  */
 function restart() {
     % Restart only if no animation is running
-    if (animationProgress != FIELD_WIDTH) {
+    if (animationProgress != FIELD_WIDTH || !particleSys.finished()) {
         printInfoText("Wait for animation!");
         return;
     }
@@ -884,6 +889,8 @@ function restart() {
     for (var i = 0; i < 4; i++) {
         curPlayerItems[i] = 0;
     }
+
+    animatedString = "";
 
     % Update GUI
     updateButtontxt();
@@ -947,6 +954,7 @@ function tooltip(on) {
 function processInput(button) {
     this.getField("tooltiptxt").setFocus();
 
+    % Check for animated text updates
     if (animationProgress != FIELD_WIDTH) {
         printInfoText("Wait for animation!");
         return;
@@ -1017,6 +1025,13 @@ function processInput(button) {
  * @param {Number} idx The current pressed button.
  */
 function executeRound(action, idx) {
+    % Check for text and healthbar animations
+    var textCompl = printTextAnimated();
+    var barCompl = updateHpInfo();
+    if (!textCompl || !barCompl) {
+        return;
+    }
+
     % Do not allow a round when a creature is currently replaced
     if (animationProgress != FIELD_WIDTH) {
         return;
@@ -1027,6 +1042,11 @@ function executeRound(action, idx) {
     }
     % If finished clear the interval
     else if (turnState == ACTION_END) {
+        % Cleanup if creature is dead
+        if (curPlayerCreatures[curCreatureIdx][CUR_HP] == 0) {
+            curPlayerCreatures[curCreatureIdx] = ["Empty"];
+        }
+
         app.clearInterval(roundInterval);
         return;
     }
@@ -1041,9 +1061,8 @@ function executeRound(action, idx) {
             var attacks = curCreature[ATKS];
             lastAttackIdx = attacks[idx - 1];
             var attackData = ATTACK_LIST[lastAttackIdx];
-            printInfoText(
-                curCreature[NAME] + " (Player) attacks the enemy with " + attackData[NAME] + "!"
-            );
+            animatedString =
+                curCreature[NAME] + " (Player) attacks the enemy with " + attackData[NAME] + "!";
             % Set attack specific data
             attackAnimation(attackData[TYPE], ENEMY);
 
@@ -1087,7 +1106,7 @@ function executeRound(action, idx) {
         var attacks = curEnemy[ATKS];
         lastAttackIdx = attacks[getRandomInt(attacks.length)];
         var attackData = ATTACK_LIST[lastAttackIdx];
-        printInfoText(curEnemy[NAME] + " (Enemy) attacks with " + attackData[NAME] + "! ");
+        animatedString = curEnemy[NAME] + " (Enemy) attacks with " + attackData[NAME] + "! ";
 
         attackAnimation(attackData[TYPE], PLAYER);
         turnState = ACTION_E_ATTACK;
@@ -1126,7 +1145,7 @@ function attackEnemy(idx) {
 
     % Calculate dmg
     var dmg = inflictDMG(curCreature, curEnemy, attackData);
-    updateEnemyTxt();
+    %updateEnemyTxt();
 
     % If the enemy is beaten add xp and lvl up if needed
     if (curEnemy[CUR_HP] == 0) {
@@ -1134,13 +1153,14 @@ function attackEnemy(idx) {
         var lvlup = checkLvlUp(curCreature);
         if (lvlup) {
             updatePlayerTxt();
-            printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] + " and leveled up.");
+            animatedString =
+                curCreature[NAME] + " has slayn " + curEnemy[NAME] + " and leveled up.";
         } else {
-            printInfoText(curCreature[NAME] + " has slayn " + curEnemy[NAME] +
-                " and got " + exp + " experience.");
+            animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
+                " and got " + exp + " experience.";
         }
     } else {
-        printInfoText(curEnemy[NAME] + " took " + dmg + " damage.");
+        animatedString = curEnemy[NAME] + " took " + dmg + " damage.";
     }
 }
 
@@ -1159,22 +1179,20 @@ function attackPlayer(idx) {
 
     var creature = curPlayerCreatures[curCreatureIdx];
     var dmg = inflictDMG(curEnemy, creature, attack);
-    updatePlayerTxt();
 
     % If the player creature is dead remove it from the player creatures
     if (creature[CUR_HP] == 0) {
-        curPlayerCreatures[curCreatureIdx] = ["Empty"];
         % If the player has no creatures left the game is over
         if (noCreatureLeft()) {
             gameover = true;
-            printInfoText("No Creatures left, game over!");
+            animatedString = "No Creatures left, game over!";
         } else {
             guiState = CHANGE;
             updateButtontxt();
-            printInfoText("Your creature has no health left, please select a new creature.");
+            animatedString = "Your creature has no health left, please select a new creature.";
         }
     } else {
-        printInfoText(creature[NAME] + " took " + dmg + " damage.");
+        animatedString = creature[NAME] + " took " + dmg + " damage.";
     }
 
     return ACTION_END;
@@ -1198,7 +1216,7 @@ function change(idx) {
 
     curCreatureIdx = idx - 1;
 
-    printInfoText("You switched from " + oldName + " to " + creature[NAME] + ".");
+    animatedString = "You switched from " + oldName + " to " + creature[NAME] + ".";
     updatePlayerTxt();
     drawPlayer();
 
@@ -1213,7 +1231,7 @@ function changeEnemy() {
     curEnemy = getEnemy();
     drawEnemy();
     updateEnemyTxt();
-    printInfoText("Your new enemy is: " + curEnemy[NAME]);
+    animatedString = "Your new enemy is: " + curEnemy[NAME];
 }
 
 /**
@@ -1251,7 +1269,7 @@ function run() {
  */
 function itemApply(idx) {
     var item = ITEM_LIST[curPlayerItems[idx - 1]];
-    printInfoText("You used " + item[NAME] + ".");
+    animatedString = "You used " + item[NAME] + ".";
 
     if (item[NAME] == "Empty") {
         printInfoText("No item was used.");
@@ -1290,7 +1308,7 @@ function itemSelect(idx) {
         return ACTION_END;
     }
 
-    printInfoText("You used " + item[NAME] + ".");
+    animatedString = "You used " + item[NAME] + ".";
 
     % Capsule does work for empty slots
     if (item[NAME] == "Capsule") {
@@ -1313,9 +1331,9 @@ function itemSelect(idx) {
         selCreature[CUR_EXP] = EXP_TABLE[selCreature[LVL] - MIN_LVL + 2];
         checkLvlUp(selCreature);
         checkLvlUp(selCreature);
+        updatePlayerTxt();
     }
 
-    updatePlayerTxt();
     return ACTION_E_CHOOSE;
 }
 
@@ -1326,16 +1344,19 @@ function itemSelect(idx) {
  */
 function catchCreature(idx) {
     curPlayerCreatures[idx - 1] = curEnemy;
-    if (idx - 1 == curCreatureIdx) {
-        updatePlayerTxt();
-    }
-
     % Get new enemy
     curEnemy = getEnemy();
     updateEnemyTxt();
-    % Draw both in case the currently active creature was replaced
-    drawAll();
-    printInfoText("Creature catched! Your new enemy is: " + curEnemy[NAME] + ".");
+
+    if (idx - 1 == curCreatureIdx) {
+        updatePlayerTxt();
+        % Draw both in case the currently active creature was replaced
+        drawAll();
+    } else {
+        drawEnemy();
+    }
+
+    animatedString = "Creature catched! Your new enemy is: " + curEnemy[NAME] + ".";
 }
 
 %%%%%%%%%%
@@ -1346,7 +1367,7 @@ function catchCreature(idx) {
  */
 function noCreatureLeft() {
     for (var i = 0; i < curPlayerCreatures.length; i++) {
-        if (curPlayerCreatures[i][NAME] != "Empty") {
+        if (curPlayerCreatures[i][NAME] != "Empty" && curPlayerCreatures[i][CUR_HP] > 0) {
             return false;
         }
     }
@@ -1499,20 +1520,87 @@ function updateButtontxt() {
  */
 function updatePlayerTxt() {
     var creature = curPlayerCreatures[curCreatureIdx];
-    this.getField("playername").value = creature[NAME];
-    this.getField("playerstatus").value =
-        "Type: " + TYPE_STRINGS[creature[TYPE]] + " - Level: " + creature[LVL];
+    this.getField("playername").value =
+        creature[NAME] + " (" + TYPE_STRINGS[creature[TYPE]] + "), Level: " + creature[LVL];
+
+    guiHP[PLAYER] = creature[CUR_HP];
     this.getField("playerhp").value = "HP: " + creature[CUR_HP] + " of " + creature[MAX_HP];
+
+    var resStr = "";
+    for (var i = 0; i < MAX_HP_SYMBS * (creature[CUR_HP] / creature[MAX_HP]); i++) {
+        %resStr += "#";
+        resStr += String.fromCharCode(0x2588);
+    }
+
+    this.getField("playerstatus").value = resStr;
 }
 
 /**
  * Updates the enemy information displayed by the gui.
  */
 function updateEnemyTxt() {
-    this.getField("enemyname").value = curEnemy[NAME];
-    this.getField("enemystatus").value =
-        "Type: " + TYPE_STRINGS[curEnemy[TYPE]] + " - Level: " + curEnemy[LVL];
+    this.getField("enemyname").value =
+        curEnemy[NAME] + " (" + TYPE_STRINGS[curEnemy[TYPE]] + "), Level: " + curEnemy[LVL];
+
+    guiHP[ENEMY] = curEnemy[CUR_HP];
     this.getField("enemyhp").value = "HP: " + curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
+
+    var resStr = "";
+    for (var i = 0; i < MAX_HP_SYMBS * (curEnemy[CUR_HP] / curEnemy[MAX_HP]); i++) {
+        %resStr += "#";
+        resStr += String.fromCharCode(0x2588);
+    }
+    this.getField("enemystatus").value = resStr;
+}
+
+/**
+ * Updates the health information displayed by the gui for player and enemy.
+ * This allows for animations of the health bar and the health text.
+ * This function only increases or decreases the shown health points by one bar
+ * calling it multiple times results in an animation.
+ * @return {Boolen} True if no adjustment was made, else false.
+ */
+function updateHpInfo() {
+    var res = true;
+
+    % Setup all data for both players
+    var cs = [curPlayerCreatures[curCreatureIdx], curEnemy];
+    const ps = [PLAYER, ENEMY];
+    const guiElemHp = ["playerhp", "enemyhp"];
+    const guiElemState = ["playerstatus", "enemystatus"];
+
+    % Iterate the data
+    for (var i = 0; i < cs.length; i++) {
+        % Calculate how much hp one bar symbolizes
+        var hpPerBar = cs[i][MAX_HP] / MAX_HP_SYMBS;
+        var p = ps[i];
+        % If the gui shows less hp than the creature has, increase the shown hp
+        if (guiHP[p] < cs[i][CUR_HP]) {
+            % Prevent overstepping the max hp
+            guiHP[p] += Math.min(cs[i][CUR_HP] - guiHP[p], Math.ceil(hpPerBar));
+            this.getField(guiElemHp[i]).value = "HP: " + guiHP[p] + " of " + cs[i][MAX_HP];
+            % Adjust the amount of bars shown in the status line
+            var barCount = Math.round(guiHP[p] / hpPerBar);
+            var bars = this.getField(guiElemState[i]).value;
+            for (var b = bars.length; b < barCount; b++) {
+                this.getField(guiElemState[i]).value += String.fromCharCode(0x2588);
+            }
+            res = false;
+        }
+        % If the gui shows more hp than the creature has, decrease the shown hp
+        else if (guiHP[p] > cs[i][CUR_HP]) {
+            % Prevent undercutting 0 hp
+            guiHP[p] -= Math.min(guiHP[p] - cs[i][CUR_HP], Math.ceil(hpPerBar));
+            this.getField(guiElemHp[i]).value = "HP: " + guiHP[p] + " of " + cs[i][MAX_HP];
+            % Adjust the amount of bars shown in the status line
+            var barCount = Math.round(guiHP[p] / hpPerBar);
+            var bars = this.getField(guiElemState[i]).value;
+            this.getField(guiElemState[i]).value = bars.substring(0, barCount);
+            res = false;
+        }
+    }
+
+    return res;
 }
 
 %%%%%%%%%%%%%%%%%%%%
@@ -1707,12 +1795,14 @@ function waterParticles(target) {
         return true;
     };
 
-    particleSys.move = function(l, p) {
+    particleSys.move = function(p) {
+        var t = particles[p][STATE] / particleSys.particleLifetime;
+
         % Height and pos of the top line
         const h = particles[1][HEIGHT];
         const bot = canvas.b[target];
         const top = (bot + canvas.halfHeight * 2.0 * 0.75 - h);
-        var yPos = (1.0 - l) * (bot + h + 1) + l * top;
+        var yPos = (1.0 - t) * (bot + h + 1) + t * top;
 
         % Special case for the overlay particle
         if (p == 0) {
@@ -1797,7 +1887,7 @@ function airParticles(target) {
         return true;
     };
 
-    particleSys.move = function(l, p) {
+    particleSys.move = function(p) {
         % Determine the leader to which the particle belongs
         const memberCount = 4;
         const groupIdx = Math.floor(p / memberCount);
@@ -1887,7 +1977,7 @@ function stoneParticles(target) {
     };
 
     % Falling stones move function
-    particleSys.move = function(l, p) {
+    particleSys.move = function(p) {
         const bot = canvas.b[target];
         % Just apply physics, let them fall and bounce of the ground
         particles[p][POS] = applyGravityToParticle(p, bot);
@@ -1940,12 +2030,13 @@ function grassParticles(target) {
         return true;
     };
 
-    particleSys.move = function(l, p) {
+    particleSys.move = function(p) {
+        var t = particles[p][STATE] / particleSys.particleLifetime;
         % Move the particles linearly along the vector from the source to the target
-        var s = canvas.c[(target + 1) \% 2];
-        var t = canvas.c[target];
-        particles[p][POS][X] = s[X] * (1.0 - l) + t[X] * l;
-        particles[p][POS][Y] += ((t[Y] - s[Y]) / particleSys.particleLifetime);
+        var src = canvas.c[(target + 1) \% 2];
+        var trg = canvas.c[target];
+        particles[p][POS][X] = src[X] * (1.0 - t) + trg[X] * t;
+        particles[p][POS][Y] += ((trg[Y] - src[Y]) / particleSys.particleLifetime);
     }
 }
 
@@ -1956,17 +2047,18 @@ function grassParticles(target) {
  */
 function ghostParticles(target) {
     % Circular move function
-    particleSys.move = function(l, p) {
+    particleSys.move = function(p) {
+        var t = particles[p][STATE] / particleSys.particleLifetime;
         const R_X = canvas.halfWidth;
         const R_Y = canvas.halfWidth;
         const ANGLE = (Math.PI * 2.0) / particles.length;
 
         % Circle motion
-        const offsetX = R_X * Math.cos(p * ANGLE + l * Math.PI * 2.0);
-        const offsetY = R_Y * Math.sin(p * ANGLE + l * Math.PI * 2.0);
+        const offsetX = R_X * Math.cos(p * ANGLE + t * Math.PI * 2.0);
+        const offsetY = R_Y * Math.sin(p * ANGLE + t * Math.PI * 2.0);
 
-        particles[p][POS][X] = canvas.c[target][X] + (1.0 - l) * offsetX;
-        particles[p][POS][Y] = canvas.c[target][Y] + (1.0 - l) * offsetY;
+        particles[p][POS][X] = canvas.c[target][X] + (1.0 - t) * offsetX;
+        particles[p][POS][Y] = canvas.c[target][Y] + (1.0 - t) * offsetY;
     }
 }
 
@@ -2007,7 +2099,7 @@ function fluffParticles(target) {
     }
 
     % Throw move function
-    particleSys.move = function(l, p) {
+    particleSys.move = function(p) {
         particles[p][POS] = applyGravityToParticle(p, 0.0);
 
         % Increase the object over time to get something similar to an fluff explosion
@@ -2093,7 +2185,7 @@ function fireParticles(target) {
         return true;
     };
 
-    particleSys.move = function(l, p) {
+    particleSys.move = function(p) {
         % Increase current particle value (select next frame to show)
         var lines = particleSys.particleCount;
         var frames = particleSys.particleSymbols.length / lines;
@@ -2128,10 +2220,7 @@ function processParticles() {
             continue;
         }
 
-        % TODO move
-        var l = particles[p][STATE] / particleSys.particleLifetime;
-
-        particleSys.move(l, p);
+        particleSys.move(p);
         % Draw the particle rectangle
         moveParticleField(p);
         % Process particle content and appearance
@@ -2384,10 +2473,37 @@ function addToField(id, value) {
  * @param {String} text The text to print.
  */
 function printInfoText(text) {
+    animatedString = "";
     var field = this.getField("info");
     field.delay = true;
     field.value = text;
     field.delay = false;
+}
+
+/**
+ * Print information to the information-gui animated.
+ * For this each time this function is called only two character
+ * are added to the gui (from the animatedString variable).
+ * Overrides last gui value.
+ * @return {Boolean} Returns true if the string was complete, false else.
+ */
+function printTextAnimated() {
+    var field = this.getField("info");
+
+    if (animatedString.length == 0 || field.value == animatedString) {
+        animatedString = "";
+        return true;
+    }
+
+    field.delay = true;
+    var curStr = animatedString.substring(0, field.value.length);
+    if (curStr != field.value) {
+        field.value = "";
+    }
+
+    field.value = animatedString.substring(0, field.value.length + 2);
+    field.delay = false;
+    return false;
 }
 
 /**
@@ -2436,9 +2552,9 @@ function addInfoText(text) {
             \begin{tcolorbox}%
                 \TextField[name=enemyname, width=\linewidth, readonly=true]{}\newline
 
-                \TextField[name=enemystatus, width=\linewidth, readonly=true]{}\newline
+                \TextField[name=enemyhp, width=\linewidth, readonly=true]{}\newline
 
-                \TextField[name=enemyhp, width=\linewidth, readonly=true]{}%
+                \TextField[name=enemystatus, width=\linewidth, readonly=true]{}%
             \end{tcolorbox}%
 
             \vspace{2.5cm}
@@ -2470,9 +2586,9 @@ function addInfoText(text) {
             \begin{tcolorbox}%
                 \TextField[name=playername, width=\linewidth, readonly=true]{}\newline
 
-                \TextField[name=playerstatus, width=\linewidth, readonly=true]{}\newline
+                \TextField[name=playerhp, width=\linewidth, readonly=true]{}\newline
 
-                \TextField[name=playerhp, width=\linewidth, readonly=true]{}%
+                \TextField[name=playerstatus, width=\linewidth, readonly=true]{}%
             \end{tcolorbox}%
 
         \end{multicols}
