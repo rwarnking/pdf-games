@@ -139,7 +139,7 @@ var canvas;
 % Player and enemy data (creatures and items)
 var curCreatureIdx = 0;
 var curPlayerCreatures = [["Empty"], ["Empty"], ["Empty"], ["Empty"]];
-var curPlayerItems = [0, 0, 0, 0];
+var curPlayerItems = [[0, 0], [0, 0], [0, 0], [0, 0]];
 var curEnemy = 0;
 
 %%%%%%%%%%%%%%%%%
@@ -764,7 +764,7 @@ const ITEM_LIST = new Array(
     ["Empty", ""],
     ["Capsule", "Capture the enemy"],
     ["Drink", "Heals to full"],
-    ["Weaken", "Deals a random amount of the enemy hp as dmg"],
+    ["Weaken", "Random \% of enemy hp as DMG"],
     ["Levelliquid", "Gain two level"]
 );
 
@@ -800,15 +800,10 @@ function initialise() {
     }
 
     % Initialise the player and enemy creature
+    % Player items are already initialized to empty
     curCreatureIdx = 0;
     curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL + 10);
     curEnemy = getEnemy();
-
-    % Initialise the player items
-    curPlayerItems[0] = 1;
-    curPlayerItems[1] = 2;
-    curPlayerItems[2] = 3;
-    curPlayerItems[3] = 4;
 
     updateEnemyTxt();
     updatePlayerTxt();
@@ -887,7 +882,7 @@ function restart() {
 
     % Initialise the player items to empty
     for (var i = 0; i < 4; i++) {
-        curPlayerItems[i] = 0;
+        curPlayerItems[i] = [0, 0];
     }
 
     animatedString = "";
@@ -990,7 +985,7 @@ function processInput(button) {
                 printInfoText("Return to main menu!");
             } else if (lastState == ITEMS) {
                 % Check if item needs another selection (of a creature for example)
-                var item = ITEM_LIST[curPlayerItems[button - 1]];
+                var item = ITEM_LIST[curPlayerItems[button - 1][0]];
                 if (item[NAME] == "Weaken" || item[NAME] == "Empty") {
                     turnState = ACTION_IDLE;
                     var callback = "executeRound(" + lastState + "," + button + ")";
@@ -1145,19 +1140,22 @@ function attackEnemy(idx) {
 
     % Calculate dmg
     var dmg = inflictDMG(curCreature, curEnemy, attackData);
-    %updateEnemyTxt();
 
     % If the enemy is beaten add xp and lvl up if needed
     if (curEnemy[CUR_HP] == 0) {
         var exp = addEXP(curEnemy, curCreature);
+
+        var itemName = ITEM_LIST[addRandomItem()][NAME];
+
         var lvlup = checkLvlUp(curCreature);
         if (lvlup) {
             updatePlayerTxt();
-            animatedString =
-                curCreature[NAME] + " has slayn " + curEnemy[NAME] + " and leveled up.";
+            animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
+                " and leveled up. " + curEnemy[NAME] + " dropped " + itemName + ".";
         } else {
             animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
-                " and got " + exp + " experience.";
+                " and got " + exp + " experience. " +
+                curEnemy[NAME] + " dropped " + itemName + ".";
         }
     } else {
         animatedString = curEnemy[NAME] + " took " + dmg + " damage.";
@@ -1238,7 +1236,7 @@ function changeEnemy() {
  * With this action the player indicates that he does not want to
  * fight the current enemy. Therefore he flees and gets a new enemy.
  * This action reduces the level of the current creature by one if it is
- * atleast level 6.
+ * at least level 6.
  */
 function run() {
     curEnemy = getEnemy();
@@ -1268,7 +1266,7 @@ function run() {
  * @param {Number} idx The item slot in the backpack (1-4).
  */
 function itemApply(idx) {
-    var item = ITEM_LIST[curPlayerItems[idx - 1]];
+    var item = ITEM_LIST[curPlayerItems[idx - 1][0]];
     animatedString = "You used " + item[NAME] + ".";
 
     if (item[NAME] == "Empty") {
@@ -1283,6 +1281,8 @@ function itemApply(idx) {
         var attackData = ATTACK_LIST[attacks[idx - 1]];
         % Set attack specific data
         attackAnimation(attackData[TYPE], ENEMY);
+
+        removeItem(idx);
 
         return ACTION_P_ATTACK;
     }
@@ -1301,7 +1301,7 @@ function itemApply(idx) {
  * @param {Number} idx The item slot in the backpack (1-4).
  */
 function itemSelect(idx) {
-    var item = ITEM_LIST[curPlayerItems[selection - 1]];
+    var item = ITEM_LIST[curPlayerItems[selection - 1][0]];
     % If no item at that slot
     if (item[NAME] == "Empty") {
         printInfoText("No item was used.");
@@ -1313,6 +1313,8 @@ function itemSelect(idx) {
     % Capsule does work for empty slots
     if (item[NAME] == "Capsule") {
         catchCreature(idx);
+        removeItem(selection);
+
         return ACTION_END;
     }
 
@@ -1334,7 +1336,34 @@ function itemSelect(idx) {
         updatePlayerTxt();
     }
 
+    removeItem(selection);
+
     return ACTION_E_CHOOSE;
+}
+
+/**
+ * Removes one item-instance of the given index from the players item list.
+ * @param {Number} idx The index of the item to be decreased (1-4).
+ */
+function removeItem(idx) {
+    var tmp = idx - 1;
+    curPlayerItems[tmp][1]--;
+    if (curPlayerItems[tmp][1] == 0) {
+        curPlayerItems[tmp][0] = 0;
+    }
+}
+
+/**
+ * Adds one random item to the list of player items.
+ */
+function addRandomItem() {
+    var idx = getRandomInt(3);
+    % Check if there is an item with the same idx
+    if (curPlayerItems[idx][1] == 0) {
+        curPlayerItems[idx][0] = idx + 1;
+    }
+    curPlayerItems[idx][1]++;
+    return idx + 1;
 }
 
 /**
@@ -1506,9 +1535,10 @@ function updateButtontxt() {
         % Show all items that are available
         for (var i = 0; i < 4; i++) {
             var btn = "button" + (i + 1) + "txt";
-            var name = ITEM_LIST[curPlayerItems[i]][NAME];
+            var name = ITEM_LIST[curPlayerItems[i][0]][NAME];
             if (name != "Empty") {
-                name += " (" + ITEM_LIST[curPlayerItems[i]][DESC] + ")";
+                name += " (" + ITEM_LIST[curPlayerItems[i][0]][DESC] +
+                    "), #" + curPlayerItems[i][1];
             }
             this.getField(btn).value = name;
         }
