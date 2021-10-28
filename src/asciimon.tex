@@ -168,6 +168,7 @@ const T_GRASS = 3;
 const T_GHOST = 4;
 const T_FLUFF = 5;
 const T_FIRE = 6;
+const T_STANDARD = 7;
 
 % For showing the creature type in the gui
 const TYPE_STRINGS = new Array(
@@ -751,7 +752,9 @@ const ATTACK_LIST = new Array(
     ["Ash Whip", 1.6, T_FIRE], % TULIP, FLAMEINGO
     ["Glowing Flash", 0.8, T_FIRE], % ANGEL, CANDLE, HANDGRANADE
     ["Nova Bullet", 4.0, T_FIRE], % DRAGON
-    ["Dual Explosion", 3.0, T_FIRE] % 50 - HANDGRANADE
+    ["Dual Explosion", 3.0, T_FIRE], % 50 - HANDGRANADE
+    % Standard
+    ["Weaken", 1.0, T_STANDARD]
 );
 
 % Item access constants
@@ -1150,12 +1153,11 @@ function attackEnemy(idx) {
         var lvlup = checkLvlUp(curCreature);
         if (lvlup) {
             updatePlayerTxt();
-            animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
-                " and leveled up. " + curEnemy[NAME] + " dropped " + itemName + ".";
+            animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] + " and leveled up. " +
+                curEnemy[NAME] + " dropped " + itemName + ".";
         } else {
             animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
-                " and got " + exp + " experience. " +
-                curEnemy[NAME] + " dropped " + itemName + ".";
+                " and got " + exp + " experience. " + curEnemy[NAME] + " dropped " + itemName + ".";
         }
     } else {
         animatedString = curEnemy[NAME] + " took " + dmg + " damage.";
@@ -1275,12 +1277,10 @@ function itemApply(idx) {
         % Setup attack particles
         % Reset particle system to default
         defaultParticleSys();
-        % Access the attack
-        var curCreature = curPlayerCreatures[curCreatureIdx];
-        var attacks = curCreature[ATKS];
-        var attackData = ATTACK_LIST[attacks[idx - 1]];
         % Set attack specific data
-        attackAnimation(attackData[TYPE], ENEMY);
+        particleSys.number = Math.floor((getRandomInt(101) / 100) * curEnemy[MAX_HP]);
+        attackAnimation(T_STANDARD, ENEMY);
+        lastAttackIdx = 51;
 
         removeItem(idx);
 
@@ -1437,9 +1437,15 @@ function addEXP(source, target) {
  * Takes also into account the type of both creatures.
  */
 function inflictDMG(source, target, attack) {
-    var creatureMul = DMG_MATRIX[source[TYPE]][target[TYPE]];
-    var attackMul = DMG_MATRIX[attack[TYPE]][target[TYPE]];
-    var dmg = Math.ceil(attack[DMG] * source[LVL] * creatureMul * attackMul);
+    var dmg = 0;
+    % For the weaken attack
+    if (attack[TYPE] == T_STANDARD) {
+        dmg = particleSys.number;
+    } else {
+        var creatureMul = DMG_MATRIX[source[TYPE]][target[TYPE]];
+        var attackMul = DMG_MATRIX[attack[TYPE]][target[TYPE]];
+        dmg = Math.ceil(attack[DMG] * source[LVL] * creatureMul * attackMul);
+    }
     target[CUR_HP] = Math.max(0, target[CUR_HP] - dmg);
     return dmg;
 }
@@ -1537,8 +1543,7 @@ function updateButtontxt() {
             var btn = "button" + (i + 1) + "txt";
             var name = ITEM_LIST[curPlayerItems[i][0]][NAME];
             if (name != "Empty") {
-                name += " (" + ITEM_LIST[curPlayerItems[i][0]][DESC] +
-                    "), #" + curPlayerItems[i][1];
+                name += " (" + ITEM_LIST[curPlayerItems[i][0]][DESC] + "), #" + curPlayerItems[i][1];
             }
             this.getField(btn).value = name;
         }
@@ -1776,8 +1781,10 @@ function attackAnimation(type, target) {
         ghostParticles(target);
     } else if (type == T_FLUFF) {
         fluffParticles(target);
-    } else { % T_FIRE
+    } else if (type == T_FIRE) {
         fireParticles(target);
+    } else { % T_STANDARD
+        standardParticles(target);
     }
 }
 
@@ -2221,6 +2228,35 @@ function fireParticles(target) {
         var frames = particleSys.particleSymbols.length / lines;
         particles[p][SYMB] = (lines - p - 1) + lines * (particles[p][STATE] \% frames);
     };
+}
+
+/**
+ * Sets up a standard particle system, in which a number displays the
+ * amount of damage that is done to the enemy.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function standardParticles(target) {
+    particleSys.particleCount = 1;
+
+    particleSys.emit = function(p) {
+        particles[p][WIDTH] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][HEIGHT] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 2.0;
+        particles[p][POS] = canvas.c[target];
+
+        particles[p][STATE]++;
+        this.aliveParticles++;
+        return true;
+    }
+
+    % Circular move function
+    particleSys.move = function(p) {
+        var t = particles[p][STATE] / particleSys.particleLifetime;
+        particleSys.particleSymbols = [Math.floor(particleSys.number * t)];
+        particles[p][SIZE] *= 1.1;
+        particles[p][WIDTH] *= 1.1;
+        particles[p][HEIGHT] *= 1.1;
+    }
 }
 
 /**
