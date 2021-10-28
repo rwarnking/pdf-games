@@ -2616,11 +2616,14 @@ function addInfoText(text) {
         \begin{multicols}{2}
 
             \begin{tcolorbox}%
-                \TextField[name=enemyname, width=\linewidth, readonly=true]{}\newline
+                \TextField[name=enemyname, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}\newline
 
-                \TextField[name=enemyhp, width=\linewidth, readonly=true]{}\newline
+                \TextField[name=enemyhp, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}\newline
 
-                \TextField[name=enemystatus, width=\linewidth, readonly=true]{}%
+                \TextField[name=enemystatus, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}%
             \end{tcolorbox}%
 
             \vspace{2.5cm}
@@ -2650,11 +2653,14 @@ function addInfoText(text) {
             \vspace{2.5cm}
 
             \begin{tcolorbox}%
-                \TextField[name=playername, width=\linewidth, readonly=true]{}\newline
+                \TextField[name=playername, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}\newline
 
-                \TextField[name=playerhp, width=\linewidth, readonly=true]{}\newline
+                \TextField[name=playerhp, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}\newline
 
-                \TextField[name=playerstatus, width=\linewidth, readonly=true]{}%
+                \TextField[name=playerstatus, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}%
             \end{tcolorbox}%
 
         \end{multicols}
@@ -2692,28 +2698,32 @@ function addInfoText(text) {
                 \PushButton[name=button1, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=button1txt, width=\linewidth, readonly=true]{}%
+                        \TextField[name=button1txt, bordercolor=, backgroundcolor=,
+                            width=\linewidth, readonly=true]{}%
                         \strut
                     \end{tcolorbox}
                 } &
                 \PushButton[name=button2, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=button2txt, width=\linewidth, readonly=true]{}%
+                        \TextField[name=button2txt, bordercolor=, backgroundcolor=,
+                            width=\linewidth, readonly=true]{}%
                         \strut
                     \end{tcolorbox}
                 }\\
                 \PushButton[name=button3, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=button3txt, width=\linewidth, readonly=true]{}%
+                        \TextField[name=button3txt, bordercolor=, backgroundcolor=,
+                            width=\linewidth, readonly=true]{}%
                         \strut
                     \end{tcolorbox}
                 } &
                 \PushButton[name=button4, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=button4txt, width=\linewidth, readonly=true]{}%
+                        \TextField[name=button4txt, bordercolor=, backgroundcolor=,
+                            width=\linewidth, readonly=true]{}%
                         \strut
                     \end{tcolorbox}
                 }\\
