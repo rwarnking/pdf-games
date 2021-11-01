@@ -829,6 +829,11 @@ function initialiseButtons() {
     % Assign each button the coresponding function
     this.getField("restart").setAction("MouseUp", "restart();");
 
+    % Hide the damage table
+    this.getField("cmHint").setAction("MouseUp", "hint();");
+    this.getField("cmHint").checkThisBox(1);
+    hint();
+
     this.getField("button1").setAction("MouseUp", "processInput(1);");
     this.getField("button1txt").setAction("MouseUp", "processInput(1);");
     this.getField("button2").setAction("MouseUp", "processInput(2);");
@@ -900,9 +905,9 @@ function restart() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -932,6 +937,29 @@ function tooltip(on) {
         field.fillColor = color.gray;
         field.rect = [0, 0, 0, 0];
 
+        field.delay = false;
+    }
+}
+
+/**
+ * Enable or disable the hint.
+ */
+function hint() {
+    if (this.getField("cmHint").isBoxChecked(0)) {
+        % Remove the field such that it is not visible
+        var field = this.getField("hintbox");
+        field.delay = true;
+        field.hidden = true;
+        field.delay = false;
+    } else {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("hintbox");
+        field.delay = true;
+        field.hidden = false;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [298, 155, 596, 0];
         field.delay = false;
     }
 }
@@ -1385,7 +1413,7 @@ function catchCreature(idx) {
         drawEnemy();
     }
 
-    animatedString = "Creature catched! Your new enemy is: " + curEnemy[NAME] + ".";
+    animatedString = "Creature caught! Your new enemy is: " + curEnemy[NAME] + ".";
 }
 
 %%%%%%%%%%
@@ -2601,6 +2629,8 @@ function addInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
+                \TextField[backgroundcolor=white, bordercolor=white,
+                    name=hintbox, readonly=true, hidden]{}
                 \PushButton[name=tooltipbtn, bordercolor=white]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
@@ -2669,21 +2699,18 @@ function addInfoText(text) {
         % Commandredifinition %
         % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
         %%%%%%%%%%%%%%%%%%%%%%%
-        % \def\DefaultHeightofText{14pt}
-        % \renewcommand*{\LayoutTextField}[2]{%
-        %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
-        % }
+        \def\DefaultHeightofText{12pt}
 
-        % \renewcommand*{\LayoutCheckField}[2]{#1 #2}
-        % \renewcommand*{\DefaultWidthofCheckBox}{2ex}
-        % \renewcommand*{\DefaultHeightofCheckBox}{2ex}
-        % \renewcommand*{\LayoutCheckField}[2]{%
-        %     \parbox[c][\DefaultHeightofCheckBox]{0.12\linewidth}{#1}\enspace%
-        %     \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}%
-        % }
+        \renewcommand*{\LayoutCheckField}[2]{#2 #1}
+        \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        \renewcommand*{\LayoutCheckField}[2]{%
+            \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}\enspace%
+            \parbox[c][\DefaultHeightofCheckBox]{0.25\linewidth}{#1}%
+        }
 
-        % \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
-        % \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
 
         %%%%%%%%%%%%%%%%
         % GUI elements %
@@ -2738,19 +2765,39 @@ function addInfoText(text) {
                         \centering
                         Restart game\strut
                     \end{tcolorbox}
-                }
-                \\
+                }\\
             \end{tabularx}
         \end{center}
 
-        \xintFor* #1 in {\xintSeq{0}{\atkAnimCells-1}} \do {%
-            \TextField[%
-                bordercolor=, backgroundcolor=,
-                name=atkanim#1, readonly=true, borderwidth=0pt, hidden
-            ]{}%
-        }%
+        \begin{multicols}{2}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+            \ChoiceMenu[name=cmHint, bordercolor=gray, radiosymbol=5, radio]{Damage Table: }
+                {On, Off}
+
+            \xintFor* #1 in {\xintSeq{0}{\atkAnimCells-1}} \do {%
+                \TextField[%
+                    bordercolor=, backgroundcolor=,
+                    name=atkanim#1, readonly=true, borderwidth=0pt, hidden
+                ]{}%
+            }%
+
+            \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+
+        \columnbreak
+            \centering
+            \small
+            \begin{tabularx}{\linewidth}{c | *{6}{@{\,\,} c @{\,\,} | } c}%
+                  & Water & Air & Stone & Grass & Ghost & Fluff & Fire \\ \hline
+                W & 1.0 & 1.0 & 0.3 & 0.5 & 1.3 & 1.7 & 2.0 \\
+                A & 0.9 & 1.0 & 0.4 & 0.7 & 2.0 & 1.3 & 0.8 \\
+                S & 0.7 & 0.5 & 1.3 & 1.5 & 0.8 & 2.0 & 1.3 \\
+                Gr & 1.7 & 0.7 & 1.3 & 1.0 & 1.3 & 1.3 & 0.7 \\
+                Gh & 0.9 & 0.5 & 0.5 & 1.3 & 1.3 & 2.0 & 0.8 \\
+                Fl & 0.8 & 1.1 & 1.5 & 1.1 & 1.7 & 0.5 & 0.5 \\
+                Fi & 0.8 & 0.4 & 2.0 & 2.0 & 0.3 & 2.0 & 0.4
+            \end{tabularx}
+            Row against column; 1 = normal dmg
+        \end{multicols}
 
     \end{Form}
 \end{document}
