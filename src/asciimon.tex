@@ -132,7 +132,13 @@ const MAX_HP_SYMBS = 36;
 % Array of all particles and their data
 var particles;
 % Information-Object with the current particle system data
-var particleSys = { aliveParticles: 0 };
+var particleSys = {
+    aliveParticles: 0,
+    finished: function() {
+        return true;
+    }
+};
+
 % Information-Object with data concerning the canvas dimensions
 var canvas;
 
@@ -884,12 +890,15 @@ function restart() {
     guiState = MENU;
 
     % Initialise the player and enemy creature
+    for (var i = 0; i < curPlayerCreatures.length; i++) {
+        curPlayerCreatures[i] = ["Empty"];
+    }
     curCreatureIdx = 0;
     curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
     curEnemy = getEnemy();
 
     % Initialise the player items to empty
-    for (var i = 0; i < 4; i++) {
+    for (var i = 0; i < curPlayerItems.length; i++) {
         curPlayerItems[i] = [0, 0];
     }
 
@@ -1215,6 +1224,7 @@ function attackPlayer(idx) {
             gameover = true;
             animatedString = "No Creatures left, game over!";
         } else {
+            curPlayerCreatures[curCreatureIdx] = ["Empty"];
             guiState = CHANGE;
             updateButtontxt();
             animatedString = "Your creature has no health left, please select a new creature.";
