@@ -11,6 +11,7 @@
 % \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
+\usepackage{booktabs}
 
 \usepackage{xinttools}
 \usepackage[nomessages]{fp}
@@ -166,7 +167,8 @@ const LVL = 8;
 const CUR_EXP = 9;
 
 const START_EXP = 500;
-const MIN_LVL = 5;
+const MIN_LVL = 10;
+const MAX_LVL = 100;
 
 % Types
 const T_WATER = 0;
@@ -776,7 +778,7 @@ const ITEM_LIST = new Array(
     ["Capsule", "Capture the enemy"],
     ["Drink", "Heals to full"],
     ["Weaken", "Random \% of enemy hp as DMG"],
-    ["Levelliquid", "Gain two level"]
+    ["Levelliquid", "Gain three level"]
 );
 
 % Table defining the needed exp for the different level.
@@ -806,15 +808,20 @@ function initialise() {
     updateButtontxt();
 
     % Init exp table
-    for (var i = 1; i < 101; i++) {
-        EXP_TABLE.push(START_EXP + 250 * i * (i + 1));
+    for (var i = 0; i < MAX_LVL + 1; i++) {
+        % original formula 250 * i * (i + 1)
+        EXP_TABLE.push((START_EXP + 65 * (i - 5)) * (i - 5 + 1));
     }
+    EXP_TABLE.push(Infinity);
 
     % Initialise the player and enemy creature
     % Player items are already initialized to empty
     curCreatureIdx = 0;
-    curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL + 10);
+    curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
     curEnemy = getEnemy();
+
+    % Give the player one capsule
+    curPlayerItems[0] = 1;
 
     updateEnemyTxt();
     updatePlayerTxt();
@@ -903,6 +910,8 @@ function restart() {
     for (var i = 0; i < curPlayerItems.length; i++) {
         curPlayerItems[i] = [0, 0];
     }
+    % Give the player one capsule
+    curPlayerItems[0] = 1;
 
     animatedString = "";
 
@@ -1195,13 +1204,14 @@ function attackEnemy(idx) {
 
         var lvlup = checkLvlUp(curCreature);
         if (lvlup) {
-            updatePlayerTxt();
-            animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] + " and leveled up. " +
-                curEnemy[NAME] + " dropped " + itemName + ".";
+            animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
+                " and leveled up. " + curEnemy[NAME] + " dropped " + itemName + ".";
         } else {
             animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
-                " and got " + exp + " experience. " + curEnemy[NAME] + " dropped " + itemName + ".";
+                " and got " + exp + " experience. " +
+                curEnemy[NAME] + " dropped " + itemName + ".";
         }
+        updatePlayerTxt();
     } else {
         animatedString = curEnemy[NAME] + " took " + dmg + " damage.";
     }
@@ -1298,6 +1308,7 @@ function run() {
         addInfoText(" " + creature[NAME] + " loses one level.");
         % Level down to discourage the player from running away from a fight
         creature[LVL]--;
+        creature[CUR_EXP] = EXP_TABLE[creature[LVL]] + 1;
         creature[MAX_HP] -= Math.ceil(creature[HP_GAIN]);
         creature[CUR_HP] = Math.min(creature[CUR_HP], creature[MAX_HP]);
         updatePlayerTxt();
@@ -1376,8 +1387,9 @@ function itemSelect(idx) {
         % Heal
         selCreature[CUR_HP] = selCreature[MAX_HP];
     } else if (item[NAME] == "Levelliquid") {
-        % Increase level by 2
-        selCreature[CUR_EXP] = EXP_TABLE[selCreature[LVL] - MIN_LVL + 2];
+        % Increase level by 3
+        selCreature[CUR_EXP] = EXP_TABLE[Math.min(selCreature[LVL] + 3, MAX_LVL)] + 1;
+        checkLvlUp(selCreature);
         checkLvlUp(selCreature);
         checkLvlUp(selCreature);
         updatePlayerTxt();
@@ -1456,7 +1468,12 @@ function noCreatureLeft() {
  * @param {Array} creature The data of the creature.
  */
 function checkLvlUp(creature) {
-    if (creature[CUR_EXP] > EXP_TABLE[creature[LVL] - MIN_LVL]) {
+    % Level cap
+    if (creature[LVL] == MAX_LVL) {
+        return false;
+    }
+
+    if (creature[CUR_EXP] > EXP_TABLE[creature[LVL] + 1]) {
         creature[LVL]++;
         % Increase health after lvl up
         creature[MAX_HP] += Math.ceil(creature[HP_GAIN]);
@@ -1521,7 +1538,7 @@ function getEnemy() {
     const mul = 2.5;
     var offset = count * mul * 0.5 - getRandomInt(count * mul + 1);
     curLvl += offset;
-    curLvl = Math.max(MIN_LVL, Math.floor(curLvl));
+    curLvl = Math.min(Math.max(MIN_LVL, Math.floor(curLvl)), MAX_LVL);
 
     return getCreature(curLvl);
 }
@@ -1547,7 +1564,7 @@ function getCreature(curLvl) {
         hp, % MAX_HP
         hp, % CUR_HP
         curLvl, % LVL
-        START_EXP % CUR_EXP
+        EXP_TABLE[curLvl] % CUR_EXP
     ];
 }
 
@@ -1590,7 +1607,8 @@ function updateButtontxt() {
             var btn = "button" + (i + 1) + "txt";
             var name = ITEM_LIST[curPlayerItems[i][0]][NAME];
             if (name != "Empty") {
-                name += " (" + ITEM_LIST[curPlayerItems[i][0]][DESC] + "), #" + curPlayerItems[i][1];
+                name += " (" + ITEM_LIST[curPlayerItems[i][0]][DESC] +
+                    "), #" + curPlayerItems[i][1];
             }
             this.getField(btn).value = name;
         }
@@ -1603,7 +1621,8 @@ function updateButtontxt() {
 function updatePlayerTxt() {
     var creature = curPlayerCreatures[curCreatureIdx];
     this.getField("playername").value =
-        creature[NAME] + " (" + TYPE_STRINGS[creature[TYPE]] + "), Level: " + creature[LVL];
+        creature[NAME] + " (" + TYPE_STRINGS[creature[TYPE]] + "), Level: " + creature[LVL] +
+        " (" + creature[CUR_EXP] + "/" + EXP_TABLE[creature[LVL] + 1] + ")";
 
     guiHP[PLAYER] = creature[CUR_HP];
     this.getField("playerhp").value = "HP: " + creature[CUR_HP] + " of " + creature[MAX_HP];
@@ -2805,8 +2824,8 @@ function addInfoText(text) {
         \columnbreak
             \centering
             \small
-            \begin{tabularx}{\linewidth}{c | *{6}{@{\,\,} c @{\,\,} | } c}%
-                  & Water & Air & Stone & Grass & Ghost & Fluff & Fire \\ \hline
+            \begin{tabularx}{\linewidth}{c | *{6}{@{\,\,} c @{\,\,} } c}%
+                  & Water & Air & Stone & Grass & Ghost & Fluff & Fire \\ \midrule
                 W & 1.0 & 1.0 & 0.3 & 0.5 & 1.3 & 1.7 & 2.0 \\
                 A & 0.9 & 1.0 & 0.4 & 0.7 & 2.0 & 1.3 & 0.8 \\
                 S & 0.7 & 0.5 & 1.3 & 1.5 & 0.8 & 2.0 & 1.3 \\
