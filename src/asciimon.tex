@@ -113,6 +113,8 @@ var gameover = false;
 var selection;
 % Save idx of the last attack for reuse in subsequent turnStates
 var lastAttackIdx = 0;
+% Save if an enemy was beaten last round
+var enemyBeaten = false;
 
 % Animation data
 % Interval for saving the creature change visualization
@@ -1080,6 +1082,7 @@ function executeRound(action, idx) {
         % Cleanup if creature is dead
         if (curPlayerCreatures[curCreatureIdx][CUR_HP] == 0) {
             curPlayerCreatures[curCreatureIdx] = ["Empty"];
+            updateButtontxt();
         }
 
         app.clearInterval(roundInterval);
@@ -1111,6 +1114,8 @@ function executeRound(action, idx) {
             % Items that are applied to the current player creature
             turnState = itemApply(idx);
         }
+        % The player made a selection, reset beaten-state
+        enemyBeaten = false;
     }
     % Start the attack animation with the enemy as target
     else if (turnState == ACTION_P_ATTACK) {
@@ -1183,6 +1188,7 @@ function attackEnemy(idx) {
 
     % If the enemy is beaten add xp and lvl up if needed
     if (curEnemy[CUR_HP] == 0) {
+        enemyBeaten = true;
         var exp = addEXP(curEnemy, curCreature);
 
         var itemName = ITEM_LIST[addRandomItem()][NAME];
@@ -1219,14 +1225,13 @@ function attackPlayer(idx) {
 
     % If the player creature is dead remove it from the player creatures
     if (creature[CUR_HP] == 0) {
+        % (Cleanup is done after hp bar animation finished, line 1087)
         % If the player has no creatures left the game is over
         if (noCreatureLeft()) {
             gameover = true;
             animatedString = "No Creatures left, game over!";
         } else {
-            curPlayerCreatures[curCreatureIdx] = ["Empty"];
             guiState = CHANGE;
-            updateButtontxt();
             animatedString = "Your creature has no health left, please select a new creature.";
         }
     } else {
@@ -1258,7 +1263,10 @@ function change(idx) {
     updatePlayerTxt();
     drawPlayer();
 
-    % TODO if enemy died before return ACTION_END
+    % If the last enemy was beaten return ACTION_END
+    if (enemyBeaten) {
+        return ACTION_END;
+    }
     return ACTION_E_CHOOSE;
 }
 
@@ -1269,7 +1277,8 @@ function changeEnemy() {
     curEnemy = getEnemy();
     drawEnemy();
     updateEnemyTxt();
-    animatedString = "Your new enemy is: " + curEnemy[NAME];
+    animatedString = "Your new enemy is: " + curEnemy[NAME] +
+        ". You may choose a creature without penalty.";
 }
 
 /**
