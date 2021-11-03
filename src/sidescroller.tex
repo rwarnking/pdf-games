@@ -1,0 +1,348 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+% \usepackage[utf8x]{inputenc}
+% \usepackage[T1]{fontenc}
+% \usepackage[ngerman]{babel}
+% \usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+% \usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% to slow to play
+\def\fieldWidth{4}
+\def\fieldHeight{20}
+
+% Max playercount is 5
+\def\playerCount{5}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{insDLJS}[]{JSDateiname}{Gamename}
+
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
+
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const ANIMATION_SPEED = 100;
+
+% Constants
+
+% Globals
+var gameover = false;
+var counter = 0;
+% The game field
+var complField = new Array();
+
+var animationInterval;
+
+% Color data
+const COLORS = new Array(
+    %[ "RGB", 0.843, 0.078, 0.058 ],
+    %[ "RGB", 0.203, 0.603, 0.054 ],
+    %[ "RGB", 0.078, 0.305, 0.560 ]
+);
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Init the GUI
+    initialiseButtons();
+
+    initField();
+
+    % Draw continuously
+    animationInterval = app.setInterval("frame()", ANIMATION_SPEED);
+    printInfoText("hi");
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the coresponding function and disable the highlights
+    this.getField("restart").setAction("MouseUp", "restart();");
+    %this.getField("restart").highlight="none";
+
+    % Info field setup
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    %this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Init");
+}
+
+/**
+ * Restart the game and clear everything
+ */
+function restart() {
+    gameover = false;
+    counter = 0;
+
+    printInfoText("Restart");
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = false;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+function initField() {
+    % For all lines
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        setField("line" + m, "1234567890");
+    }
+}
+
+/**
+ * Shows next frame for the canvas, by adding the next symbol at the right and
+ * shifting all lines one to the left.
+ * If the game is over the animation interval is cleared.
+ */
+function frame() {
+    printInfoText("running" + counter);
+
+    if (counter > 200) {
+        gameover = true;
+    }
+
+    if (gameover) {
+        app.clearInterval(animationInterval);
+        return;
+    }
+
+    var symbList = [
+        "A", "B", "C", "D", "E"
+    ];
+
+    % Shift all lines
+    var add = symbList[counter \% 5];
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        addToField("line" + m,  add);
+        shiftFieldLeft("line" + m);
+    }
+
+    counter++;
+}
+
+/**
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ */
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    cell.value = "tmp";
+    cell.delay = false;
+}
+
+/**
+ * Shift the value of the given field.
+ *
+ * @param {Number} id The id of the field.
+ */
+function shiftFieldLeft(id) {
+    var cell = this.getField(id);
+    cell.delay = true;
+    cell.value = cell.value.substring(1);
+    cell.delay = false;
+}
+
+/**
+ * Set string of the given field.
+ *
+ * @param {Number} id The id of the field.
+ * @param {String} value The value to set.
+ */
+function setField(id, value) {
+    var cell = this.getField(id);
+    cell.delay = true;
+    cell.value = value;
+    cell.delay = false;
+}
+
+/**
+ * Add string to the given field.
+ *
+ * @param {Number} id The id of the field.
+ * @param {String} value The value to add.
+ */
+function addToField(id, value) {
+    var cell = this.getField(id);
+    cell.delay = true;
+    cell.value += value;
+    cell.delay = false;
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Gamename}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \def\blocksizeH{\dimexpr (500 pt)/\fieldHeight \relax}
+        \def\blocksizeW{\dimexpr (500 pt) \relax}
+
+        \begin{center}
+            \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                \TextField[%
+                    width=\blocksizeW, height=\blocksizeH,%
+                    bordercolor=red, name=line#1, readonly=true%
+                ]{}%
+                \\[0pt]%
+            }%
+        \end{center}
+
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % \def\DefaultHeightofText{14pt}
+        % \renewcommand*{\LayoutTextField}[2]{%
+        %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
+        % }
+
+        % \renewcommand*{\LayoutCheckField}[2]{#1 #2}
+        % \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        % \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        % \renewcommand*{\LayoutCheckField}[2]{%
+        %     \parbox[c][\DefaultHeightofCheckBox]{0.12\linewidth}{#1}\enspace%
+        %     \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}%
+        % }
+
+        % \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        % \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        \begin{center}
+            % Game related buttons
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+
+    \end{Form}
+\end{document}
