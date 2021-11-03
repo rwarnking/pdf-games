@@ -26,8 +26,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
 % to slow to play
-\def\fieldWidth{4}
-\def\fieldHeight{20}
+\def\fieldWidth{80}
+\def\fieldHeight{30}
 
 % Max playercount is 5
 \def\playerCount{5}
@@ -46,7 +46,8 @@ Text.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const ANIMATION_SPEED = 100;
+const SCREEN_TEXT_WIDTH = 800;
+const ANIMATION_SPEED = 10;
 
 % Constants
 
@@ -79,11 +80,8 @@ function initialise() {
     % Init the GUI
     initialiseButtons();
 
-    initField();
-
     % Draw continuously
     animationInterval = app.setInterval("frame()", ANIMATION_SPEED);
-    printInfoText("hi");
 }
 
 /**
@@ -93,6 +91,14 @@ function initialise() {
 function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
+
+    % Adjust text size and font
+    var cell;
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        cell = this.getField("line" + m);
+        cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+        cell.textFont = font.Cour;
+    }
 
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
@@ -164,11 +170,18 @@ function tooltip(on) {
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
-function initField() {
-    % For all lines
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        setField("line" + m, "1234567890");
-    }
+
+const LINE_OFFSET = 2;
+const START_TOP_LINE = LINE_OFFSET;
+const START_BOT_LINE = FIELD_HEIGHT - LINE_OFFSET - 1;
+
+% var playerPos = [0, FIELD_WIDTH * 0.5];
+
+function getLine(xPos, baseline) {
+    % xPos to radians (4x)
+    const period = 1;
+    var rad = (xPos / FIELD_WIDTH) * Math.PI * 2.0 * period;
+    return Math.round(Math.sin(rad) * LINE_OFFSET + baseline);
 }
 
 /**
@@ -188,32 +201,24 @@ function frame() {
         return;
     }
 
-    var symbList = [
-        "A", "B", "C", "D", "E"
-    ];
+    var tL = getLine(counter, START_TOP_LINE);
+    var bL = getLine(counter, START_BOT_LINE);
 
     % Shift all lines
-    var add = symbList[counter \% 5];
     for (var m = 0; m < FIELD_HEIGHT; m++) {
-        addToField("line" + m,  add);
-        shiftFieldLeft("line" + m);
+        var symb = " ";
+        if (m == tL || m == bL) {
+            symb = "*";
+        }
+
+        addToField("line" + m,  symb);
+
+        if (counter >= FIELD_WIDTH) {
+            shiftFieldLeft("line" + m);
+        }
     }
 
     counter++;
-}
-
-/**
- * Since only one cell is updated with each input,
- * only this cell needs to be redrawn.
- *
- * @param {Number} m The m position.
- * @param {Number} n The n position.
- */
-function draw(m, n) {
-    var cell = this.getField("cell" + m + "-" + n);
-    cell.delay = true;
-    cell.value = "tmp";
-    cell.delay = false;
 }
 
 /**
@@ -298,7 +303,7 @@ function printInfoText(text) {
             \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \TextField[%
                     width=\blocksizeW, height=\blocksizeH,%
-                    bordercolor=red, name=line#1, readonly=true%
+                    bordercolor=, name=line#1, readonly=true%
                 ]{}%
                 \\[0pt]%
             }%
