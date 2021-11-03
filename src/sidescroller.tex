@@ -47,17 +47,44 @@ Text.";
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const SCREEN_TEXT_WIDTH = 800;
-const ANIMATION_SPEED = 10;
+const ANIMATION_SPEED = 5;
 
 % Constants
+const LINE_OFFSET = 2;
+const START_TOP_LINE = LINE_OFFSET;
+const START_BOT_LINE = FIELD_HEIGHT - LINE_OFFSET - 1;
+
+const X = 0;
+const Y = 1;
+const LEFT = 0;
+const TOP = 1;
+const RIGHT = 2;
+const BOT = 3;
+% document dims 842, 596
+% upper-left x, upper-left y, lower-right x and lower-right y
+const CANVAS_LTRB = [47.5, 770, 547.5, 241];
+const CANVAS_HEIGHT = CANVAS_LTRB[TOP] - CANVAS_LTRB[BOT];
+const CANVAS_WIDTH = CANVAS_LTRB[RIGHT] - CANVAS_LTRB[LEFT];
+const CANVAS_CENTER_H = CANVAS_HEIGHT * 0.5 + CANVAS_LTRB[BOT];
+const CANVAS_CENTER_W = CANVAS_WIDTH * 0.5 + CANVAS_LTRB[LEFT];
+% Gravity stats
+const GRAVITY = [0.0, -0.25];
+const FORCE = [0.0, 0.0];
+
+const PLAYER_WIDTH = 20;
+const playerMass = 5.0;
 
 % Globals
 var gameover = false;
-var counter = 0;
-% The game field
-var complField = new Array();
-
-var animationInterval;
+% The game duration
+var fieldCounter = 0;
+% Indicator which input element is focused currently
+var focus = true;
+% Player attributes
+var playerMomentum = [0.0, 0.0];
+var playerPos = [CANVAS_CENTER_W * 0.5 + PLAYER_WIDTH, CANVAS_CENTER_H];
+% The gameloop interval
+var gameInterval;
 
 % Color data
 const COLORS = new Array(
@@ -81,7 +108,7 @@ function initialise() {
     initialiseButtons();
 
     % Draw continuously
-    animationInterval = app.setInterval("frame()", ANIMATION_SPEED);
+    gameInterval = app.setInterval("gameLoop()", ANIMATION_SPEED);
 }
 
 /**
@@ -91,6 +118,8 @@ function initialise() {
 function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
+
+    this.getField("input1").setFocus();
 
     % Adjust text size and font
     var cell;
@@ -121,7 +150,7 @@ function initialiseButtons() {
  */
 function restart() {
     gameover = false;
-    counter = 0;
+    fieldCounter = 0;
 
     printInfoText("Restart");
 }
@@ -166,17 +195,105 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
+function gameLoop() {
+    if (gameover) {
+        app.clearInterval(gameInterval);
+        return;
+    }
+
+    % Player movement
+    if (fieldCounter >= FIELD_WIDTH) {
+        applyGravityToPlayer();
+        processInput();
+    }
+
+    % TODO
+    % Check for collision and gameover
+
+    % Draw the field
+    drawField();
+
+    % Draw the obstacles
+
+    % Player rendering
+    drawPlayer();
+
+    %printInfoText(playerPos);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%
+% Input and movement %
+%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Process input made by keys of the keyboard.
+ * For this multiple input fields are needed for which the focus is shifted.
+ * The input is then parsed into actual movement.
+ */
+function processInput() {
+    var iField1 = this.getField("input1");
+    var iField2 = this.getField("input2");
+
+    iField1.delay = true;
+    iField2.delay = true;
+
+    % Get the input from the currently focused input element
+    var movementString;
+    if (focus) {
+        iField1.setFocus();
+        movementString = iField2.value;
+        iField2.value = "";
+    } else {
+        iField2.setFocus();
+        movementString = iField1.value
+        iField1.value = "";
+    }
+    focus = !focus;
+
+    % Process the input string
+    for (var i = 0; i < movementString.length; i++) {
+        move(movementString.charAt(i));
+    }
+
+    iField1.delay = false;
+    iField2.delay = false;
+}
+
+/**
+ * Alters the position of the given particlce by using gravity.
+ * The floor can be used to achieve a jumping motion.
+ * Very similar the implementation found here:
+ * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
+ * @param {Number} p The particle index.
+ * @param {Number} floor The y position at which the floor should be.
+ */
+function applyGravityToPlayer() {
+    const g = GRAVITY;
+    const f = FORCE;
+    const m = playerMass;
+    var mom = playerMomentum;
+
+    % Momentum += gravity + force
+    mom = [mom[X] + g[X] + f[X], mom[Y] + g[Y] + f[Y]];
+    % Velocity = momentum / mass
+    var v = [mom[X] / m, mom[Y] / m];
+    % Position += velocity
+    var newPos = [playerPos[X] + v[X], playerPos[Y] + v[Y]];
+
+    playerMomentum = mom;
+    playerPos = newPos;
+}
+
+function move(char) {
+    const MOVE_SPEED = 5;
+    if (char == "w" || char == " ") {
+        playerMomentum = [0.0, 0.0];
+        playerPos[Y] += MOVE_SPEED;
+    }
+}
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
-
-const LINE_OFFSET = 2;
-const START_TOP_LINE = LINE_OFFSET;
-const START_BOT_LINE = FIELD_HEIGHT - LINE_OFFSET - 1;
-
-% var playerPos = [0, FIELD_WIDTH * 0.5];
-
 function getLine(xPos, baseline) {
     % xPos to radians (4x)
     const period = 1;
@@ -185,24 +302,14 @@ function getLine(xPos, baseline) {
 }
 
 /**
+ * TODO
  * Shows next frame for the canvas, by adding the next symbol at the right and
  * shifting all lines one to the left.
  * If the game is over the animation interval is cleared.
  */
-function frame() {
-    printInfoText("running" + counter);
-
-    if (counter > 200) {
-        gameover = true;
-    }
-
-    if (gameover) {
-        app.clearInterval(animationInterval);
-        return;
-    }
-
-    var tL = getLine(counter, START_TOP_LINE);
-    var bL = getLine(counter, START_BOT_LINE);
+function drawField() {
+    var tL = getLine(fieldCounter, START_TOP_LINE);
+    var bL = getLine(fieldCounter, START_BOT_LINE);
 
     % Shift all lines
     for (var m = 0; m < FIELD_HEIGHT; m++) {
@@ -213,14 +320,33 @@ function frame() {
 
         addToField("line" + m,  symb);
 
-        if (counter >= FIELD_WIDTH) {
+        if (fieldCounter >= FIELD_WIDTH) {
             shiftFieldLeft("line" + m);
         }
     }
-
-    counter++;
+    fieldCounter++;
 }
 
+function drawPlayer() {
+    var field = this.getField("player");
+    field.delay = true;
+    field.value = "#";
+
+    field.fillColor = color.gray;
+    % upper-left x, upper-left y, lower-right x and lower-right y
+    field.rect = [
+        playerPos[X] - PLAYER_WIDTH,
+        playerPos[Y] + PLAYER_WIDTH,
+        playerPos[X] + PLAYER_WIDTH,
+        playerPos[Y] - PLAYER_WIDTH
+    ];
+
+    field.delay = false;
+}
+
+%%%%%%%%%%%%%%%%%%%%%%
+% Modify cell values %
+%%%%%%%%%%%%%%%%%%%%%%
 /**
  * Shift the value of the given field.
  *
@@ -346,6 +472,11 @@ function printInfoText(text) {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
+
+        \TextField[name=player, width=1cm, height=1cm, bordercolor=]{}
+
+        \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
+        \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
 
