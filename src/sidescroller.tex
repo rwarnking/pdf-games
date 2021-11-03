@@ -49,6 +49,7 @@ const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const OBSTACLE_COUNT = AFMakeNumber(\obstacleCount);
 const SCREEN_TEXT_WIDTH = 800;
+const TEXT_SIZE = 40;
 const ANIMATION_SPEED = 5;
 
 % Constants
@@ -153,11 +154,6 @@ function initialise() {
     % Init the GUI
     initialiseButtons();
 
-    % Init obstacles
-    for (var i = 0; i < OBSTACLE_COUNT; i++) {
-        obstacles.push([-1, -1, "#"]);
-    }
-
     % Draw continuously
     gameInterval = app.setInterval("gameLoop()", ANIMATION_SPEED);
 }
@@ -179,6 +175,22 @@ function initialiseButtons() {
         cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
         cell.textFont = font.Cour;
     }
+
+    % Init player
+    var field = this.getField("player");
+    field.value = String.fromCharCode(0x261B);
+    field.textSize = TEXT_SIZE - 1;
+    field.alignment = "center";
+
+    % Init obstacles
+    for (var i = 0; i < OBSTACLE_COUNT; i++) {
+        obstacles.push([-1, -1, "#"]);
+        field = this.getField("obstacle" + i);
+        field.textSize = TEXT_SIZE;
+        field.alignment = "center";
+    }
+
+
 
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
@@ -206,6 +218,8 @@ function restart() {
     % Reset obstacles
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
         obstacles[i] = [-1, -1, "#"];
+        % Reset highlight
+        markObstacle(i, false);
     }
 
     printInfoText("Restart");
@@ -254,6 +268,7 @@ function tooltip(on) {
 function gameLoop() {
     if (gameover) {
         app.clearInterval(gameInterval);
+        printInfoText("Game over");
         return;
     }
 
@@ -263,8 +278,14 @@ function gameLoop() {
         processInput();
     }
 
-    % TODO
     % Check for collision and gameover
+    var res = testCollisions();
+    if (res != -1) {
+        gameover = true;
+        % Mark collided obstacle
+        markObstacle(res, true);
+        return;
+    }
 
     % Draw the field
     drawField();
@@ -313,6 +334,28 @@ function refreshObstacles() {
             obstacles[i][X] -= OBSTACLE_MOVE_SPEED;
         }
     }
+}
+
+function testCollisions() {
+    const pLeft = playerPos[X] - PLAYER_WIDTH;
+    const pTop = playerPos[Y] + PLAYER_WIDTH;
+    const pRight = playerPos[X] + PLAYER_WIDTH;
+    const pBot = playerPos[Y] - PLAYER_WIDTH;
+
+    % For all obstacles run a intersection test
+    for (var i = 0; i < OBSTACLE_COUNT; i++) {
+        var bLeft = obstacles[i][X] - PLAYER_WIDTH;
+        var bTop = obstacles[i][Y] + PLAYER_WIDTH;
+        var bRight = obstacles[i][X] + PLAYER_WIDTH;
+        var bBot = obstacles[i][Y] - PLAYER_WIDTH;
+
+        if (pLeft < bRight && pRight > bLeft &&
+            pTop > bBot && pBot < bTop) {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -424,9 +467,7 @@ function drawField() {
 function drawPlayer() {
     var field = this.getField("player");
     field.delay = true;
-    field.value = "#";
 
-    field.fillColor = color.gray;
     % upper-left x, upper-left y, lower-right x and lower-right y
     field.rect = [
         playerPos[X] - PLAYER_WIDTH,
@@ -442,9 +483,6 @@ function drawObstacles() {
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
         var field = this.getField("obstacle" + i);
         field.delay = true;
-        const TEXT_SIZE = 40;
-        field.textSize = TEXT_SIZE;
-        field.alignment = "center";
         field.value = obstacles[i][SYMB];
 
         % upper-left x, upper-left y, lower-right x and lower-right y
@@ -463,6 +501,17 @@ function drawObstacles() {
 
         field.delay = false;
     }
+}
+
+function markObstacle(obs, enable) {
+    var field = this.getField("obstacle" + obs);
+    field.delay = true;
+    if (enable) {
+        field.borderColor = color.blue;
+    } else {
+        field.borderColor = color.transparent;
+    }
+    field.delay = false;
 }
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -550,7 +599,7 @@ function printInfoText(text) {
             \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \TextField[%
                     width=\blocksizeW, height=\blocksizeH,%
-                    bordercolor=blue, name=line#1, readonly=true%
+                    bordercolor=, name=line#1, readonly=true%
                 ]{}%
                 \\[0pt]%
             }%
@@ -598,7 +647,7 @@ function printInfoText(text) {
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
 
         \TextField[name=player, width=1cm,
-            height=1cm, bordercolor=red
+            height=1cm, bordercolor=
         ]{}
 
         \xintFor* #1 in {\xintSeq{0}{\obstacleCount-1}} \do {%
@@ -608,7 +657,7 @@ function printInfoText(text) {
             ]{}%
         }%
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+        \TextField[bordercolor=, name=tooltiptxt, readonly=true, hidden]{}
 
     \end{Form}
 \end{document}
