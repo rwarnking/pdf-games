@@ -122,6 +122,8 @@ var enemyBeaten = false;
 var changeAnimationInterval;
 % Current state of the animation
 var animationProgress = FIELD_WIDTH;
+% Indicate whether the canvas are currently drawing a creature
+var drawing = true;
 % The interval for processing a round (uses the turnState to terminate)
 var roundInterval;
 % For the text animation
@@ -821,7 +823,7 @@ function initialise() {
     curEnemy = getEnemy();
 
     % Give the player one capsule
-    curPlayerItems[0] = 1;
+    curPlayerItems[0] = [1, 1];
 
     updateEnemyTxt();
     updatePlayerTxt();
@@ -889,10 +891,13 @@ function initialiseButtons() {
  */
 function restart() {
     % Restart only if no animation is running
-    if (animationProgress != FIELD_WIDTH || !particleSys.finished()) {
+    if (drawing || !particleSys.finished()) {
         printInfoText("Wait for animation!");
         return;
     }
+
+    % The creatures will be redrawn
+    drawing = true;
 
     % Gamestate
     gameover = false;
@@ -911,7 +916,7 @@ function restart() {
         curPlayerItems[i] = [0, 0];
     }
     % Give the player one capsule
-    curPlayerItems[0] = 1;
+    curPlayerItems[0] = [1, 1];
 
     animatedString = "";
 
@@ -1001,7 +1006,7 @@ function processInput(button) {
     this.getField("tooltiptxt").setFocus();
 
     % Check for animated text updates
-    if (animationProgress != FIELD_WIDTH) {
+    if (drawing) {
         printInfoText("Wait for animation!");
         return;
     }
@@ -1079,7 +1084,7 @@ function executeRound(action, idx) {
     }
 
     % Do not allow a round when a creature is currently replaced
-    if (animationProgress != FIELD_WIDTH) {
+    if (drawing) {
         return;
     }
 
@@ -1267,6 +1272,9 @@ function change(idx) {
         return ACTION_END;
     }
 
+    % The player creature will be redrawn
+    drawing = true;
+
     curCreatureIdx = idx - 1;
 
     animatedString = "You switched from " + oldName + " to " + creature[NAME] + ".";
@@ -1284,6 +1292,8 @@ function change(idx) {
  * Replace the enemy creature with a new one and redraw.
  */
 function changeEnemy() {
+    % The enemy creature will be redrawn
+    drawing = true;
     curEnemy = getEnemy();
     drawEnemy();
     updateEnemyTxt();
@@ -1298,6 +1308,9 @@ function changeEnemy() {
  * at least level 6.
  */
 function run() {
+    % The enemy creature will be redrawn
+    drawing = true;
+    % Create and draw enemy
     curEnemy = getEnemy();
     drawEnemy();
     updateEnemyTxt();
@@ -1416,7 +1429,7 @@ function removeItem(idx) {
  * Adds one random item to the list of player items.
  */
 function addRandomItem() {
-    var idx = getRandomInt(3);
+    var idx = getRandomInt(4);
     % Check if there is an item with the same idx
     if (curPlayerItems[idx][1] == 0) {
         curPlayerItems[idx][0] = idx + 1;
@@ -1431,6 +1444,9 @@ function addRandomItem() {
  * @param {Number} idx The index of the creature to be replaced (1-4).
  */
 function catchCreature(idx) {
+    % The creatures will be redrawn
+    drawing = true;
+
     curPlayerCreatures[idx - 1] = curEnemy;
     % Get new enemy
     curEnemy = getEnemy();
@@ -2458,6 +2474,7 @@ function frame(owners) {
     if (animationProgress < 0) {
         app.clearInterval(changeAnimationInterval);
         animationProgress = FIELD_WIDTH;
+        drawing = false;
         return;
     }
 
