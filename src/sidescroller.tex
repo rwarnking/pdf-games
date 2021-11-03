@@ -73,11 +73,11 @@ const CANVAS_CENTER_H = CANVAS_HEIGHT * 0.5 + CANVAS_LTRB[BOT];
 const CANVAS_CENTER_W = CANVAS_WIDTH * 0.5 + CANVAS_LTRB[LEFT];
 % Gravity stats
 const GRAVITY = [0.0, -0.25];
-const FORCE = [0.0, 0.0];
+var force = [0.0, 0.0];
 
 const OBSTACLE_WIDTH = 20;
 const PLAYER_WIDTH = 20;
-const playerMass = 5.0;
+const playerMass = 0.5;
 
 % Globals
 % The gameloop interval
@@ -154,8 +154,12 @@ function initialise() {
     % Init the GUI
     initialiseButtons();
 
+    % Player rendering
+    drawPlayer();
+
     % Draw continuously
     gameInterval = app.setInterval("gameLoop()", ANIMATION_SPEED);
+    printInfoText("Initialised game!");
 }
 
 /**
@@ -179,8 +183,9 @@ function initialiseButtons() {
     % Init player
     var field = this.getField("player");
     field.value = String.fromCharCode(0x261B);
-    field.textSize = TEXT_SIZE - 1;
+    field.textSize = TEXT_SIZE;
     field.alignment = "center";
+    field.hidden = false;
 
     % Init obstacles
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
@@ -190,11 +195,8 @@ function initialiseButtons() {
         field.alignment = "center";
     }
 
-
-
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    %this.getField("restart").highlight="none";
 
     % Info field setup
     this.getField("info").fillColor = color.transparent;
@@ -203,17 +205,31 @@ function initialiseButtons() {
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    %this.getField("tooltipbtn").highlight="none";
-
-    printInfoText("Init");
 }
 
 /**
  * Restart the game and clear everything
  */
 function restart() {
+    if (fieldCounter < FIELD_WIDTH) {
+        return;
+    }
+    if (!gameover) {
+        % In case the user restarted without gameover
+        app.clearInterval(gameInterval);
+    }
     gameover = false;
     fieldCounter = 0;
+
+    % Reset canvas
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        setField("line" + m,  "");
+    }
+
+    % Reset player
+    playerMomentum = [0.0, 0.0];
+    playerPos = [CANVAS_CENTER_W * 0.5 + PLAYER_WIDTH, CANVAS_CENTER_H];
+    drawPlayer();
 
     % Reset obstacles
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
@@ -221,8 +237,12 @@ function restart() {
         % Reset highlight
         markObstacle(i, false);
     }
+    % Draw the obstacles
+    drawObstacles();
 
-    printInfoText("Restart");
+    % Draw continuously
+    gameInterval = app.setInterval("gameLoop()", ANIMATION_SPEED);
+    printInfoText("Restarted game!");
 }
 
 /**
@@ -272,10 +292,17 @@ function gameLoop() {
         return;
     }
 
+
+    if (fieldCounter < FIELD_WIDTH) {
+        printInfoText("Wait for the game to finish generating.");
+    } else {
+        printInfoText("You have currently " + (fieldCounter - FIELD_WIDTH) + " points.");
+    }
+
     % Player movement
     if (fieldCounter >= FIELD_WIDTH) {
-        applyGravityToPlayer();
         processInput();
+        applyGravityToPlayer();
     }
 
     % Check for collision and gameover
@@ -299,12 +326,6 @@ function gameLoop() {
 
     % Player rendering
     drawPlayer();
-
-    if (fieldCounter < FIELD_WIDTH) {
-        printInfoText("Wait for the game to finish generating.");
-    } else {
-        printInfoText("You have currently " + (fieldCounter - FIELD_WIDTH) + " points.");
-    }
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -370,9 +391,6 @@ function processInput() {
     var iField1 = this.getField("input1");
     var iField2 = this.getField("input2");
 
-    iField1.delay = true;
-    iField2.delay = true;
-
     % Get the input from the currently focused input element
     var movementString;
     if (focus) {
@@ -387,12 +405,14 @@ function processInput() {
     focus = !focus;
 
     % Process the input string
-    for (var i = 0; i < movementString.length; i++) {
-        move(movementString.charAt(i));
+    if (movementString.length > 0) {
+        var char = movementString.charAt(0);
+        if (char == "w" || char == " ") {
+            force[Y] = 2.0;
+        }
+    } else {
+        force[Y] = 0.0;
     }
-
-    iField1.delay = false;
-    iField2.delay = false;
 }
 
 /**
@@ -405,7 +425,7 @@ function processInput() {
  */
 function applyGravityToPlayer() {
     const g = GRAVITY;
-    const f = FORCE;
+    const f = force;
     const m = playerMass;
     var mom = playerMomentum;
 
@@ -418,14 +438,6 @@ function applyGravityToPlayer() {
 
     playerMomentum = mom;
     playerPos = newPos;
-}
-
-function move(char) {
-    const MOVE_SPEED = 5;
-    if (char == "w" || char == " ") {
-        playerMomentum = [0.0, 0.0];
-        playerPos[Y] += MOVE_SPEED;
-    }
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -646,18 +658,17 @@ function printInfoText(text) {
         \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
 
-        \TextField[name=player, width=1cm,
-            height=1cm, bordercolor=
+        \TextField[name=player, width=1cm, height=1cm,
+            bordercolor=, backgroundcolor=, readonly, hidden
         ]{}
 
         \xintFor* #1 in {\xintSeq{0}{\obstacleCount-1}} \do {%
-            \TextField[%
-                width=1cm, height=1cm,%
-                bordercolor=, backgroundcolor=, name=obstacle#1, readonly=true%
+            \TextField[name=obstacle#1, width=1cm, height=1cm,%
+                bordercolor=, backgroundcolor=, readonly=true%
             ]{}%
         }%
 
-        \TextField[bordercolor=, name=tooltiptxt, readonly=true, hidden]{}
+        \TextField[name=tooltiptxt, bordercolor=, readonly=true, hidden]{}
 
     \end{Form}
 \end{document}
