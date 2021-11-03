@@ -58,6 +58,7 @@ const START_BOT_LINE = FIELD_HEIGHT - LINE_OFFSET - 1;
 
 const X = 0;
 const Y = 1;
+const SYMB = 2;
 const LEFT = 0;
 const TOP = 1;
 const RIGHT = 2;
@@ -98,15 +99,48 @@ const COLORS = new Array(
     %[ "RGB", 0.078, 0.305, 0.560 ]
 );
 
+% Symbol array
+const SYMBOLS = [
+    0x2588, % block
+    0x25CF, % circle
+    0x260E, % telefon
+    0x261E, % hand white
+    0x261B, % hand black
+    0x263B, % smilie
+    0x266B, % note
+    0x2702, % scissors
+    0x2712, % pencil
+    0x2706, % telefon2
+    0x2707, % video
+    0x2708, % plane
+    0x2709, % mail
+    0x2756, % diamond
+    0x271F, % cross
+    0x2717,
+    0x274D,
+    0x2730,
+    0x2752,
+    0x271C
+];
+
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
+ * Returns a random float between the param min and the param max.
+ * @param {Number} min The lowerbound
  * @param {Number} max The upperbound
  */
 function getRandomFloat(min, max) {
     return min + Math.random() * (max - min);
+}
+
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -121,7 +155,7 @@ function initialise() {
 
     % Init obstacles
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
-        obstacles.push([-1, -1]);
+        obstacles.push([-1, -1, "#"]);
     }
 
     % Draw continuously
@@ -171,7 +205,7 @@ function restart() {
 
     % Reset obstacles
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
-        obstacles[i] = [-1, -1];
+        obstacles[i] = [-1, -1, "#"];
     }
 
     printInfoText("Restart");
@@ -252,16 +286,30 @@ function gameLoop() {
     }
 }
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obstacles and collision %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function refreshObstacles() {
+    % Calculate units per line
+    const perLine = CANVAS_HEIGHT / FIELD_HEIGHT;
+
     var spawn = getRandomFloat(0.0, 1.0) > 0.9;
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
         if (obstacles[i][X] < CANVAS_LTRB[LEFT] && spawn) {
             var x = CANVAS_LTRB[RIGHT] + OBSTACLE_WIDTH;
-            var y = getRandomFloat(CANVAS_LTRB[BOT], CANVAS_LTRB[TOP]);
-            obstacles[i] = [x, y];
+            % Get current lines
+            var curTop = getLine(fieldCounter, START_TOP_LINE);
+            var curBot = getLine(fieldCounter, START_BOT_LINE);
+            % Get bounds in units while keeping the lines in mind
+            var uBound = CANVAS_LTRB[TOP] - curTop * perLine - OBSTACLE_WIDTH;
+            var lBound = CANVAS_LTRB[BOT] + (FIELD_HEIGHT - curBot) * perLine + OBSTACLE_WIDTH;
+            var y = getRandomFloat(lBound, uBound);
+
+            var symb = String.fromCharCode(SYMBOLS[getRandomInt(SYMBOLS.length)]);
+            obstacles[i] = [x, y, symb];
             spawn = false;
         } else {
-            const OBSTACLE_MOVE_SPEED = 10;
+            const OBSTACLE_MOVE_SPEED = 6;
             obstacles[i][X] -= OBSTACLE_MOVE_SPEED;
         }
     }
@@ -394,9 +442,11 @@ function drawObstacles() {
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
         var field = this.getField("obstacle" + i);
         field.delay = true;
-        field.value = "#";
+        const TEXT_SIZE = 40;
+        field.textSize = TEXT_SIZE;
+        field.alignment = "center";
+        field.value = obstacles[i][SYMB];
 
-        field.fillColor = color.gray;
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [
             Math.min(
@@ -547,12 +597,14 @@ function printInfoText(text) {
         \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
 
-        \TextField[name=player, width=1cm, height=1cm, bordercolor=red]{}
+        \TextField[name=player, width=1cm,
+            height=1cm, bordercolor=red
+        ]{}
 
         \xintFor* #1 in {\xintSeq{0}{\obstacleCount-1}} \do {%
             \TextField[%
                 width=1cm, height=1cm,%
-                bordercolor=blue, name=obstacle#1, readonly=true%
+                bordercolor=, backgroundcolor=, name=obstacle#1, readonly=true%
             ]{}%
         }%
 
