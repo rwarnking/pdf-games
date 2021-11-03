@@ -28,6 +28,7 @@
 % to slow to play
 \def\fieldWidth{80}
 \def\fieldHeight{30}
+\def\obstacleCount{5}
 
 % Max playercount is 5
 \def\playerCount{5}
@@ -46,6 +47,7 @@ Text.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const OBSTACLE_COUNT = AFMakeNumber(\obstacleCount);
 const SCREEN_TEXT_WIDTH = 800;
 const ANIMATION_SPEED = 5;
 
@@ -71,10 +73,13 @@ const CANVAS_CENTER_W = CANVAS_WIDTH * 0.5 + CANVAS_LTRB[LEFT];
 const GRAVITY = [0.0, -0.25];
 const FORCE = [0.0, 0.0];
 
+const OBSTACLE_WIDTH = 20;
 const PLAYER_WIDTH = 20;
 const playerMass = 5.0;
 
 % Globals
+% The gameloop interval
+var gameInterval;
 var gameover = false;
 % The game duration
 var fieldCounter = 0;
@@ -83,8 +88,8 @@ var focus = true;
 % Player attributes
 var playerMomentum = [0.0, 0.0];
 var playerPos = [CANVAS_CENTER_W * 0.5 + PLAYER_WIDTH, CANVAS_CENTER_H];
-% The gameloop interval
-var gameInterval;
+% Obstacle array
+var obstacles = [];
 
 % Color data
 const COLORS = new Array(
@@ -96,6 +101,13 @@ const COLORS = new Array(
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
+function getRandomFloat(min, max) {
+    return min + Math.random() * (max - min);
+}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
@@ -106,6 +118,11 @@ const COLORS = new Array(
 function initialise() {
     % Init the GUI
     initialiseButtons();
+
+    % Init obstacles
+    for (var i = 0; i < OBSTACLE_COUNT; i++) {
+        obstacles.push([-1, -1]);
+    }
 
     % Draw continuously
     gameInterval = app.setInterval("gameLoop()", ANIMATION_SPEED);
@@ -151,6 +168,11 @@ function initialiseButtons() {
 function restart() {
     gameover = false;
     fieldCounter = 0;
+
+    % Reset obstacles
+    for (var i = 0; i < OBSTACLE_COUNT; i++) {
+        obstacles[i] = [-1, -1];
+    }
 
     printInfoText("Restart");
 }
@@ -213,12 +235,36 @@ function gameLoop() {
     % Draw the field
     drawField();
 
-    % Draw the obstacles
+    if (fieldCounter >= FIELD_WIDTH) {
+        % Refresh obstacles
+        refreshObstacles();
+        % Draw the obstacles
+        drawObstacles();
+    }
 
     % Player rendering
     drawPlayer();
 
-    %printInfoText(playerPos);
+    if (fieldCounter < FIELD_WIDTH) {
+        printInfoText("Wait for the game to finish generating.");
+    } else {
+        printInfoText("You have currently " + (fieldCounter - FIELD_WIDTH) + " points.");
+    }
+}
+
+function refreshObstacles() {
+    var spawn = getRandomFloat(0.0, 1.0) > 0.9;
+    for (var i = 0; i < OBSTACLE_COUNT; i++) {
+        if (obstacles[i][X] < CANVAS_LTRB[LEFT] && spawn) {
+            var x = CANVAS_LTRB[RIGHT] + OBSTACLE_WIDTH;
+            var y = getRandomFloat(CANVAS_LTRB[BOT], CANVAS_LTRB[TOP]);
+            obstacles[i] = [x, y];
+            spawn = false;
+        } else {
+            const OBSTACLE_MOVE_SPEED = 10;
+            obstacles[i][X] -= OBSTACLE_MOVE_SPEED;
+        }
+    }
 }
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -344,6 +390,31 @@ function drawPlayer() {
     field.delay = false;
 }
 
+function drawObstacles() {
+    for (var i = 0; i < OBSTACLE_COUNT; i++) {
+        var field = this.getField("obstacle" + i);
+        field.delay = true;
+        field.value = "#";
+
+        field.fillColor = color.gray;
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [
+            Math.min(
+                Math.max(obstacles[i][X] - PLAYER_WIDTH, CANVAS_LTRB[LEFT]),
+                CANVAS_LTRB[RIGHT]
+            ),
+            obstacles[i][Y] + PLAYER_WIDTH,
+            Math.min(
+                Math.max(obstacles[i][X] + PLAYER_WIDTH, CANVAS_LTRB[LEFT]),
+                CANVAS_LTRB[RIGHT]
+            ),
+            obstacles[i][Y] - PLAYER_WIDTH
+        ];
+
+        field.delay = false;
+    }
+}
+
 %%%%%%%%%%%%%%%%%%%%%%
 % Modify cell values %
 %%%%%%%%%%%%%%%%%%%%%%
@@ -429,7 +500,7 @@ function printInfoText(text) {
             \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \TextField[%
                     width=\blocksizeW, height=\blocksizeH,%
-                    bordercolor=, name=line#1, readonly=true%
+                    bordercolor=blue, name=line#1, readonly=true%
                 ]{}%
                 \\[0pt]%
             }%
@@ -473,10 +544,17 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[name=player, width=1cm, height=1cm, bordercolor=]{}
-
         \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
+
+        \TextField[name=player, width=1cm, height=1cm, bordercolor=red]{}
+
+        \xintFor* #1 in {\xintSeq{0}{\obstacleCount-1}} \do {%
+            \TextField[%
+                width=1cm, height=1cm,%
+                bordercolor=blue, name=obstacle#1, readonly=true%
+            ]{}%
+        }%
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
 
