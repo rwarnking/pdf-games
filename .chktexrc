@@ -20,4 +20,5 @@ WipeArg
 # For example, code 24 warns when an index may be misplaced due
 # to spaces (page spillover).
 # https://tex.stackexchange.com/questions/552210/
-CmdLine { -n 24 -n 1 }
+# 44: Vertical rules in tables are ugly
+CmdLine { -n 24 -n 1 -n 44 }

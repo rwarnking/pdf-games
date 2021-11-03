@@ -1,0 +1,2858 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+% \usepackage[utf8x]{inputenc}
+% \usepackage[T1]{fontenc}
+% \usepackage[ngerman]{babel}
+% \usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+\usepackage{booktabs}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% to slow to play
+\def\fieldWidth{30}
+\def\fieldHeight{15}
+\def\atkAnimCells{20}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{insDLJS}[]{JSDateiname}{asciimon}
+
+const GAME_DESC = "This game is similar to old games one might have played on a gameboy.\
+There are two creatures shown. The one at the bottom is the player, while the one at the\
+top is the enemy. Each turn both creatures are supposed to attack each other until\
+one of them has no health left. If the enemy is beaten a new creature is selected.\
+If your own creature dies you lose, unless you previously caught another one.";
+
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const ATK_ANIM_CELLS = AFMakeNumber(\atkAnimCells);
+const SCREEN_TEXT_WIDTH = 400;
+const ROUND_ANIMATION_SPEED = 100;
+const CHANGE_ANIMATION_SPEED = 50;
+
+%%%%%%%%%%%%%%%%%%
+% Game constants %
+%%%%%%%%%%%%%%%%%%
+% Gui states
+const MENU = 0;
+const FIGHT = 1;
+const CHANGE = 2;
+const ITEMS = 3;
+const RUN = 4;
+const HARD_CHANGE = 5;
+const REPLACE = 6;
+const ITEM_SELECT = 7;
+
+% Round states
+const ACTION_IDLE = -1
+const ACTION_P_CHOOSE = 0;
+const ACTION_P_ATTACK = 1;
+const ACTION_E_HP_UPDATE = 3;
+const ACTION_E_CHOOSE = 4;
+const ACTION_E_ATTACK = 5;
+const ACTION_P_HP_UPDATE = 6;
+const ACTION_P_CHANGE = 7;
+const ACTION_END = 8;
+
+% Turns
+const PLAYER = 0;
+const ENEMY = 1;
+
+% Animation
+const CENTER_M = FIELD_HEIGHT * 0.5;
+const PADDING_SYMB = " ";
+% https://stackoverflow.com/questions/16885297/
+const EMPTY_LINE = Array(FIELD_WIDTH + 2).join(PADDING_SYMB);
+
+% Particle duration and state indicator
+const ATK_DURATION = 15;
+const DEAD = -1;
+
+% Particle data keys
+const STATE = 0;
+const POS = 1;
+const SYMB = 2;
+const ROTATION = 3;
+const MASS = 4;
+const MOMENTUM = 5;
+const WIDTH = 6;
+const HEIGHT = 7;
+const SIZE = 8;
+
+% For easy access of 2D vector data
+const X = 0;
+const Y = 1;
+
+%%%%%%%%%%%%%%%%%%%%
+% Global game data %
+%%%%%%%%%%%%%%%%%%%%
+% The current gamestate variables
+var guiState = MENU;
+var turnState = ACTION_END;
+var gameover = false;
+% Used for saving selections that were made while processing previous inputs
+var selection;
+% Save idx of the last attack for reuse in subsequent turnStates
+var lastAttackIdx = 0;
+% Save if an enemy was beaten last round
+var enemyBeaten = false;
+
+% Animation data
+% Interval for saving the creature change visualization
+var changeAnimationInterval;
+% Current state of the animation
+var animationProgress = FIELD_WIDTH;
+% Indicate whether the canvas are currently drawing a creature
+var drawing = true;
+% The interval for processing a round (uses the turnState to terminate)
+var roundInterval;
+% For the text animation
+var animatedString = "";
+% For healthbar animation
+% The currently shown hp
+var guiHP = [0, 0];
+% Max bars in the healthbar
+const MAX_HP_SYMBS = 36;
+
+% Array of all particles and their data
+var particles;
+% Information-Object with the current particle system data
+var particleSys = {
+    aliveParticles: 0,
+    finished: function() {
+        return true;
+    }
+};
+
+% Information-Object with data concerning the canvas dimensions
+var canvas;
+
+% Player and enemy data (creatures and items)
+var curCreatureIdx = 0;
+var curPlayerCreatures = [["Empty"], ["Empty"], ["Empty"], ["Empty"]];
+var curPlayerItems = [[0, 0], [0, 0], [0, 0], [0, 0]];
+var curEnemy = 0;
+
+%%%%%%%%%%%%%%%%%
+% Creature data %
+%%%%%%%%%%%%%%%%%
+% Attributes
+const NAME = 0;
+const HP_GAIN = 1;
+const TYPE = 2;
+const ATKS = 3; % attacks
+const EXP_GAIN = 4;
+const IMAGE = 5;
+const MAX_HP = 6;
+const CUR_HP = 7;
+const LVL = 8;
+const CUR_EXP = 9;
+
+const START_EXP = 500;
+const MIN_LVL = 10;
+const MAX_LVL = 100;
+
+% Types
+const T_WATER = 0;
+const T_AIR = 1;
+const T_STONE = 2;
+const T_GRASS = 3;
+const T_GHOST = 4;
+const T_FLUFF = 5;
+const T_FIRE = 6;
+const T_STANDARD = 7;
+
+% For showing the creature type in the gui
+const TYPE_STRINGS = new Array(
+    "Water", "Air", "Stone", "Grass", "Ghost", "Fluff", "Fire"
+);
+
+% Row against column - 1 = normal dmg
+const DMG_MATRIX = [
+    % Water, Air, Stone, Grass, Ghost, Fluff, Fire
+    [1.0, 1.0, 0.3, 0.5, 1.3, 1.7, 2.0], % Water
+    [0.9, 1.0, 0.4, 0.7, 2.0, 1.3, 0.8], % Air
+    [0.7, 0.5, 1.3, 1.5, 0.8, 2.0, 1.3], % Stone
+    [1.7, 0.7, 1.3, 1.0, 1.3, 1.3, 0.7], % Grass
+    [0.9, 0.5, 0.5, 1.3, 1.3, 2.0, 0.8], % Ghost
+    [0.8, 1.1, 1.5, 1.1, 1.7, 0.5, 0.5], % Fluff
+    [0.8, 0.4, 2.0, 2.0, 0.3, 2.0, 0.4], % Fire
+];
+
+% http://www.asciiworld.com/index.html
+const CREATURE_LIST = new Array(
+    % Water
+    ["DUCK", 2.5, T_WATER, [0, 1, 35, 44], 25,
+        [
+             "  __    ",
+             "<(o )___",
+             " \\ ._> /",
+             "  `---' "
+        ]
+    ],
+    ["OCTOPUS", 3.3, T_WATER, [1, 2, 12, 41], 58,
+        [ % https://ascii.co.uk/art/octopus
+            "                 .-'   `'.                           ",
+            "                /         \\                          ",
+            "                |         ;                          ",
+            "                |         |           ___.--,        ",
+            "       _.._     (0) ~ (0) |    _.---'`__.-( )_.      ",
+            "__.--'`_.. '.__.\\    '--. \\_.-' ,.--'`     `\"\"`      ",
+            " ,.--'`   ',__ /./;   ;, '.__.'`    __               ",
+            "      .---.__.' / |   |\\   \\__..--\"\"  \"\"\"--.,_       ",
+            "    .'.''-._.-'`_./  /\\ '.  \\ _.-~~~````~~~-._`-.__.'",
+            "    | |  .' _.-' |  |  \\  \\  '.               `~---` ",
+            "     \\ \\/ .'     (  \\   '. '-._)                     ",
+            "      \\/ /        \\  \\    `=.__`~-.                  ",
+            "      / /\\         (  )    / / `\"\".`\\                ",
+            ", _.-'.'\\ \\        / /    ( )     / /                ",
+            " `--~`   ( )    .-'.'      '.'.  | |                 ",
+            "          `    '-;`          (-)  '-;                "
+        ]
+    ],
+    ["JELLYFISH", 2.1, T_WATER, [1, 6, 28, 46], 25,
+        [ % https://ascii.co.uk/art/jellyfish
+            " .-;':':'-.  ",
+            "{'.'.'.'.'.} ",
+            " ?        '`.",
+            "'-. ._ ,_.-='",
+            "  `). ( `);( ",
+            "  ('. .)(,'.)",
+            "   ) ( ,').( ",
+            "  ( .').'(').",
+            "  .) (' ).(' ",
+            "   '  ? (  ).",
+            "    .'( .)'  ",
+            "        .'   "
+        ]
+    ],
+    ["WHALE", 4.2, T_WATER, [2, 3, 13, 36], 80,
+        [ % https://ascii.co.uk/art/whale
+            "                  __       __  ",
+            "                 '.'--.--'.-'  ",
+            "   .,_--- --.___    \\' r'      ",
+            "   ', '-._a      '-' .'        ",
+            "     \\    '-'Y \\._  /          ",
+            "      '--;____'--.'-,          ",
+            "       /..'       '''          "
+        ]
+    ],
+    ["FISH", 2.7, T_WATER, [1, 3, 5, 8], 35,
+        [ % https://ascii.co.uk/art/fish
+            "             |             ",
+            "             |             ",
+            "            ,|.            ",
+            "           ,\\|/.           ",
+            "         ,' .V. `.         ",
+            "        / .     . \\        ",
+            "       /_`       '_\\       ",
+            "      ,' .:     ;, `.      ",
+            "      |@)|  . .  |(@|      ",
+            " ,-._ `._';  .  :`_,' _,-. ",
+            "'--  `-\\ /,-===-.\\ /-'  --`",
+            "(----  _| ||___|| |_  ----)",
+            "`._,-'  \\  `-.-'  /  `-._,'",
+            "         `-.___,-'         "
+        ]
+    ],
+    % Air
+    ["BIRD", 2.2, T_AIR, [5, 8, 10, 38], 25,
+        [ % https://ascii.co.uk/art/bird
+            "       ,\\--/,       ",
+            "      { @  @ }      ",
+            "      |  \\/  |      ",
+            "      | )  ( |      ",
+            "------`W-mm-W'------",
+            "        \\  /        ",
+            "         WW         "
+        ]
+    ],
+    ["BAT", 2.1, T_AIR, [7, 11, 21, 30], 20,
+        [ % https://ascii.co.uk/art/bat
+            "._.                  _.____.",
+            " ) \\.              /    .(  ",
+            " )  |            .'   .(    ",
+            " ). |.          .'  .(      ",
+            "   ) |.        .'  (        ",
+            "   ). ;      ./  .(         ",
+            "    ) |      |  (           ",
+            "    ).;      :.(            ",
+            "     ||    .|.;             ",
+            "     .^--^./ |.             ",
+            "     ;0..0;   \\             ",
+            "      'vv'_.:_.:            ",
+            "           m  M             "
+        ]
+    ],
+    ["BUTTERFLY", 2.2, T_AIR, [10, 12, 24, 36], 25,
+        [ % https://ascii.co.uk/art/butterfly
+                ".==-.                   .-==.",
+                " \\()8`-._  `.   .'  _.-'8()/ ",
+                " (88\"   ::.  \\./  .::   \"88) ",
+                "  \\_.'`-::::.(#).::::-'`._/  ",
+                "    `._... .q(_)p. ..._.'    ",
+                "      \"\"-..-'|=|`-..-\"\"      ",
+                "      .\"\"' .'|=|`. `\"\".      ",
+                "    ,':8(o)./|=|\\.(o)8:`.    ",
+                "   (O :8 ::/ \\_/ \\:: 8: O)   ",
+                "    \\O `::/       \\::' O/    ",
+                "     \"\"--'         `--\"\"     "
+        ]
+    ],
+    ["OWL", 3.1, T_AIR, [10, 11, 28, 34], 55,
+        [ % https://ascii.co.uk/art/owl
+            "                 ___        ",
+            "             .-\"-~-\"-.      ",
+            "            /.-\"-.-\"-.\\     ",
+            "            ||((o|o))||     ",
+            "            )\\__/V\\__/(     ",
+            "           / ~ -...- ~ \\    ",
+            "          |\\` ~. ~ .~ `/|   ",
+            "       () | `~ - \^ - ~` |   ",
+            "   () //  | ;  '  :  .  |   ",
+            "  ()\\\\/_() \\ . : '  ; '/    ",
+            " ___/ /_____'.   ; ' .'____ ",
+            "       _   \^ `uu---uu`    /\\",
+            "__   ________\^ _________\^_\\/"
+        ]
+    ],
+    % Stone
+    ["STONES", 3.7, T_STONE, [6, 13, 16, 39], 60,
+        [ % https://ascii.co.uk/art/dice
+            "          ________          ",
+            "         /\\       \\         ",
+            "        /  \\       \\        ",
+            "       /    \\       \\       ",
+            "      /      \\_______\\      ",
+            "      \\      /       /      ",
+            "    ___\\    /   ____/___    ",
+            "   /\\   \\  /   /\\       \\   ",
+            "  /  \\   \\/___/  \\       \\  ",
+            " /    \\       \\   \\       \\ ",
+            "/      \\_______\\   \\_______\\",
+            "\\      /       /   /       /",
+            " \\    /       /   /       / ",
+            "  \\  /       /\\  /       /  ",
+            "   \\/_______/  \\/_______/   "
+        ]
+    ],
+    ["PYRAMID", 4.0, T_STONE, [13, 15, 26, 39], 75,
+        [ % https://ascii.co.uk/art/pyramid
+            "                _L/L                ",
+            "              _LT/l_L_              ",
+            "            _LLl/L_T_lL_            ",
+            "          _LT|L/_|__L_|_L_          ",
+            "        _TL|_T/_L_|__T__|_l_        ",
+            "      _LL|_Tl/_|__l___L__L_|L_      ",
+            "    _'|_|_|T/_L_l__T _ l__|__|L_    ",
+            "  _LlT_|_Ll/_l_ _|__[ ]__|__|_l_L_  ",
+            "_T_L|_|_|l/___|__ | _l__|_ |__|_T_L_"
+        ]
+    ],
+    % Grass
+    ["TREE", 3.6, T_GRASS, [11, 17, 20, 40], 60,
+        [ % https://ascii.co.uk/art/tree
+            "          &&& &&  & &&        ",
+            "      && &\\/&\\|& ()|/ @, &&   ",
+            "      &\\/(/&/&||/& /_/)_&/_&  ",
+            "   &() &\\/&|()|/&\\/ '\%\" & ()  ",
+            "  &_\\_&&_\\ |& |&&/&__\%_/_& && ",
+            "&&   && & &| &| /& & \% ()& /&&",
+            " ()&_---()&\\&\\|&&-&&--\%---()~ ",
+            "     &&     \\|||              ",
+            "             |||              ",
+            "             |||              ",
+            "             |||              ",
+            "       , -=-~  .-^- _         "
+        ]
+    ],
+    ["ANT", 1.9, T_GRASS, [21, 24, 31,  41], 19,
+        [ % https://ascii.co.uk/art/ant
+            " \\       /                       ",
+            "  \\     /                        ",
+            "   \\.-./                         ",
+            "  (o\\^/o)  _   _   _     __      ",
+            "   ./ \\.\\ ( )-( )-( ) .-'  '-.   ",
+            "    {-} \\(//  ||   \\\\/ (   )) '-.",
+            "         //-__||__.-\\\\.       .-'",
+            "        (/    ()     \\) '-._.-'   ",
+            "        ||    ||      \\\\         ",
+            "        |'    ('       ')        "
+        ]
+    ],
+    ["BEEHIVE", 3.9, T_GRASS, [9,  17, 21, 45], 70,
+        [ % https://ascii.co.uk/art/bee
+            "     \^\^      .-=-=-=-.  \^\^         ",
+            " \^\^        (`-=-=-=-=-`)         ",
+            "         (`-=-=-=-=-=-=-`)  \^\^   ",
+            "   \^\^   (`-=-=-=-=-=-=-=-`)      ",
+            "       ( `-=-=-=-( )-=-=-` )       ",
+            "       (`-=-=-=-=-=-=-=-=-`)       ",
+            "       (`-=-=-=-=-=-=-=-=-`)       ",
+            "       (`-=-=-=-=-=-=-=-=-`)       ",
+            "       (`-=-=-=-=-=-=-=-=-`)       ",
+            "        (`-=-=-=-=-=-=-=-`)        ",
+            "         (`-=-=-=-=-=-=-`)  \^\^   ",
+            "           (`-=-=-=-=-`)           ",
+            "            `-=-=-=-=-`   \^\^     "
+        ]
+    ],
+    ["COBRA", 3.0, T_GRASS, [21,  30, 40, 45], 40,
+        [ % https://ascii.co.uk/art/cobra
+            "         ,,'6''-,.                                  ",
+            "        <====,.;;--.                                ",
+            "        _`---===. \"\"\"==__                           ",
+            "      //\"\"@@-\\===\\@@@@ \"\"\\\\                         ",
+            "     |( @@@  |===|  @@@  |)                         ",
+            "      \\\\ @@   |===|  @@  //                         ",
+            "        \\\\ @@ |===|@@@ //                           ",
+            "         \\\\  |===|  //                              ",
+            "___________\\\\|===| //_____,----\"\"\"\"\"\"\"\"\"\"-----,_    ",
+            "  \"\"\"\"---,__`\\===`/ _________,---------,____    `,  ",
+            "             |==||                           `\\   \\ ",
+            "            |==| |                             |   |",
+            "           |==| |       _____         ______,--'   '",
+            "           |=|  `----\"\"\"     `\"\"\"\"\"\"\"\"         _,-' ",
+            "            `=\\_______,---\"\"\"-------------\"\"\"''     "
+        ]
+    ],
+    ["TULIP", 2.4, T_GRASS, [7,  23, 36, 47], 25,
+        [ % https://ascii.co.uk/art/tulips
+            "      ,    ",
+            "  /\\\^/`\\   ",
+            " | \\/   |  ",
+            " | |    |  ",
+            " \\ \\    /  ",
+            "  '\\\\//'   ",
+            "    ||     ",
+            "    ||     ",
+            "    ||     ",
+            "    ||  ,  ",
+            "|\\  ||  |\\ ",
+            "| | ||  | |",
+            "| | || / / ",
+            " \\ \\||/ /  ",
+            "  `\\\\//`   "
+        ]
+    ],
+    ["MUSHROOM", 2.8, T_GRASS, [14,  22, 27, 41], 45,
+        [ % https://ascii.co.uk/art/mushroom
+            "           ____             ",
+            "       _.-'78o `\"`--._      ",
+            "   ,o888o.  .o888o,   ''-.  ",
+            " ,88888P  `78888P..______.] ",
+            "/_..__..----\"\"        __.'  ",
+            "`-._       /\"\"| _..-''      ",
+            "    \"`-----\\  `\\            ",
+            "            |   ;.-\"\"--..   ",
+            "            | ,8o.  o88. `. ",
+            "            `;888P  `788P  :",
+            "      .o\"\"-.|`-._         ./",
+            "     J88 _.-/    \";\"-P----' ",
+            "     `--'\\`|     /  /       ",
+            "         | /     |  |       ",
+            "         `------`---'       "
+        ]
+    ],
+    % Ghost
+    ["REAPER", 3.5, T_GHOST, [4, 18, 29, 42], 65,
+        [ % https://ascii.co.uk/art/death
+            "              ,____ ",
+            "              |---.\\",
+            "      ___     |    `",
+            "     / .-\\  .(=)    ",
+            "    |  |\"|_/\\/|     ",
+            "    ;  |-;| /_|     ",
+            "   / \\_| |/   |     ",
+            "  /      \\/   |     ",
+            "  |   /  |`   |     ",
+            "  /   \\ _/    |     ",
+            " /--._/  \\    |     ",
+            " (/|)    |    /     ",
+            "    /     |   |     ",
+            "  .'      |   |     ",
+            " /         \\  |     ",
+            "(_.-.__.__.)  /     "
+        ]
+    ],
+    ["ANGEL", 3.2, T_GHOST, [25, 29, 33, 48], 60,
+        [ % https://ascii.co.uk/art/angel
+            "     __/)     (\\__     ",
+            "  ,-'~~(   _   )~~`-.  ",
+            " /      \\/'_'\\/      \\ ",
+            "|       /_(_)_\\       |",
+            "|     _(/(\\_/)\\)_     |",
+            "|    / // \\ / \\\\ \\    |",
+            " \\  | ``  / \\ ''  |  / ",
+            "  \\  )   /   \\   (  /  ",
+            "   )/   /     \\   \\(   ",
+            "   '    '-'-'-'    '   "
+        ]
+    ],
+    ["PUMPKIN FAMILY", 3.1, T_GHOST, [25,  26, 31, 46], 57,
+        [ % https://ascii.co.uk/art/halloween
+            "                      /\\          ",
+            "        _           __(_)__       ",
+            "        \\_      .-'._'-'_.'-.    ",
+            "     .'`---`'. .'.' /o\\'/o\\ '.'.  ",
+            "    /  <> <>  \\ : ._:  0  :_. : \\ ",
+            "    |    A    |:   \\\\/\\_/\\//   : |",
+            "    \\  <\\_/>  / :  :\\/\\_/\\/:  : / ",
+            "   _?_._`\"`_.'`'-:__:__:__:__:-'  ",
+            " .'`---`'.``  _/\\                 ",
+            "/.'a . a  \\.'`---`'.              ",
+            "|:        /.'<> <>  \\             ",
+            "\\'  \\__   |:   ^    |             ",
+            " '._____.'\\' '___'  /             ",
+            "           '.__.__.'              "
+        ]
+    ],
+    ["SPIDER FAMILY", 2.3, T_GHOST, [15, 21, 32, 45], 22,
+        [ % https://ascii.co.uk/art/halloween
+            "        _.._   _\\(o)/_  //  \\\\      ",
+            "      .'    '.  /(_)\\  _\\\\()//_     ",
+            "    /   __   \\        / //  \\\\ \\    ",
+            " ,  |   ><   |  ,      | \\__/ |     ",
+            ". \\  \\      /  / .                  ",
+            " \\_'--`(  )'--'_/     __             ",
+            "   .--'/()\\'--.    | /  \\ |         ",
+            "  /  /` '' `\\  \\  \\_\\\\  //_/        ",
+            "    |        |      //()\\\\          ",
+            "     \\      /       \\\\  //          "
+        ]
+    ],
+    ["MAGICIAN", 3.0, T_GHOST, [0, 9, 28, 44], 55,
+        [ % https://ascii.co.uk/art/magician
+            ". .'..' . ' ' . . '.  . '",
+            "  `.':.'        ':'.'.'  ",
+            "    `\\\\_  |     _//'     ",
+            "      \\(  |\\    )/       ",
+            "      //\\ |_\\  /\\\\       ",
+            "     (/ /\\(\" )/\\ \\)      ",
+            "      \\/\\ (  ) /\\/       ",
+            "         |(  )|          ",
+            "         | \\( \\          ",
+            "         |  )  \\         ",
+            "         |      \\        ",
+            "         |       \\       ",
+            "         |        `.__,  ",
+            "         \\_________.-'   "
+        ]
+    ],
+    % Fluff
+    ["SHEEP", 2.9, T_FLUFF, [33, 35, 37, 43], 40,
+        [ % https://ascii.co.uk/art/sheep
+            "    .-:'  `; `-._   ",
+            "   (_,           )  ",
+            " ,'o\"(            )>",
+            "(__,-'            ) ",
+            "   (             )  ",
+            "    `-'._.--._.-'   ",
+            "       |||  |||     "
+        ]
+    ],
+    ["BEAR", 3.4, T_FLUFF, [11, 16, 33, 42], 55,
+        [ % https://ascii.co.uk/art/bear
+            "     ( )___( )    ",
+            "     /__oo   \\    ",
+            "    ( \\/     )    ",
+            "    | `=/    |    ",
+            "   /         \\    ",
+            "  /  /    \\   \\   ",
+            " /  /      \\   \\  ",
+            "| ,_/_      \\   \\ ",
+            " \\_ '=       \\   |",
+            "   \"\"'       /  / ",
+            "   ;        /  /'?",
+            "   :       {{}} / ",
+            "    `._   \\  _ (  ",
+            "     __)   |  /_  ",
+            "   (\"__,..\"'_._.) "
+        ]
+    ],
+    ["SNAIL", 2.3, T_FLUFF, [1, 19, 24, 37], 30,
+        [ % https://ascii.co.uk/art/insect
+            "     /\^\\    /\^\\                         ",
+            "    {  O}  {  O}                        ",
+            "     \\ /    \\ /                         ",
+            "     //     //       _------_           ",
+            "    //     //     ./~        ~-_        ",
+            "   / ~----~/     /              \\       ",
+            " /         :   ./       _---_    ~-     ",
+            "|  \\________? :       /~     ~\\   |     ",
+            "|        /    |      |  :~~\\  |   |     ",
+            "|       |     |      |  \\___-~    |     ",
+            "|       \\ __/`\^\\______\\.        ./     ",
+            " \\                     ~-______-~\\.     ",
+            " .|                                ~-_  ",
+            "/_____________________________________~~"
+        ]
+    ],
+    % Fire
+    ["CANDLE", 2.6, T_FIRE, [8, 31, 46, 48], 20,
+        [ % https://ascii.co.uk/art/candle
+            "         (\\           ",
+            "        /  )          ",
+            "       ( * )          ",
+            "        \\#/           ",
+            "      .-\"#'-.         ",
+            "      |\"-.-\"|         ",
+            "      |     |         ",
+            "    __|     |__   .-. ",
+            " .-'  |     |  `-:   :",
+            ":     '-._,-'    :-'  ",
+            " `-._         _.-'    ",
+            "     '\"\"\"\"\"\"'         "
+        ]
+    ],
+    ["DRAGON", 3.7, T_FIRE, [10, 39, 45, 49], 65,
+        [ % https://ascii.co.uk/art/dragon
+            " <>=======()                           ",
+            " /\\___   /|\\\\          ()==========<>_ ",
+            "      \\_/ | \\\\        //|\\   ______/ \\",
+            "        \\_|  \\\\      // | \\_/          ",
+            "          \\|\\/|\\_   //  /\\/            ",
+            "           (oo)\\ \\_//  /               ",
+            "          //_/\\_\\/ /  |                ",
+            "         @@/  |=\\  \\  |                ",
+            "              \\_=\\_ \\ |                ",
+            "                \\==\\ \\|\\_              ",
+            "             __/\\===\\(  )\\             ",
+            "            ((~)) __-_/   |            ",
+            "                 ((~)) \\  /            ",
+            "                 ______/ /             ",
+            "                 '------'              "
+        ]
+    ],
+    ["HANDGRANADE", 2.7, T_FIRE, [14, 39, 48, 50], 20,
+        [ % https://ascii.co.uk/art/handgranade
+            "           .     ",
+            "          /|     ",
+            "         |@/     ",
+            "        _/\"      ",
+            "      _/==\\__    ",
+            "     (==---==)   " ,
+            "  /\%/_________\\  ",
+            " /#(_|_|_|_|_|_) ",
+            "|#(_|_|_|_|_|_|_)",
+            "|#(|_|_|_|_|_|_|)",
+            "|#(_|_|_|_|_|_|_)",
+            "\\#(_|_|_|_|_|_)  ",
+            " \\#|_|_|_|_|_/   ",
+            "   '\"-------\"    "
+        ]
+    ],
+    ["COFFEE", 2.6, T_FIRE, [6, 8, 20, 42], 20,
+        [ % https://ascii.co.uk/art/coffee
+            "    {  }            ",
+            "  {   }             ",
+            "   {}_{ __{         ",
+            " .-{   }   }-.      ",
+            "(   }     { } )     ",
+            "|`-.._____..-'|     ",
+            "|             ;--.  ",
+            "|             |__  \\",
+            "|             | (  )",
+            "|             |/  / ",
+            "|             /  /  ",
+            "|               /   ",
+            "\\             y'    ",
+            " `-.._____..-'      "
+        ]
+    ],
+    ["FLAMEINGO", 2.7, T_FIRE, [10, 35, 43, 47], 38,
+        [ % https://ascii.co.uk/art/flamingo
+            "           __   ",
+            "          /(`o) ",
+            "    ,-,  //  \\\\ ",
+            "   (,,,) ||   V ",
+            "  (,,,,)\\//     ",
+            "  (,,,/w)-'     ",
+            "  (,,/w)        ",
+            "  `V/uu         ",
+            "    / |         ",
+            "    | |         ",
+            "    o o         ",
+            "    \\ |         ",
+            "\\,/   ,\\|,.  \\,/"
+        ]
+    ]
+);
+
+% Attack access constants
+% NAME = 0, TYPE = 2
+const DMG = 1;
+
+% https://www.fantasynamegenerators.com/anime-attack-names.php
+% Water 6, Air 6, Stone 7, Grass 6, Ghost 8, Fluff 6, Fire 11
+% Each creature should have attacks worth of 6 dmg points
+const ATTACK_LIST = new Array(
+    % Water
+    ["Overflowing Look", 1.1, T_WATER], % 0 - DUCK, MAGICIAN
+    ["Bubble Knock", 1.3, T_WATER], % DUCK, OCTOPUS, JELLYFISH, FISH, SNAIL
+    ["Ice Prism", 2.3, T_WATER], % OCTOPUS, WHALE
+    ["Running Wave", 1.0, T_WATER], % WHALE, FISH
+    ["Drowning Screech", 1.5, T_WATER], % REAPER, ELLYFISH
+    ["Stormy Rush", 1.2, T_WATER], % 5 - BIRD, FISH
+    ["Flow Release", 0.9, T_WATER], % STONE, COFFEE
+    % Air
+    ["Fearless Smoke", 0.9, T_AIR], % TULIP
+    ["Dutiful Mist", 1.0, T_AIR], % BIRD, FISH, BAT, CANDLE, COFFEE
+    ["Wind Volley", 1.3, T_AIR], % BEEHIVE, MAGICIAN
+    ["Screaming Wind", 1.9, T_AIR], % 10 - BIRD, BUTTERFLY, OWL, DRAGON, FLAMEINGO
+    ["Stormy Axe", 1.4, T_AIR], % TREE, BAT, OWL, BEAR
+    ["Typhoon Bullet", 1.8, T_AIR], % OCTOPUS, BUTTERFLY
+    % Stone
+    ["Meteor Fall", 2.8, T_STONE], % STONE, WHALE, PYRAMID
+    ["Earth Impact", 1.1, T_STONE], % MUSHROOM, HANDGRANADE
+    ["Rockslide", 1.2, T_STONE], % 15 - PYRAMID, SPIDER FAMILY
+    ["Gravity Blade", 1.5, T_STONE], % STONE, BEAR
+    ["Tree Knock", 1.7, T_STONE], % TREE, BEEHIVE
+    ["Skeletal Scratch", 1.2, T_STONE], % REAPER
+    ["Cracking Peace", 0.8, T_STONE], % SNAIL
+    % Grass
+    ["Reducing Root", 2.0, T_GRASS], % 20 - TREE, COFFEE
+    ["Doubling Drain", 1.3, T_GRASS], % BAT, ANT, BEEHIVE, COBRA, SPIDER FAMILY
+    ["Arctic Branch", 2.7, T_GRASS], % MUSHROOM
+    ["Lotus Cannon", 2.0, T_GRASS], % TULIP
+    ["Leafs Kiss", 1.8, T_GRASS], % BUTTERFLY, ANT, SNAIL
+    ["Freezing Bark", 0.8, T_GRASS], % 25 - ANGEL, PUMPKIN FAMILY
+    % Ghost
+    ["Phantom Stomp", 1.4, T_GHOST], % PYRAMID, PUMPKIN FAMILY
+    ["Ghost Fist", 1.6, T_GHOST], % MUSHROOM
+    ["Spirit Blast", 1.8, T_GHOST], % JELLYFISH, OWL, MAGICIAN
+    ["Hungry Mind", 3.0, T_GHOST], % REAPER, ANGEL
+    ["Vampiric Drain", 2.4, T_GHOST], % 30 - BAT, COBRA
+    ["Hells Ambush", 2.3, T_GHOST], % ANT, PUMPKIN FAMILY, CANDLE
+    ["Demonic Blood", 1.8, T_GHOST], % SPIDER FAMILY
+    % Fluff
+    ["Breaking Cuddle", 2.0, T_FLUFF], % SHEEP, ANGEL, BEAR
+    ["Sneaking Blow", 0.8, T_FLUFF], % OWL
+    ["Heavens Hit", 1.4, T_FLUFF], % 35 - DUCK, SHEEP, FLAMEINGO
+    ["Summer Dance", 0.6, T_FLUFF], % WHALE, BUTTERFLY, TULIP
+    ["Violence Void", 2.0, T_FLUFF], % SHEEP, SNAIL
+    ["Cloud Fall", 1.9, T_FLUFF], % BIRD
+    % Fire
+    ["Flaming Burst", 0.8, T_FIRE], % STONE, PYRAMID, DRAGON, HANDGRANADE
+    ["Venom Heat", 0.9, T_FIRE], % 40 - TREE, COBRA
+    ["Poison Edge", 0.5, T_FIRE], % OCTOPUS, ANT, MUSHROOM
+    ["Hot Retribution", 1.0, T_FIRE], % REAPER, BEAR, COFFEE
+    ["Radiating Charge", 0.6, T_FIRE], % SHEEP, FLAMEINGO
+    ["Magic Teardrop", 2.0, T_FIRE], % DUCK, MAGICIAN
+    ["Boiling Rage", 1.7, T_FIRE], % 45 - BEEHIVE, COBRA, SPIDER FAMILY, DRAGON
+    ["Forbidden Light", 1.3, T_FIRE], % JELLYFISH, PUMPKIN FAMILY, CANDLE
+    ["Ash Whip", 1.6, T_FIRE], % TULIP, FLAMEINGO
+    ["Glowing Flash", 0.8, T_FIRE], % ANGEL, CANDLE, HANDGRANADE
+    ["Nova Bullet", 4.0, T_FIRE], % DRAGON
+    ["Dual Explosion", 3.0, T_FIRE], % 50 - HANDGRANADE
+    % Standard
+    ["Weaken", 1.0, T_STANDARD]
+);
+
+% Item access constants
+% NAME = 0
+const DESC = 1;
+% const COUNT = 1; % TODO
+
+% Array of all available items
+const ITEM_LIST = new Array(
+    ["Empty", ""],
+    ["Capsule", "Capture the enemy"],
+    ["Drink", "Heals to full"],
+    ["Weaken", "Random \% of enemy hp as DMG"],
+    ["Levelliquid", "Gain three level"]
+);
+
+% Table defining the needed exp for the different level.
+% It is generated at runtime (once).
+const EXP_TABLE = [];
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Init the GUI
+    initialiseButtons();
+    updateButtontxt();
+
+    % Init exp table
+    for (var i = 0; i < MAX_LVL + 1; i++) {
+        % original formula 250 * i * (i + 1)
+        EXP_TABLE.push((START_EXP + 65 * (i - 5)) * (i - 5 + 1));
+    }
+    EXP_TABLE.push(Infinity);
+
+    % Initialise the player and enemy creature
+    % Player items are already initialized to empty
+    curCreatureIdx = 0;
+    curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
+    curEnemy = getEnemy();
+
+    % Give the player one capsule
+    curPlayerItems[0] = [1, 1];
+
+    updateEnemyTxt();
+    updatePlayerTxt();
+
+    % Used mainly for attack animation
+    setCanvasData();
+    % Draw first creatures
+    fill();
+    drawAll();
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct font and text size.
+ */
+function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the coresponding function
+    this.getField("restart").setAction("MouseUp", "restart();");
+
+    % Hide the damage table
+    this.getField("cmHint").setAction("MouseUp", "hint();");
+    this.getField("cmHint").checkThisBox(1);
+    hint();
+
+    this.getField("button1").setAction("MouseUp", "processInput(1);");
+    this.getField("button1txt").setAction("MouseUp", "processInput(1);");
+    this.getField("button2").setAction("MouseUp", "processInput(2);");
+    this.getField("button2txt").setAction("MouseUp", "processInput(2);");
+    this.getField("button3").setAction("MouseUp", "processInput(3);");
+    this.getField("button3txt").setAction("MouseUp", "processInput(3);");
+    this.getField("button4").setAction("MouseUp", "processInput(4);");
+    this.getField("button4txt").setAction("MouseUp", "processInput(4);");
+
+    this.getField("back").setAction("MouseUp", "processInput(0);");
+
+    % Adjust text size and font
+    var cell;
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        cell = this.getField("player" + m);
+        cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+        cell.textFont = font.Cour;
+
+        cell = this.getField("enemy" + m);
+        cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+        cell.textFont = font.Cour;
+    }
+
+    % Info field setup
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+    this.getField("tooltipbtn").highlight="none";
+
+    printInfoText("Initialised the game. Beat the current enemy creature.");
+}
+
+/**
+ * Restart the game and clear everything
+ */
+function restart() {
+    % Restart only if no animation is running
+    if (drawing || !particleSys.finished()) {
+        printInfoText("Wait for animation!");
+        return;
+    }
+
+    % The creatures will be redrawn
+    drawing = true;
+
+    % Gamestate
+    gameover = false;
+    guiState = MENU;
+
+    % Initialise the player and enemy creature
+    for (var i = 0; i < curPlayerCreatures.length; i++) {
+        curPlayerCreatures[i] = ["Empty"];
+    }
+    curCreatureIdx = 0;
+    curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
+    curEnemy = getEnemy();
+
+    % Initialise the player items to empty
+    for (var i = 0; i < curPlayerItems.length; i++) {
+        curPlayerItems[i] = [0, 0];
+    }
+    % Give the player one capsule
+    curPlayerItems[0] = [1, 1];
+
+    animatedString = "";
+
+    % Update GUI
+    updateButtontxt();
+    updateEnemyTxt();
+    updatePlayerTxt();
+    fill();
+    drawAll();
+    printInfoText("Restarted the game!");
+}
+
+/**
+ * Enable or disable the tooltip.
+ *
+ * @param {Boolean} on Enable or disable tooltip.
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = false;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+/**
+ * Enable or disable the hint.
+ */
+function hint() {
+    if (this.getField("cmHint").isBoxChecked(0)) {
+        % Remove the field such that it is not visible
+        var field = this.getField("hintbox");
+        field.delay = true;
+        field.hidden = true;
+        field.delay = false;
+    } else {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("hintbox");
+        field.delay = true;
+        field.hidden = false;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [298, 155, 596, 0];
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%
+% Input processing %
+%%%%%%%%%%%%%%%%%%%%
+/**
+ * If a menu button is pressed check which action needs to be taken.
+ * This depends on the current guiState and can trigger a 'round',
+ * where player and enemy actions are processed automatically.
+ *
+ * @param {Number} button The index of which button was pressed
+ */
+function processInput(button) {
+    this.getField("tooltiptxt").setFocus();
+
+    % Check for animated text updates
+    if (drawing) {
+        printInfoText("Wait for animation!");
+        return;
+    }
+
+    if (gameover) {
+        return;
+    }
+
+    % Nothing is currently processed, advance gui
+    if (turnState == ACTION_END) {
+        % Do not allow the player to play without replacing dead creatures
+        if (guiState != CHANGE && curPlayerCreatures[curCreatureIdx][NAME] == "Empty") {
+            guiState = CHANGE;
+            printInfoText("You NEED to select a new creature!");
+        }
+        % If the menu was active the possible actions need to be shown
+        else if (guiState == MENU) {
+            if (button == RUN) {
+                run();
+            } else {
+                guiState = button;
+            }
+        }
+        % Process gui input that was not in the main menu
+        else {
+            % Save the guiState so it can be overridden if necessary
+            var lastState = guiState;
+            guiState = MENU;
+            % Special cases
+            % The back button was pressed, only switch to main menu
+            if (button == MENU) {
+                printInfoText("Return to main menu!");
+            } else if (lastState == ITEMS) {
+                % Check if item needs another selection (of a creature for example)
+                var item = ITEM_LIST[curPlayerItems[button - 1][0]];
+                if (item[NAME] == "Weaken" || item[NAME] == "Empty") {
+                    turnState = ACTION_IDLE;
+                    var callback = "executeRound(" + lastState + "," + button + ")";
+                    roundInterval = app.setInterval(callback, ROUND_ANIMATION_SPEED);
+                } else {
+                    % Save selected item
+                    selection = button;
+                    guiState = ITEM_SELECT;
+                }
+            } else {
+                % Input triggers a "round"
+                turnState = ACTION_IDLE;
+                var callback = "executeRound(" + lastState + "," + button + ")";
+                roundInterval = app.setInterval(callback, ROUND_ANIMATION_SPEED);
+            }
+        }
+    } else {
+        printInfoText("Wait for the current round to finish!");
+    }
+    updateButtontxt();
+}
+
+/**
+ * This function determines the program flow,
+ * by processing the current state of the round and the taken gui action.
+ * The usual order is:
+ * 1. Player turn
+ * 2. Enemy turn
+ * A turn can contain an attack, item usage or creature change.
+ * Dead creatures can not make a turn and need to be replaced.
+ * @param {Number} action The last taken action in the GUI (FIGHT, ITEM, CHANGE).
+ * @param {Number} idx The current pressed button.
+ */
+function executeRound(action, idx) {
+    % Check for text and healthbar animations
+    var textCompl = printTextAnimated();
+    var barCompl = updateHpInfo();
+    if (!textCompl || !barCompl) {
+        return;
+    }
+
+    % Do not allow a round when a creature is currently replaced
+    if (drawing) {
+        return;
+    }
+
+    if (turnState == ACTION_IDLE) {
+        turnState++;
+    }
+    % If finished clear the interval
+    else if (turnState == ACTION_END) {
+        % Cleanup if creature is dead
+        if (curPlayerCreatures[curCreatureIdx][CUR_HP] == 0) {
+            curPlayerCreatures[curCreatureIdx] = ["Empty"];
+            updateButtontxt();
+        }
+
+        app.clearInterval(roundInterval);
+        return;
+    }
+    % Reconstruct chosen player action (fight, change, item)
+    else if (turnState == ACTION_P_CHOOSE) {
+        if (action == FIGHT) {
+            % Setup attack particles
+            % Reset particle system to default
+            defaultParticleSys();
+            % Access the attack
+            var curCreature = curPlayerCreatures[curCreatureIdx];
+            var attacks = curCreature[ATKS];
+            lastAttackIdx = attacks[idx - 1];
+            var attackData = ATTACK_LIST[lastAttackIdx];
+            animatedString =
+                curCreature[NAME] + " (Player) attacks the enemy with " + attackData[NAME] + "!";
+            % Set attack specific data
+            attackAnimation(attackData[TYPE], ENEMY);
+
+            turnState = ACTION_P_ATTACK;
+        } else if (action == CHANGE) {
+            turnState = change(idx);
+        } else if (action == ITEM_SELECT) {
+            % Items that need a selection via the gui
+            turnState = itemSelect(idx);
+        } else if (action == ITEMS) {
+            % Items that are applied to the current player creature
+            turnState = itemApply(idx);
+        }
+        % The player made a selection, reset beaten-state
+        enemyBeaten = false;
+    }
+    % Start the attack animation with the enemy as target
+    else if (turnState == ACTION_P_ATTACK) {
+        if (!particleSys.finished()) {
+            processParticles();
+        } else {
+            turnState = ACTION_E_HP_UPDATE;
+        }
+    }
+    % Apply damage to enemy
+    else if (turnState == ACTION_E_HP_UPDATE) {
+        attackEnemy(lastAttackIdx);
+        turnState = ACTION_E_CHOOSE;
+    }
+    % Select what the enemy will do
+    else if (turnState == ACTION_E_CHOOSE) {
+        % If the enemy is dead he is not able to attack and needs to be substituted
+        if (curEnemy[CUR_HP] == 0) {
+            changeEnemy();
+            turnState = ACTION_END;
+            return;
+        }
+
+        % Setup attack particles
+        % Reset particle system to default
+        defaultParticleSys();
+        % Access the attack
+        var attacks = curEnemy[ATKS];
+        lastAttackIdx = attacks[getRandomInt(attacks.length)];
+        var attackData = ATTACK_LIST[lastAttackIdx];
+        animatedString = curEnemy[NAME] + " (Enemy) attacks with " + attackData[NAME] + "! ";
+
+        attackAnimation(attackData[TYPE], PLAYER);
+        turnState = ACTION_E_ATTACK;
+    }
+    % Start the attack animation with the enemy as target
+    else if (turnState == ACTION_E_ATTACK) {
+        % Start the attack animation with the enemy as target
+        if (!particleSys.finished()) {
+            processParticles();
+        } else {
+            turnState = ACTION_P_HP_UPDATE;
+        }
+    }
+    % Apply damage to player
+    else if (turnState == ACTION_P_HP_UPDATE) {
+        turnState = attackPlayer(lastAttackIdx);
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Player actions          %
+% Fight, swap, run, items %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * This action runs the selected attack on the enemy creature.
+ * For this the enemy hp are reduced by the damage from the attack.
+ * If the enemy is beaten, the player creature gets exp and has the
+ * chance of leveling up.
+ * @param {Number} idx The index of the attack selected.
+ */
+function attackEnemy(idx) {
+    % Access the attack
+    var curCreature = curPlayerCreatures[curCreatureIdx];
+    var attacks = curCreature[ATKS];
+    var attackData = ATTACK_LIST[idx];
+
+    % Calculate dmg
+    var dmg = inflictDMG(curCreature, curEnemy, attackData);
+
+    % If the enemy is beaten add xp and lvl up if needed
+    if (curEnemy[CUR_HP] == 0) {
+        enemyBeaten = true;
+        var exp = addEXP(curEnemy, curCreature);
+
+        var itemName = ITEM_LIST[addRandomItem()][NAME];
+
+        var lvlup = checkLvlUp(curCreature);
+        if (lvlup) {
+            animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
+                " and leveled up. " + curEnemy[NAME] + " dropped " + itemName + ".";
+        } else {
+            animatedString = curCreature[NAME] + " has slayn " + curEnemy[NAME] +
+                " and got " + exp + " experience. " +
+                curEnemy[NAME] + " dropped " + itemName + ".";
+        }
+        updatePlayerTxt();
+    } else {
+        animatedString = curEnemy[NAME] + " took " + dmg + " damage.";
+    }
+}
+
+/**
+ * This action runs the selected attack on the player creature.
+ * For this the creature hp are reduced by the damage from the attack.
+ * If the creature is beaten, it is deleted and the player needs to
+ * select a new creature in the next round. For this the guiState is altered.
+ * If the player has no creatures left the game is marked as over.
+ * @param {Number} idx The index of the attack selected.
+ */
+function attackPlayer(idx) {
+    % Get attack data
+    var attacks = curEnemy[ATKS];
+    var attack = ATTACK_LIST[idx];
+
+    var creature = curPlayerCreatures[curCreatureIdx];
+    var dmg = inflictDMG(curEnemy, creature, attack);
+
+    % If the player creature is dead remove it from the player creatures
+    if (creature[CUR_HP] == 0) {
+        % (Cleanup is done after hp bar animation finished, line 1087)
+        % If the player has no creatures left the game is over
+        if (noCreatureLeft()) {
+            gameover = true;
+            animatedString = "No Creatures left, game over!";
+        } else {
+            guiState = CHANGE;
+            animatedString = "Your creature has no health left, please select a new creature.";
+        }
+    } else {
+        animatedString = creature[NAME] + " took " + dmg + " damage.";
+    }
+
+    return ACTION_END;
+}
+
+/**
+ * Select one creature from the player creature list as a substitute for
+ * the current creature. Does only work if there is an other creature
+ * then the current one.
+ * @param {Number} idx The index of the new creature.
+ */
+function change(idx) {
+    var creature = curPlayerCreatures[idx - 1];
+    var oldName = curPlayerCreatures[curCreatureIdx][NAME];
+
+    % If there is no creature or the same one is selected the swap can not be done
+    if (creature[NAME] == "Empty" || curCreatureIdx == idx - 1) {
+        printInfoText("Creature was not switched.");
+        return ACTION_END;
+    }
+
+    % The player creature will be redrawn
+    drawing = true;
+
+    curCreatureIdx = idx - 1;
+
+    animatedString = "You switched from " + oldName + " to " + creature[NAME] + ".";
+    updatePlayerTxt();
+    drawPlayer();
+
+    % If the last enemy was beaten return ACTION_END
+    if (enemyBeaten) {
+        return ACTION_END;
+    }
+    return ACTION_E_CHOOSE;
+}
+
+/**
+ * Replace the enemy creature with a new one and redraw.
+ */
+function changeEnemy() {
+    % The enemy creature will be redrawn
+    drawing = true;
+    curEnemy = getEnemy();
+    drawEnemy();
+    updateEnemyTxt();
+    animatedString = "Your new enemy is: " + curEnemy[NAME] +
+        ". You may choose a creature without penalty.";
+}
+
+/**
+ * With this action the player indicates that he does not want to
+ * fight the current enemy. Therefore he flees and gets a new enemy.
+ * This action reduces the level of the current creature by one if it is
+ * at least level 6.
+ */
+function run() {
+    % The enemy creature will be redrawn
+    drawing = true;
+    % Create and draw enemy
+    curEnemy = getEnemy();
+    drawEnemy();
+    updateEnemyTxt();
+    printInfoText("You ran from your enemy. Your new enemy is: " + curEnemy[NAME] + ".");
+    % The player creature loses one lvl
+    var creature = curPlayerCreatures[curCreatureIdx];
+    if (creature[LVL] > MIN_LVL) {
+        addInfoText(" " + creature[NAME] + " loses one level.");
+        % Level down to discourage the player from running away from a fight
+        creature[LVL]--;
+        creature[CUR_EXP] = EXP_TABLE[creature[LVL]] + 1;
+        creature[MAX_HP] -= Math.ceil(creature[HP_GAIN]);
+        creature[CUR_HP] = Math.min(creature[CUR_HP], creature[MAX_HP]);
+        updatePlayerTxt();
+    }
+}
+
+/**
+ * Selects the chosen item from the backpack and applies its affect.
+ * Processes items that are not targeted on creatures in the player list,
+ * but rather on the enemy or the current player creature.
+ * (The difference is to 'itemSelect' one gui step.)
+ * Processes:
+ * Empty (ends current round),
+ * Weaken (Triggers attack)
+ * @param {Number} idx The item slot in the backpack (1-4).
+ */
+function itemApply(idx) {
+    var item = ITEM_LIST[curPlayerItems[idx - 1][0]];
+    animatedString = "You used " + item[NAME] + ".";
+
+    if (item[NAME] == "Empty") {
+        printInfoText("No item was used.");
+    } else if (item[NAME] == "Weaken") {
+        % Setup attack particles
+        % Reset particle system to default
+        defaultParticleSys();
+        % Set attack specific data
+        particleSys.number = Math.floor((getRandomInt(101) / 100) * curEnemy[MAX_HP]);
+        attackAnimation(T_STANDARD, ENEMY);
+        lastAttackIdx = 51;
+
+        removeItem(idx);
+
+        return ACTION_P_ATTACK;
+    }
+
+    return ACTION_END;
+}
+
+/**
+ * Selects the chosen item from the backpack and applies its affect.
+ * Processes items that are targeted on creatures in the player list.
+ * (The difference to 'itemApply' is one gui step.)
+ * Processes:
+ * Capsule (ends current round),
+ * Drink (Triggers attack)
+ * Levelliquid (Triggers attack)
+ * @param {Number} idx The item slot in the backpack (1-4).
+ */
+function itemSelect(idx) {
+    var item = ITEM_LIST[curPlayerItems[selection - 1][0]];
+    % If no item at that slot
+    if (item[NAME] == "Empty") {
+        printInfoText("No item was used.");
+        return ACTION_END;
+    }
+
+    animatedString = "You used " + item[NAME] + ".";
+
+    % Capsule does work for empty slots
+    if (item[NAME] == "Capsule") {
+        catchCreature(idx);
+        removeItem(selection);
+
+        return ACTION_END;
+    }
+
+    % Check for if an empty slot was selected
+    if (curPlayerCreatures[idx - 1][NAME] == "Empty") {
+        printInfoText("No creature selected! No item was used.");
+        return ACTION_END;
+    }
+
+    var selCreature = curPlayerCreatures[idx - 1];
+    if (item[NAME] == "Drink") {
+        % Heal
+        selCreature[CUR_HP] = selCreature[MAX_HP];
+    } else if (item[NAME] == "Levelliquid") {
+        % Increase level by 3
+        selCreature[CUR_EXP] = EXP_TABLE[Math.min(selCreature[LVL] + 3, MAX_LVL)] + 1;
+        checkLvlUp(selCreature);
+        checkLvlUp(selCreature);
+        checkLvlUp(selCreature);
+        updatePlayerTxt();
+    }
+
+    removeItem(selection);
+
+    return ACTION_E_CHOOSE;
+}
+
+/**
+ * Removes one item-instance of the given index from the players item list.
+ * @param {Number} idx The index of the item to be decreased (1-4).
+ */
+function removeItem(idx) {
+    var tmp = idx - 1;
+    curPlayerItems[tmp][1]--;
+    if (curPlayerItems[tmp][1] == 0) {
+        curPlayerItems[tmp][0] = 0;
+    }
+}
+
+/**
+ * Adds one random item to the list of player items.
+ */
+function addRandomItem() {
+    var idx = getRandomInt(4);
+    % Check if there is an item with the same idx
+    if (curPlayerItems[idx][1] == 0) {
+        curPlayerItems[idx][0] = idx + 1;
+    }
+    curPlayerItems[idx][1]++;
+    return idx + 1;
+}
+
+/**
+ * Replaces the given creature with the enemy creature.
+ * It is possible to replace the currently active player creature.
+ * @param {Number} idx The index of the creature to be replaced (1-4).
+ */
+function catchCreature(idx) {
+    % The creatures will be redrawn
+    drawing = true;
+
+    curPlayerCreatures[idx - 1] = curEnemy;
+    % Get new enemy
+    curEnemy = getEnemy();
+    updateEnemyTxt();
+
+    if (idx - 1 == curCreatureIdx) {
+        updatePlayerTxt();
+        % Draw both in case the currently active creature was replaced
+        drawAll();
+    } else {
+        drawEnemy();
+    }
+
+    animatedString = "Creature caught! Your new enemy is: " + curEnemy[NAME] + ".";
+}
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+/**
+ * Check if the player has no creatures left.
+ */
+function noCreatureLeft() {
+    for (var i = 0; i < curPlayerCreatures.length; i++) {
+        if (curPlayerCreatures[i][NAME] != "Empty" && curPlayerCreatures[i][CUR_HP] > 0) {
+            return false;
+        }
+    }
+    return true;
+}
+
+/**
+ * Check if the player creature has leveled up, by comparing
+ * its current experience to the needed exp of the next level.
+ * @param {Array} creature The data of the creature.
+ */
+function checkLvlUp(creature) {
+    % Level cap
+    if (creature[LVL] == MAX_LVL) {
+        return false;
+    }
+
+    if (creature[CUR_EXP] > EXP_TABLE[creature[LVL] + 1]) {
+        creature[LVL]++;
+        % Increase health after lvl up
+        creature[MAX_HP] += Math.ceil(creature[HP_GAIN]);
+        creature[CUR_HP] += Math.ceil(creature[HP_GAIN]);
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Add experience points to the given creature.
+ * The amount depends on the beaten enemy.
+ * @param {Array} The data of the target creature.
+ * @param {Array} The data of the source creature.
+ */
+function addEXP(source, target) {
+    var exp = source[EXP_GAIN] * source[LVL];
+    target[CUR_EXP] += exp;
+    return exp;
+}
+
+/**
+ * Apply damage to the target creature depending on
+ * the attack and the source creature level.
+ * Takes also into account the type of both creatures.
+ */
+function inflictDMG(source, target, attack) {
+    var dmg = 0;
+    % For the weaken attack
+    if (attack[TYPE] == T_STANDARD) {
+        dmg = particleSys.number;
+    } else {
+        var creatureMul = DMG_MATRIX[source[TYPE]][target[TYPE]];
+        var attackMul = DMG_MATRIX[attack[TYPE]][target[TYPE]];
+        dmg = Math.ceil(attack[DMG] * source[LVL] * creatureMul * attackMul);
+    }
+    target[CUR_HP] = Math.max(0, target[CUR_HP] - dmg);
+    return dmg;
+}
+
+%%%%%%%%%%%%
+% Spawning %
+%%%%%%%%%%%%
+/**
+ * Create a new enemy with level depending on the currently available
+ * player creatures. Allows for enemies that continuously pose a threat to
+ * the player and allow him to level up.
+ */
+function getEnemy() {
+    % Calculate the level depending on the reserve creatures
+    var curLvl = 0;
+    var count = 0;
+    for (var i = 0; i < curPlayerCreatures.length; i++) {
+        if (curPlayerCreatures[i][NAME] != "Empty") {
+            curLvl += curPlayerCreatures[i][LVL];
+            count++;
+        }
+    }
+    curLvl /= count;
+
+    % Variance
+    const mul = 2.5;
+    var offset = count * mul * 0.5 - getRandomInt(count * mul + 1);
+    curLvl += offset;
+    curLvl = Math.min(Math.max(MIN_LVL, Math.floor(curLvl)), MAX_LVL);
+
+    return getCreature(curLvl);
+}
+
+/**
+ * Get a random creature with the given level.
+ * @param {Number} curLvl The level of the creature.
+ */
+function getCreature(curLvl) {
+    var creature = getRandomInt(CREATURE_LIST.length);
+
+    var hp = Math.ceil(CREATURE_LIST[creature][HP_GAIN] * curLvl);
+
+    % TODO dont copy everything, have an id to the original list and
+    % extra attributes for the instance variables
+    return [
+        CREATURE_LIST[creature][NAME],
+        CREATURE_LIST[creature][HP_GAIN],
+        CREATURE_LIST[creature][TYPE],
+        CREATURE_LIST[creature][ATKS],
+        CREATURE_LIST[creature][EXP_GAIN],
+        CREATURE_LIST[creature][IMAGE],
+        hp, % MAX_HP
+        hp, % CUR_HP
+        curLvl, % LVL
+        EXP_TABLE[curLvl] % CUR_EXP
+    ];
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%
+% Information updates %
+%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Update the text of all four gui buttons depending on the
+ * current menu state.
+ */
+function updateButtontxt() {
+    if (guiState == MENU) {
+        this.getField("button1txt").value = "Fight";
+        this.getField("button2txt").value = "Change";
+        this.getField("button3txt").value = "Item";
+        this.getField("button4txt").value = "Run";
+    } else if (guiState == FIGHT) {
+        % Show all attacks of the current creature
+        var attacks = curPlayerCreatures[curCreatureIdx][ATKS];
+        for (var i = 0; i < 4; i++) {
+            var attack = ATTACK_LIST[attacks[i]];
+            var btn = "button" + (i + 1) + "txt";
+            var dmgTxt = " (Does " + attack[DMG] + " "
+                + TYPE_STRINGS[attack[TYPE]] + " dmg per lvl)";
+            this.getField(btn).value = attack[NAME] + dmgTxt;
+        }
+    } else if (guiState == ITEM_SELECT || guiState == CHANGE) {
+        % Show all player creatures with lvl if available
+        for (var i = 0; i < 4; i++) {
+            var btn = "button" + (i + 1) + "txt";
+            var name = curPlayerCreatures[i][NAME];
+            if (name != "Empty") {
+                name += " (Lvl " + curPlayerCreatures[i][LVL] + ")";
+            }
+            this.getField(btn).value = name;
+        }
+    } else if (guiState == ITEMS) {
+        % Show all items that are available
+        for (var i = 0; i < 4; i++) {
+            var btn = "button" + (i + 1) + "txt";
+            var name = ITEM_LIST[curPlayerItems[i][0]][NAME];
+            if (name != "Empty") {
+                name += " (" + ITEM_LIST[curPlayerItems[i][0]][DESC] +
+                    "), #" + curPlayerItems[i][1];
+            }
+            this.getField(btn).value = name;
+        }
+    }
+}
+
+/**
+ * Updates the player information displayed by the gui.
+ */
+function updatePlayerTxt() {
+    var creature = curPlayerCreatures[curCreatureIdx];
+    this.getField("playername").value =
+        creature[NAME] + " (" + TYPE_STRINGS[creature[TYPE]] + "), Level: " + creature[LVL] +
+        " (" + creature[CUR_EXP] + "/" + EXP_TABLE[creature[LVL] + 1] + ")";
+
+    guiHP[PLAYER] = creature[CUR_HP];
+    this.getField("playerhp").value = "HP: " + creature[CUR_HP] + " of " + creature[MAX_HP];
+
+    var resStr = "";
+    for (var i = 0; i < MAX_HP_SYMBS * (creature[CUR_HP] / creature[MAX_HP]); i++) {
+        %resStr += "#";
+        resStr += String.fromCharCode(0x2588);
+    }
+
+    this.getField("playerstatus").value = resStr;
+}
+
+/**
+ * Updates the enemy information displayed by the gui.
+ */
+function updateEnemyTxt() {
+    this.getField("enemyname").value =
+        curEnemy[NAME] + " (" + TYPE_STRINGS[curEnemy[TYPE]] + "), Level: " + curEnemy[LVL];
+
+    guiHP[ENEMY] = curEnemy[CUR_HP];
+    this.getField("enemyhp").value = "HP: " + curEnemy[CUR_HP] + " of " + curEnemy[MAX_HP];
+
+    var resStr = "";
+    for (var i = 0; i < MAX_HP_SYMBS * (curEnemy[CUR_HP] / curEnemy[MAX_HP]); i++) {
+        %resStr += "#";
+        resStr += String.fromCharCode(0x2588);
+    }
+    this.getField("enemystatus").value = resStr;
+}
+
+/**
+ * Updates the health information displayed by the gui for player and enemy.
+ * This allows for animations of the health bar and the health text.
+ * This function only increases or decreases the shown health points by one bar
+ * calling it multiple times results in an animation.
+ * @return {Boolen} True if no adjustment was made, else false.
+ */
+function updateHpInfo() {
+    var res = true;
+
+    % Setup all data for both players
+    var cs = [curPlayerCreatures[curCreatureIdx], curEnemy];
+    const ps = [PLAYER, ENEMY];
+    const guiElemHp = ["playerhp", "enemyhp"];
+    const guiElemState = ["playerstatus", "enemystatus"];
+
+    % Iterate the data
+    for (var i = 0; i < cs.length; i++) {
+        % Calculate how much hp one bar symbolizes
+        var hpPerBar = cs[i][MAX_HP] / MAX_HP_SYMBS;
+        var p = ps[i];
+        % If the gui shows less hp than the creature has, increase the shown hp
+        if (guiHP[p] < cs[i][CUR_HP]) {
+            % Prevent overstepping the max hp
+            guiHP[p] += Math.min(cs[i][CUR_HP] - guiHP[p], Math.ceil(hpPerBar));
+            this.getField(guiElemHp[i]).value = "HP: " + guiHP[p] + " of " + cs[i][MAX_HP];
+            % Adjust the amount of bars shown in the status line
+            var barCount = Math.round(guiHP[p] / hpPerBar);
+            var bars = this.getField(guiElemState[i]).value;
+            for (var b = bars.length; b < barCount; b++) {
+                this.getField(guiElemState[i]).value += String.fromCharCode(0x2588);
+            }
+            res = false;
+        }
+        % If the gui shows more hp than the creature has, decrease the shown hp
+        else if (guiHP[p] > cs[i][CUR_HP]) {
+            % Prevent undercutting 0 hp
+            guiHP[p] -= Math.min(guiHP[p] - cs[i][CUR_HP], Math.ceil(hpPerBar));
+            this.getField(guiElemHp[i]).value = "HP: " + guiHP[p] + " of " + cs[i][MAX_HP];
+            % Adjust the amount of bars shown in the status line
+            var barCount = Math.round(guiHP[p] / hpPerBar);
+            var bars = this.getField(guiElemState[i]).value;
+            this.getField(guiElemState[i]).value = bars.substring(0, barCount);
+            res = false;
+        }
+    }
+
+    return res;
+}
+
+%%%%%%%%%%%%%%%%%%%%
+% Attack animation %
+%%%%%%%%%%%%%%%%%%%%
+/**
+ * (Re)set the particle array and the particleSys object to its
+ * default state. Also resets the physics attributes and the functions.
+ */
+function defaultParticleSys() {
+    particles = Array.apply(null, Array(ATK_ANIM_CELLS)).map(_ => [
+        DEAD, [0, 0], % STATE, POS
+        0, 0, % SYMB, ROTATION
+        2, [0, 0],  % MASS, MOMENTUM
+        canvas.halfWidth / FIELD_HEIGHT, % WIDTH
+        canvas.halfHeight / FIELD_HEIGHT, % HEIGHT
+        (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 1.3 % SIZE
+    ]);
+
+    % Needed because the water changes the fill color
+    var particle = this.getField("atkanim" + 0);
+    particle.fillColor = color.transparent;
+
+    particleSys = {
+        iterationCount: ATK_DURATION - 1,
+        iterationCur: 0,
+        aliveParticles: 0,
+        alignment: "center",
+        particleCount: FIELD_WIDTH,
+        particleSymbols: ["X"],
+        particleLifetime: ATK_DURATION - 1,
+        particleMultiline: false,
+        particleBold: false,
+        gravity: [0, -9.81],
+        force: [0, 5],
+        energyReduction: 0.45,
+        % FUNCTIONS
+        emit: function(p) {
+            particles[p][STATE]++;
+            this.aliveParticles++;
+            return true;
+        },
+        remove: function(p) {
+            hideParticleField(p);
+            particles[p][STATE] = DEAD;
+            this.aliveParticles--;
+        },
+        finished: function() {
+            var finished = this.iterationCount < this.iterationCur;
+            return finished && this.aliveParticles == 0;
+        }
+    };
+}
+
+/**
+ * Sets the canvas object to contain information about the sizes,
+ * borders and the center of both canvas elements.
+ */
+function setCanvasData() {
+    const PLAYER_TOP_RECT = this.getField("player0").rect;
+    const PLAYER_BOT_RECT = this.getField("player" + (FIELD_HEIGHT - 1)).rect;
+    const L_P = PLAYER_TOP_RECT[0];
+    const B_P = PLAYER_BOT_RECT[3];
+
+    const ENEMY_TOP_RECT = this.getField("enemy0").rect;
+    const ENEMY_BOT_RECT = this.getField("enemy" + (FIELD_HEIGHT - 1)).rect;
+    const L_E = ENEMY_TOP_RECT[0];
+    const B_E = ENEMY_BOT_RECT[3];
+
+    const halfHeight = (PLAYER_TOP_RECT[1] - B_P) * 0.5;
+    const halfWidth = (PLAYER_TOP_RECT[2] - L_P) * 0.5;
+
+    canvas = {
+        c: [ % center
+            [L_P + halfWidth, B_P + halfHeight], % Player
+            [L_E + halfWidth, B_E + halfHeight] % Enemy
+        ],
+        l: [L_P, L_E],
+        r: [PLAYER_TOP_RECT[2], ENEMY_TOP_RECT[2]],
+        t: [PLAYER_TOP_RECT[1], ENEMY_TOP_RECT[1]],
+        b: [B_P, B_E],
+        halfHeight: halfHeight,
+        halfWidth: halfWidth,
+    };
+}
+
+/**
+ * Alters the position of the given particlce by using gravity.
+ * The floor can be used to achieve a jumping motion.
+ * Very similar the implementation found here:
+ * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
+ * @param {Number} p The particle index.
+ * @param {Number} floor The y position at which the floor should be.
+ */
+function applyGravityToParticle(p, floor) {
+    const h = particles[p][HEIGHT];
+    const g = particleSys.gravity;
+    const f = particleSys.force;
+    const m = particles[p][MASS];
+    var pos = particles[p][POS];
+    var mom = particles[p][MOMENTUM];
+
+    % Momentum += gravity + force
+    mom = [mom[X] + g[X] + f[X], mom[Y] + g[Y] + f[Y]];
+    % Velocity = momentum / mass
+    var v = [mom[X] / m, mom[Y] / m];
+    % Position += velocity
+    pos = [pos[X] + v[X], pos[Y] + v[Y]];
+
+    % If position is at floor & momentum heading downward
+    if (pos[Y] < floor + h && mom[Y] < 0) {
+        pos[Y] = floor + h;
+        % Bouncing off direction
+        var collisionNormal = [0, 1];
+        var dot = mom[X] * collisionNormal[X] + mom[Y] * collisionNormal[Y];
+        % Reflect
+        mom = [mom[X] - collisionNormal[X] * 2 * dot, mom[Y] - collisionNormal[Y] * 2 * dot];
+        % Energy loss from bounce.
+        mom = [mom[X] * particleSys.energyReduction, mom[Y] * particleSys.energyReduction];
+    }
+
+    particles[p][MOMENTUM] = mom;
+    return pos;
+}
+
+/**
+ * Initialize the particle system data depending on the type.
+ * A target can be chosen. This will use the data
+ * from the corresponding canvas element.
+ * @param {Number} type The type of the chosen animation.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function attackAnimation(type, target) {
+    if (type == T_WATER) {
+        waterParticles(target);
+    } else if (type == T_AIR) {
+        airParticles(target);
+    } else if (type == T_STONE) {
+        stoneParticles(target);
+    } else if (type == T_GRASS) {
+        grassParticles(target);
+    } else if (type == T_GHOST) {
+        ghostParticles(target);
+    } else if (type == T_FLUFF) {
+        fluffParticles(target);
+    } else if (type == T_FIRE) {
+        fireParticles(target);
+    } else { % T_STANDARD
+        standardParticles(target);
+    }
+}
+
+/**
+ * Sets up a water particle system, in which a body of water is
+ * slowly rising above the target canvas.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function waterParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.particleSymbols = ["(", " )", "(", "(", "(", " )", " )", "(", " )", " )", ""];
+    particleSys.particleBold = true;
+    particleSys.particleCount = FIELD_WIDTH / 2.0 + 1;
+
+    % Prepare a particle as an white overlay to conceal the target creature
+    var particle = this.getField("atkanim" + 0);
+    particle.fillColor = color.white;
+
+    % Override functions
+    particleSys.emit = function(p) {
+        % Special case for the overlay particle
+        % Different size, pos and symbol
+        if (p == 0) {
+            particles[p][STATE]++;
+            particles[p][POS] = [canvas.c[target][X], 0];
+            particles[p][SYMB] = particleSys.particleSymbols.length - 1;
+            particles[p][WIDTH] = canvas.halfWidth;
+
+            this.aliveParticles++;
+
+            return true;
+        }
+
+        const w = particles[p][WIDTH];
+        var xPos = canvas.l[target] + w + (p - 1) * w * 2.0;
+        % Init particle - rotation ...
+        particles[p][STATE]++;
+        particles[p][POS] = [xPos, 0];
+        particles[p][SYMB] = p \% (particleSys.particleSymbols.length - 1);
+        particles[p][ROTATION] = 90;
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(p) {
+        var t = particles[p][STATE] / particleSys.particleLifetime;
+
+        % Height and pos of the top line
+        const h = particles[1][HEIGHT];
+        const bot = canvas.b[target];
+        const top = (bot + canvas.halfHeight * 2.0 * 0.75 - h);
+        var yPos = (1.0 - t) * (bot + h + 1) + t * top;
+
+        % Special case for the overlay particle
+        if (p == 0) {
+            % Since the alignment of the brackets is somewhat weird the box needs to be
+            % shifted by half a wavefrontheight
+            particles[p][HEIGHT] = (yPos + h * 0.5 - bot) * 0.5;
+            particles[p][POS][Y] = bot + particles[p][HEIGHT];
+            return;
+        }
+
+        particles[p][POS][Y] = yPos;
+        % Shift the symbol to get the appearance of moving waves
+        particles[p][SYMB] = (particles[p][SYMB] + 1) \% (particleSys.particleSymbols.length - 1);
+    };
+}
+
+/**
+ * Sets up a air particle system, in which lines cross the target canvas,
+ * similar to action lines.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function airParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.particleSymbols = ["--", ">>", "->", "~>", "~~"];
+    particleSys.particleCount = 20;
+    % Alter the physics since the particles should accelerate to the right
+    particleSys.gravity = [0, 0];
+    particleSys.force = [5, 0];
+
+    % Emit a particle that is part of a group containing 'memberCount' many particles
+    particleSys.emit = function(p) {
+        % Create a particle with same width as height
+        particles[p][WIDTH] = (canvas.halfWidth / FIELD_WIDTH) * 2.5;
+
+        % Determine the leader to which the particle belongs
+        const memberCount = 4;
+        const groupIdx = Math.floor(p / memberCount);
+        const leader = memberCount * groupIdx;
+
+        const bot = canvas.b[target];
+        const left = canvas.l[target];
+
+        % This is a leader particle
+        var yPos, pos;
+        if (p == leader) {
+            % Emission percentage
+            if (getRandomInt(100) > 20) {
+                return false;
+            }
+
+            % Do not emit this leader if the last particle is not dead yet
+            if (particles[leader + memberCount - 1][STATE] != DEAD) {
+                return false;
+            }
+
+            % Get random y pos
+            yPos = bot + particles[p][HEIGHT] +
+                getRandomInt((canvas.halfHeight - particles[p][HEIGHT]) * 2.0);
+            pos = [left + particles[p][WIDTH], yPos];
+        } else {
+            % Place the particle directly behind his leading particle
+            pos = [particles[p - 1][POS][X], particles[p - 1][POS][Y]];
+            pos[X] -= 2.0 * particles[p][WIDTH];
+            % If the particle would be placed out of bounds, wait for the next opportunity
+            % If the leader is still dead do not emit
+            if (pos[X] < left + particles[p][WIDTH] || particles[p - 1][STATE] == DEAD) {
+                return false;
+            }
+        }
+
+        % Init particle
+        particles[p][STATE]++;
+        particles[p][POS] = pos;
+        particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
+        particles[p][MASS] = 1;
+        particles[p][MOMENTUM] = [2, 0];
+
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(p) {
+        % Determine the leader to which the particle belongs
+        const memberCount = 4;
+        const groupIdx = Math.floor(p / memberCount);
+        const leader = memberCount * groupIdx;
+
+        const bot = canvas.b[target];
+        const right = canvas.r[target];
+
+        var pos;
+        % This is a leader particle
+        if (p == leader) {
+            % Move particle to the right
+            pos = applyGravityToParticle(p, bot);
+        } else {
+            % Take the x position of the leader particle
+            pos = [particles[p - 1][POS][X], particles[p][POS][Y]];
+            % If the leader is already outofbounds
+            if (pos[X] >= right - particles[p][WIDTH]) {
+                pos[X] -= 2.0 * particles[p][WIDTH];
+                % If the particle is near the leader, move to max
+                if (particles[p][POS][X] == pos[X]) {
+                    pos[X] = right - particles[p][WIDTH];
+                    particles[p][STATE] = particleSys.particleLifetime;
+                }
+            } else {
+                pos[X] -= 2.0 * particles[p][WIDTH];
+            }
+        }
+
+        % If the particle is out of bounds, mark the particle as finished
+        % And hard set the position, such that the particle does not move
+        if (pos[X] > right - particles[p][WIDTH]) {
+            particles[p][STATE] = particleSys.particleLifetime;
+            pos[X] = right - particles[p][WIDTH];
+        }
+        particles[p][POS] = pos;
+    };
+}
+
+/**
+ * Sets up a stone particle system, in which three blobs fall to the floor
+ * of the target canvas and jump while they break into dust.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function stoneParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.particleSymbols = [
+        "[##]\n [##]", "\n ####", "\n ## #", "\n #  #", "\n #   #", "\n #    #"
+    ];
+    % Allow for stones that are bigger than one line
+    particleSys.particleMultiline = true;
+    particleSys.particleCount = 3;
+
+    particleSys.emit = function(p) {
+        % Create a particle with same width as height
+        particles[p][WIDTH] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][HEIGHT] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
+
+        const s = (canvas.l[target] + particles[p][WIDTH]);
+        const w = (canvas.halfWidth - particles[p][WIDTH]) * 2.0;
+        const top = canvas.t[target];
+        % Determine the start position
+        const pos = [
+            [s + w * 0.25, top - particles[p][HEIGHT]],
+            [s + w * 0.5, top],
+            [s + w * 0.75, top - particles[p][HEIGHT]]
+        ];
+        % Have different movement paths
+        const mom = [
+            [-2, 2],
+            [0, 2],
+            [2, 2]
+        ]
+
+        particles[p][STATE]++;
+        particles[p][POS] = pos[p \% particleSys.particleCount];
+        particles[p][SYMB] = 0;
+        particles[p][MASS] = 2;
+        particles[p][MOMENTUM] = mom[p \% particleSys.particleCount];
+
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    % Falling stones move function
+    particleSys.move = function(p) {
+        const bot = canvas.b[target];
+        % Just apply physics, let them fall and bounce of the ground
+        particles[p][POS] = applyGravityToParticle(p, bot);
+
+        % If the particle has started dissolving, set to next step
+        if (particles[p][SYMB] > 0 &&
+            particles[p][SYMB] < particleSys.particleSymbols.length - 1 &&
+            particles[p][STATE] \% 2 == 0
+        ) {
+            particles[p][SYMB]++;
+        }
+
+        % If the particle reaches the floor start dissolving
+        if (particles[p][POS][Y] <= bot + particles[p][HEIGHT] && particles[p][SYMB] == 0) {
+            particles[p][SYMB] = 1;
+            particles[p][MASS] = 1;
+        }
+    };
+}
+
+/**
+ * Sets up a grass particle system, in which two iterations of
+ * particles in form of leaves are getting shot at the target.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function grassParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    % Array of leave symbols
+    particleSys.particleSymbols = ["()", "#", "{}"];
+
+    particleSys.emit = function(p) {
+        % Emission percentage
+        if (getRandomInt(100) > 5) {
+            return false;
+        }
+
+        % Alter the starting point of the particles in the y direction
+        const offset = 70;
+        const offsetY = -offset * 0.5 + getRandomInt(offset);
+        particles[p][POS][Y] = canvas.c[(target + 1) \% 2][Y] + offsetY;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 0.9;
+        particles[p][ROTATION] = 90;
+
+        particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
+        particles[p][STATE]++;
+
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(p) {
+        var t = particles[p][STATE] / particleSys.particleLifetime;
+        % Move the particles linearly along the vector from the source to the target
+        var src = canvas.c[(target + 1) \% 2];
+        var trg = canvas.c[target];
+        particles[p][POS][X] = src[X] * (1.0 - t) + trg[X] * t;
+        particles[p][POS][Y] += ((trg[Y] - src[Y]) / particleSys.particleLifetime);
+    }
+}
+
+/**
+ * Sets up a ghost particle system, in which a circle of
+ * particles moves in a rotating motion to the center of the target canvas.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function ghostParticles(target) {
+    % Circular move function
+    particleSys.move = function(p) {
+        var t = particles[p][STATE] / particleSys.particleLifetime;
+        const R_X = canvas.halfWidth;
+        const R_Y = canvas.halfWidth;
+        const ANGLE = (Math.PI * 2.0) / particles.length;
+
+        % Circle motion
+        const offsetX = R_X * Math.cos(p * ANGLE + t * Math.PI * 2.0);
+        const offsetY = R_Y * Math.sin(p * ANGLE + t * Math.PI * 2.0);
+
+        particles[p][POS][X] = canvas.c[target][X] + (1.0 - t) * offsetX;
+        particles[p][POS][Y] = canvas.c[target][Y] + (1.0 - t) * offsetY;
+    }
+}
+
+/**
+ * Sets up a fluff particle system, in which one fluff ball
+ * (miniSheep, cloud) is thrown at the target canvas center point (uses physics).
+ * @param {Number} target The target-idx of the canvas.
+ */
+function fluffParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 1.6;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 1.6;
+    % The mini sheep / cloud / fluff ball
+    particleSys.particleSymbols = [
+        ".-:' ;`-.\n (         )\n (           )\n (         )\n `-'._._.'", ""
+    ];
+    particleSys.particleMultiline = true;
+    particleSys.particleCount = 1;
+    % Adjust physics
+    particleSys.force = [0, 0];
+
+    particleSys.emit = function(p) {
+        particles[p][WIDTH] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][HEIGHT] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) / 3.0;
+        particles[p][POS] = canvas.c[(target + 1) \% 2];
+
+        % Different physics since the canvas elements are not equal in height
+        if (target == PLAYER) {
+            particles[p][MOMENTUM] = [-35, 15 * 4.0];
+        } else {
+            particles[p][MOMENTUM] = [40, 15 * 6.5];
+        }
+
+        particles[p][STATE]++;
+        this.aliveParticles++;
+        return true;
+    }
+
+    % Throw move function
+    particleSys.move = function(p) {
+        particles[p][POS] = applyGravityToParticle(p, 0.0);
+
+        % Increase the object over time to get something similar to an fluff explosion
+        particles[p][SIZE] *= 1.07;
+        particles[p][WIDTH] *= 1.07;
+        particles[p][HEIGHT] *= 1.07;
+        % Disable physics if the center of the target canvas is reached
+        if (particles[p][POS][X] >= canvas.l[target] &&
+            particles[p][POS][X] <= canvas.r[target] &&
+            particles[p][POS][Y] <= canvas.c[target][Y]
+        ) {
+            particles[p][MOMENTUM] = [0, 0];
+            particleSys.gravity = [0, 0];
+        }
+    }
+}
+
+/**
+ * Sets up a fire particle system, in which ascii-fire
+ * is overlayed over the target canvas.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function fireParticles(target) {
+    % Generel particle system settings
+    particleSys.iterationCount = (ATK_DURATION - 1) * 2;
+    particleSys.particleLifetime = (ATK_DURATION - 1) * 2;
+    particleSys.alignment = "left";
+
+    % The different fire steps
+    % https://ascii.co.uk/art/fire
+    % Prevent bracket issues
+    "((((((((((((";
+    particleSys.particleSymbols = [
+        "       (                           ",
+        "       )                 '    .    ",
+        "         *          )     .        ",
+        "   ( .    ) .     ('  )  (    )  * ",
+        "    .*)  (  )   ,  )  ,    )  (.   ",
+        " ).   ( . :(   )  ( , ')   .'  ),( ",
+        "(_,)  _), _) .(_, )  (, ) '_),.(' )",
+        %
+        "       ?            )    .         ",
+        "       '          (           '    ",
+        "        \"                 '        ",
+        "      )  (  '      ) :    )   (    ",
+        "  .  ' (   ) .   ' ( . ' (     )'  ",
+        " ('    )  ' )  (   )   )   '   )(  ",
+        "(#_)_ _),_ ) '(_: )  (* )_ _)*'(  )",
+        %
+        "       .           ?               ",
+        "                  '           *    ",
+        "         .                         ",
+        "   ( *    )        )     (     :   ",
+        "    ')   ( ) '    (  '  )      ('  ",
+        " ('     ( '  . (   )   (   '   )(  ",
+        "( _) __('#_)  ('_ )  ( .) __)*'(  )",
+        %
+        "                   .               ",
+        "       :                           ",
+        "    ,   (                (         ",
+        "   ).     )    .   )  .   )    ( , ",
+        "  . (   )  (      (      (  *    ) ",
+        " (   )  '   )  (.  )    (      ( ) ",
+        "(  )  _) : )' (  _(  ). )  _(#_(  )"
+    ];
+    ")))";
+    % Particles equal linecount
+    particleSys.particleCount = 7;
+
+    particleSys.emit = function(p) {
+        % Bottom aligned
+        const h = particles[p][HEIGHT];
+        const bot = canvas.b[target];
+        var yPos = bot + h + p * h * 2.0;
+        var lines = particleSys.particleCount;
+
+        particles[p][STATE]++;
+        particles[p][POS] = [canvas.c[target][X], yPos];
+        particles[p][SYMB] = (lines - p - 1) \% particleSys.particleSymbols.length;
+        particles[p][WIDTH] = canvas.halfWidth;
+        this.aliveParticles++;
+
+        return true;
+    };
+
+    particleSys.move = function(p) {
+        % Increase current particle value (select next frame to show)
+        var lines = particleSys.particleCount;
+        var frames = particleSys.particleSymbols.length / lines;
+        particles[p][SYMB] = (lines - p - 1) + lines * (particles[p][STATE] \% frames);
+    };
+}
+
+/**
+ * Sets up a standard particle system, in which a number displays the
+ * amount of damage that is done to the enemy.
+ * @param {Number} target The target-idx of the canvas.
+ */
+function standardParticles(target) {
+    particleSys.particleCount = 1;
+
+    particleSys.emit = function(p) {
+        particles[p][WIDTH] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][HEIGHT] = (canvas.halfHeight / FIELD_HEIGHT) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / FIELD_WIDTH) * 2.0;
+        particles[p][POS] = canvas.c[target];
+
+        particles[p][STATE]++;
+        this.aliveParticles++;
+        return true;
+    }
+
+    % Circular move function
+    particleSys.move = function(p) {
+        var t = particles[p][STATE] / particleSys.particleLifetime;
+        particleSys.particleSymbols = [Math.floor(particleSys.number * t)];
+        particles[p][SIZE] *= 1.1;
+        particles[p][WIDTH] *= 1.1;
+        particles[p][HEIGHT] *= 1.1;
+    }
+}
+
+/**
+ * Process the currently active particle system,
+ * by iterating all active particles.
+ * If an active particle is also dead and emit is attempted.
+ * Otherwise the particle is updated and moved.
+ */
+function processParticles() {
+    for (var p = 0; p < Math.min(particles.length, particleSys.particleCount); p++) {
+        % If the particle is dead ...
+        if (particles[p][STATE] == DEAD) {
+            % ... check whether new particles should be emitted
+            var finished = particleSys.iterationCount < particleSys.iterationCur;
+            if (!finished) {
+                % ... do not process this particle if emitting it failed
+                if (!particleSys.emit(p)) {
+                    continue;
+                }
+            }
+            % ... if not do not process this particle
+            else {
+                continue;
+            }
+        } else if (particleSys.particleLifetime < particles[p][STATE]) {
+            particleSys.remove(p);
+            continue;
+        }
+
+        particleSys.move(p);
+        % Draw the particle rectangle
+        moveParticleField(p);
+        % Process particle content and appearance
+        showAndUpdateParticleField(p);
+
+        particles[p][STATE]++;
+    }
+
+    particleSys.iterationCur++;
+}
+
+/**
+ * Adjust the visualization rectangle of the given particle,
+ * by using position, width and height.
+ * @param {Number} p The particle index.
+ */
+function moveParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+
+    const x = particles[p][POS][X];
+    const y = particles[p][POS][Y];
+    const w = particles[p][WIDTH];
+    const h = particles[p][HEIGHT];
+    var rect = [x - w, y + h, x + w, y - h];
+
+    particle.rect = rect;
+}
+
+/**
+ * Adjust the value and appearance of the given particle.
+ * For example: multiline, textfont, textsize, rotation.
+ * @param {Number} p The particle index.
+ */
+function showAndUpdateParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+
+    particle.hidden = false;
+    particle.textFont = font.Cour;
+    particle.alignment = particleSys.alignment;
+    particle.textSize = particles[p][SIZE];
+    particle.rotation = particles[p][ROTATION];
+
+    var textIdx = particles[p][SYMB];
+    particle.value = particleSys.particleSymbols[textIdx];
+    % Determine if richText is needed
+    if (particleSys.particleMultiline || particleSys.particleBold) {
+        var spans = new Array();
+        spans[0] = new Object();
+        spans[0].text = particleSys.particleSymbols[textIdx];
+        if (particleSys.particleBold) {
+            spans[0].fontWeight = 700;
+        }
+
+        particle.richText = true;
+        particle.richValue = spans;
+    } else {
+        particle.richText = false;
+        particle.value = particleSys.particleSymbols[textIdx];
+    }
+}
+
+/**
+ * Hide the given particle.
+ * @param {Number} p The particle index.
+ */
+function hideParticleField(p) {
+    var particle = this.getField("atkanim" + p);
+    particle.hidden = true;
+}
+
+%%%%%%%%%%%%%%%%%%%%
+% Player animation %
+%%%%%%%%%%%%%%%%%%%%
+/**
+ * Show next frame for player and enemy canvas.
+ */
+function frameAll() {
+    frame(["player", "enemy"]);
+}
+
+/**
+ * Show next frame for the player canvas.
+ */
+function framePlayer() {
+    frame(["player"]);
+}
+
+/**
+ * Show next frame for the enemy canvas.
+ */
+function frameEnemy() {
+    frame(["enemy"]);
+}
+
+/**
+ * Shows next frame for all given canvas, by shifting all lines
+ * of the current canvas values.
+ * If the animation is completed (all lines where shifted x times),
+ * the animation interval is cleared.
+ * @param {Array} owners The canvas owner which shall be shifted.
+ */
+function frame(owners) {
+    if (animationProgress < 0) {
+        app.clearInterval(changeAnimationInterval);
+        animationProgress = FIELD_WIDTH;
+        drawing = false;
+        return;
+    }
+
+    for (var idx = 0; idx < owners.length; idx++) {
+        % Shift all lines
+        for (var m = 0; m < FIELD_HEIGHT; m++) {
+            shiftFieldLeft(owners[idx] + m);
+        }
+    }
+
+    animationProgress--;
+}
+
+/**
+ * Adds the current creature of the given owner to the corresponding field.
+ * The strings are simply concatenated line by line to the current field value.
+ * @param {Number} owner The owner, being either the player or the enemy.
+ */
+function addCurCreature(owner) {
+    var creature;
+    if (owner == PLAYER) {
+        creature = curPlayerCreatures[curCreatureIdx];
+    } else {
+        creature = curEnemy;
+    }
+
+    % Calculate the needed padding to center the current creature.
+    % Uses the complete width and the amount of cells occupied by the creature string.
+    var paddingSize = FIELD_WIDTH - creature[IMAGE][0].length + 1;
+    var paddingSizeLeft = Math.floor(paddingSize * 0.5);
+    var paddingSizeRight = Math.ceil(paddingSize * 0.5);
+    % Create padding string
+    var paddingLeft = "";
+    var paddingRight = "";
+    for (var n = 0; n < paddingSizeLeft; n++) {
+        paddingLeft += PADDING_SYMB;
+    }
+    for (var n = 0; n < paddingSizeRight; n++) {
+        paddingRight += PADDING_SYMB;
+    }
+
+    % Used to center the creature vertically (m)
+    var startM = Math.floor(CENTER_M - creature[IMAGE].length * 0.5);
+
+    % Add the string of the new creature
+    var valueString = "";
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        % Centering the creature and add padding top and bottom
+        if (startM <= m && m < startM + creature[IMAGE].length) {
+            var lineString = creature[IMAGE][m - startM];
+            if (lineString.length > FIELD_WIDTH) {
+                lineString = lineString.substring(0, FIELD_WIDTH + 1);
+            }
+            valueString = paddingLeft + lineString + paddingRight;
+        } else {
+            valueString = EMPTY_LINE;
+        }
+        % Add to the field belonging to the owner
+        if (owner == PLAYER) {
+            addToField("player" + m, valueString);
+        } else {
+            addToField("enemy" + m, valueString);
+        }
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Adds the next creature and starts an animated redraw for enemy and player.
+ */
+function drawAll() {
+    addCurCreature(PLAYER);
+    addCurCreature(ENEMY);
+    changeAnimationInterval = app.setInterval("frameAll()", CHANGE_ANIMATION_SPEED);
+}
+
+/**
+ * Adds the next creature and starts an animated redraw for the enemy.
+ */
+function drawEnemy() {
+    addCurCreature(ENEMY);
+    changeAnimationInterval = app.setInterval("frameEnemy()", CHANGE_ANIMATION_SPEED);
+}
+
+/**
+ * Adds the next creature and starts an animated redraw for the player.
+ */
+function drawPlayer() {
+    addCurCreature(PLAYER);
+    changeAnimationInterval = app.setInterval("framePlayer()", CHANGE_ANIMATION_SPEED);
+}
+
+/**
+ * Completely fills the enemy and the player fields with empty lines.
+ */
+function fill() {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        setField("enemy" + m, EMPTY_LINE);
+        setField("player" + m, EMPTY_LINE);
+    }
+}
+
+/**
+ * Shift the value of the given field.
+ *
+ * @param {Number} id The id of the field.
+ */
+function shiftFieldLeft(id) {
+    var cell = this.getField(id);
+    cell.delay = true;
+    cell.value = cell.value.substring(1);
+    cell.delay = false;
+}
+
+/**
+ * Set string of the given field.
+ *
+ * @param {Number} id The id of the field.
+ * @param {String} value The value to set.
+ */
+function setField(id, value) {
+    var cell = this.getField(id);
+    cell.delay = true;
+    cell.value = value;
+    cell.delay = false;
+}
+
+/**
+ * Add string to the given field.
+ *
+ * @param {Number} id The id of the field.
+ * @param {String} value The value to add.
+ */
+function addToField(id, value) {
+    var cell = this.getField(id);
+    cell.delay = true;
+    cell.value += value;
+    cell.delay = false;
+}
+
+/**
+ * Print information to the information-gui.
+ * @param {String} text The text to print.
+ */
+function printInfoText(text) {
+    animatedString = "";
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+/**
+ * Print information to the information-gui animated.
+ * For this each time this function is called only two character
+ * are added to the gui (from the animatedString variable).
+ * Overrides last gui value.
+ * @return {Boolean} Returns true if the string was complete, false else.
+ */
+function printTextAnimated() {
+    var field = this.getField("info");
+
+    if (animatedString.length == 0 || field.value == animatedString) {
+        animatedString = "";
+        return true;
+    }
+
+    field.delay = true;
+    var curStr = animatedString.substring(0, field.value.length);
+    if (curStr != field.value) {
+        field.value = "";
+    }
+
+    field.value = animatedString.substring(0, field.value.length + 2);
+    field.delay = false;
+    return false;
+}
+
+/**
+ * Add information to the information-gui.
+ * @param {String} text The text to add.
+ */
+function addInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value += text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{ASCIImon}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \TextField[backgroundcolor=white, bordercolor=white,
+                    name=hintbox, readonly=true, hidden]{}
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \def\blocksizeH{\dimexpr (250 pt)/\fieldHeight \relax}
+        \def\blocksizeW{\dimexpr (250 pt) \relax}
+
+        \begin{multicols}{2}
+
+            \begin{tcolorbox}%
+                \TextField[name=enemyname, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}\newline
+
+                \TextField[name=enemyhp, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}\newline
+
+                \TextField[name=enemystatus, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}%
+            \end{tcolorbox}%
+
+            \vspace{2.5cm}
+
+            \begin{center}
+                \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \TextField[%
+                        width=\blocksizeW, height=\blocksizeH,%
+                        bordercolor=white, name=player#1, readonly=true%
+                    ]{}%
+                    \\[0pt]%
+                }%
+            \end{center}
+
+        \columnbreak%
+
+            \begin{center}
+                \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \TextField[%
+                        width=\blocksizeW, height=\blocksizeH,%
+                        bordercolor=white, name=enemy#1, readonly=true%
+                    ]{}%
+                    \\[0pt]%
+                }%
+            \end{center}
+
+            \vspace{2.5cm}
+
+            \begin{tcolorbox}%
+                \TextField[name=playername, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}\newline
+
+                \TextField[name=playerhp, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}\newline
+
+                \TextField[name=playerstatus, bordercolor=black, backgroundcolor=,
+                    width=\linewidth, readonly=true]{}%
+            \end{tcolorbox}%
+
+        \end{multicols}
+
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \def\DefaultHeightofText{12pt}
+
+        \renewcommand*{\LayoutCheckField}[2]{#2 #1}
+        \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        \renewcommand*{\LayoutCheckField}[2]{%
+            \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}\enspace%
+            \parbox[c][\DefaultHeightofCheckBox]{0.25\linewidth}{#1}%
+        }
+
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        \begin{center}
+            \begin{tcolorbox}
+                \TextField[name=info, width=\linewidth, readonly=true]{}
+            \end{tcolorbox}
+
+            % Game related buttons
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=button1, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        \TextField[name=button1txt, bordercolor=, backgroundcolor=,
+                            width=\linewidth, readonly=true]{}%
+                        \strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=button2, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        \TextField[name=button2txt, bordercolor=, backgroundcolor=,
+                            width=\linewidth, readonly=true]{}%
+                        \strut
+                    \end{tcolorbox}
+                }\\
+                \PushButton[name=button3, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        \TextField[name=button3txt, bordercolor=, backgroundcolor=,
+                            width=\linewidth, readonly=true]{}%
+                        \strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=button4, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        \TextField[name=button4txt, bordercolor=, backgroundcolor=,
+                            width=\linewidth, readonly=true]{}%
+                        \strut
+                    \end{tcolorbox}
+                }\\
+                \PushButton[name=back, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Back\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                }\\
+            \end{tabularx}
+        \end{center}
+
+        \begin{multicols}{2}
+
+            \ChoiceMenu[name=cmHint, bordercolor=gray, radiosymbol=5, radio]{Damage Table: }
+                {On, Off}
+
+            \xintFor* #1 in {\xintSeq{0}{\atkAnimCells-1}} \do {%
+                \TextField[%
+                    bordercolor=, backgroundcolor=,
+                    name=atkanim#1, readonly=true, borderwidth=0pt, hidden
+                ]{}%
+            }%
+
+            \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+
+        \columnbreak
+            \centering
+            \small
+            \begin{tabularx}{\linewidth}{c | *{6}{@{\,\,} c @{\,\,} } c}%
+                  & Water & Air & Stone & Grass & Ghost & Fluff & Fire \\ \midrule
+                W & 1.0 & 1.0 & 0.3 & 0.5 & 1.3 & 1.7 & 2.0 \\
+                A & 0.9 & 1.0 & 0.4 & 0.7 & 2.0 & 1.3 & 0.8 \\
+                S & 0.7 & 0.5 & 1.3 & 1.5 & 0.8 & 2.0 & 1.3 \\
+                Gr & 1.7 & 0.7 & 1.3 & 1.0 & 1.3 & 1.3 & 0.7 \\
+                Gh & 0.9 & 0.5 & 0.5 & 1.3 & 1.3 & 2.0 & 0.8 \\
+                Fl & 0.8 & 1.1 & 1.5 & 1.1 & 1.7 & 0.5 & 0.5 \\
+                Fi & 0.8 & 0.4 & 2.0 & 2.0 & 0.3 & 2.0 & 0.4
+            \end{tabularx}
+            Row against column; 1 = normal dmg
+        \end{multicols}
+
+    \end{Form}
+\end{document}
