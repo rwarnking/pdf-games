@@ -5,15 +5,11 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-% \usepackage[utf8x]{inputenc}
-% \usepackage[T1]{fontenc}
-% \usepackage[ngerman]{babel}
 % \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
 \usepackage{xinttools}
-% \usepackage[nomessages]{fp}
 \usepackage{tabularx}
 \usepackage{tcolorbox}
 
@@ -30,19 +26,16 @@
 \def\fieldHeight{30}
 \def\obstacleCount{5}
 
-% Max playercount is 5
-\def\playerCount{5}
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Gamename}
+\begin{insDLJS}[]{JSDateiname}{Sidescroller}
 
-const GAME_DESC = "Text.\
-Text.\
-Text.\
-Text.\
-Text.";
+const GAME_DESC = "This game is a simple side-scroller,\
+in which the player should evade objects that fly in his direction,\
+while trying not to hit the bottom or top lines that limit the area.\
+The player is only able to move up by pressing either w or space on his keyboard.\
+If nothing is pressed the player will move downwards automatically.";
 
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
@@ -57,6 +50,7 @@ const LINE_OFFSET = 2;
 const START_TOP_LINE = LINE_OFFSET;
 const START_BOT_LINE = FIELD_HEIGHT - LINE_OFFSET - 1;
 
+% Access constants
 const X = 0;
 const Y = 1;
 const SYMB = 2;
@@ -64,7 +58,8 @@ const LEFT = 0;
 const TOP = 1;
 const RIGHT = 2;
 const BOT = 3;
-% document dims 842, 596
+% Document dims: 842, 596
+% Canvas dims
 % upper-left x, upper-left y, lower-right x and lower-right y
 const CANVAS_LTRB = [47.5, 770, 547.5, 241];
 const CANVAS_HEIGHT = CANVAS_LTRB[TOP] - CANVAS_LTRB[BOT];
@@ -81,7 +76,7 @@ var force = [0.0, 0.0];
 
 const OBSTACLE_WIDTH = 20;
 const PLAYER_WIDTH = 20;
-const playerMass = 0.5;
+const PLAYER_MASS = 0.5;
 
 % Globals
 % The gameloop interval
@@ -98,11 +93,11 @@ var playerPos = [CANVAS_CENTER_W * 0.5 + PLAYER_WIDTH, CANVAS_CENTER_H];
 var obstacles = [];
 
 % Color data
-const COLORS = new Array(
-    %[ "RGB", 0.843, 0.078, 0.058 ],
-    %[ "RGB", 0.203, 0.603, 0.054 ],
-    %[ "RGB", 0.078, 0.305, 0.560 ]
-);
+% const COLORS = new Array(
+%     [ "RGB", 0.843, 0.078, 0.058 ],
+%     [ "RGB", 0.203, 0.603, 0.054 ],
+%     [ "RGB", 0.078, 0.305, 0.560 ]
+% );
 
 % Symbol array
 const SYMBOLS = [
@@ -133,16 +128,16 @@ const SYMBOLS = [
 %%%%%%%%%%
 /**
  * Returns a random float between the param min and the param max.
- * @param {Number} min The lowerbound
- * @param {Number} max The upperbound
+ * @param {Number} min The lowerbound.
+ * @param {Number} max The upperbound.
  */
 function getRandomFloat(min, max) {
     return min + Math.random() * (max - min);
 }
 
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random integer between 0 and the param.
+ * @param {Number} max The upperbound.
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
@@ -174,14 +169,15 @@ function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
+    % Allow for input
     this.getField("input1").setFocus();
 
     % Adjust text size and font
-    var cell;
+    var line;
     for (var m = 0; m < FIELD_HEIGHT; m++) {
-        cell = this.getField("line" + m);
-        cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-        cell.textFont = font.Cour;
+        line = this.getField("line" + m);
+        line.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+        line.textFont = font.Cour;
     }
 
     % Init player
@@ -215,15 +211,20 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
+    % If in animation do not restart
     if (fieldCounter < FIELD_WIDTH) {
         return;
     }
+    % In case the user restarted without gameover
     if (!gameover) {
-        % In case the user restarted without gameover
         app.clearInterval(gameInterval);
     }
     gameover = false;
     fieldCounter = 0;
+
+    % Reset for input
+    focus = true;
+    this.getField("input1").setFocus();
 
     % Reset canvas
     for (var m = 0; m < FIELD_HEIGHT; m++) {
@@ -289,20 +290,20 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
+/**
+ * The game loop. This is called repeatedly until the game is over.
+ * It handels all game events like input, movement, spawning and
+ * game-field adjustments. Each iteration is similar to one frame.
+ */
 function gameLoop() {
+    % Cancel the interval
     if (gameover) {
         app.clearInterval(gameInterval);
         printInfoText("Game over");
         return;
     }
 
-    if (fieldCounter < FIELD_WIDTH) {
-        printInfoText("Wait for the game to finish generating.");
-    } else {
-        printInfoText("You have currently " + (fieldCounter - FIELD_WIDTH) + " points.");
-    }
-
-    % Player movement
+    % Player movement, starts after the game-field is generated
     if (fieldCounter >= FIELD_WIDTH) {
         processInput();
         applyGravityToPlayer();
@@ -316,6 +317,7 @@ function gameLoop() {
         markObstacle(res, true);
         return;
     }
+    % Check for collision with top or bot line
     if (testCollisionLine()) {
         gameover = true;
         return;
@@ -324,6 +326,7 @@ function gameLoop() {
     % Draw the field
     drawField();
 
+    % Starts after the game-field is generated
     if (fieldCounter >= FIELD_WIDTH) {
         % Refresh obstacles
         refreshObstacles();
@@ -333,19 +336,33 @@ function gameLoop() {
 
     % Player rendering
     drawPlayer();
+
+    % Show current points or indicate that the game has not started yet.
+    if (fieldCounter < FIELD_WIDTH) {
+        printInfoText("Wait for the game to finish generating.");
+    } else {
+        printInfoText("You have currently " + (fieldCounter - FIELD_WIDTH) + " points.");
+    }
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Obstacles and collision %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Iterates all obstacles and either moves them or spawns it anew if
+ * it has not spawned yet or reached the left border of the canvas.
+ * Each obstacle gets a random y-value and a random symbol when spawning.
+ */
 function refreshObstacles() {
     % Calculate units per line
     const PER_LINE = CANVAS_HEIGHT / FIELD_HEIGHT;
 
     var spawn = getRandomFloat(0.0, 1.0) > 0.9;
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
+        % Spawn obstacle if allowed
         if (obstacles[i][X] < CANVAS_LTRB[LEFT] && spawn) {
             var x = CANVAS_LTRB[RIGHT] + OBSTACLE_WIDTH;
+            % Calculate the Y-area in which spawning is allowed
             % Get current lines
             var curTop = getLine(fieldCounter, START_TOP_LINE);
             var curBot = getLine(fieldCounter, START_BOT_LINE);
@@ -356,14 +373,21 @@ function refreshObstacles() {
 
             var symb = String.fromCharCode(SYMBOLS[getRandomInt(SYMBOLS.length)]);
             obstacles[i] = [x, y, symb];
+            % Only allow spawning once per frame
             spawn = false;
         } else {
+            % Move obstacle such that the speed matches the movement of the game-field
             const OBSTACLE_MOVE_SPEED = 6;
             obstacles[i][X] -= OBSTACLE_MOVE_SPEED;
         }
     }
 }
 
+/**
+ * Checks all obstacles if they collide with the player, if so returns the
+ * object that was the collider.
+ * @return {Number} The index of the collider obstacle.
+ */
 function testCollisionObstacle() {
     const pLeft = playerPos[X] - PLAYER_WIDTH;
     const pTop = playerPos[Y] + PLAYER_WIDTH;
@@ -386,7 +410,12 @@ function testCollisionObstacle() {
     return -1;
 }
 
-% Test against the top and bottom line
+%
+/**
+ * Checks the current player hitbox against the top and bottom line.
+ * If a collision was detected true is returned.
+ * @return {Boolean} True if collision was detected, else false.
+ */
 function testCollisionLine() {
     const pLeft = playerPos[X] - PLAYER_WIDTH;
     const pTop = playerPos[Y] + PLAYER_WIDTH;
@@ -394,11 +423,14 @@ function testCollisionLine() {
     const pBot = playerPos[Y] - PLAYER_WIDTH;
     const pMid = (pRight - pLeft) * 0.5 + pLeft;
 
+    % Approximate the current char postion at the center of the player
+    % and get the top and bot line at that position.
     % Sample-positions does not move horizontally
     const sample = Math.round(pMid / PER_CHAR);
     var curTop = getLine(fieldCounter - FIELD_WIDTH + sample, START_TOP_LINE);
     var curBot = getLine(fieldCounter - FIELD_WIDTH + sample, START_BOT_LINE);
 
+    % Compare the player height with the top and bot line height
     if (CANVAS_LTRB[TOP] - curTop * PER_LINE < pTop) {
         return true;
     } else if (CANVAS_LTRB[TOP] - curBot * PER_LINE > pBot) {
@@ -415,6 +447,7 @@ function testCollisionLine() {
  * Process input made by keys of the keyboard.
  * For this multiple input fields are needed for which the focus is shifted.
  * The input is then parsed into actual movement.
+ * In this case only w and space inputs are processed.
  */
 function processInput() {
     var iField1 = this.getField("input1");
@@ -435,6 +468,7 @@ function processInput() {
 
     % Process the input string
     if (movementString.length > 0) {
+        % If the correct input occurred give the player a small force push in top direction.
         var char = movementString.charAt(0);
         if (char == "w" || char == " ") {
             force[Y] = 2.0;
@@ -445,17 +479,14 @@ function processInput() {
 }
 
 /**
- * Alters the position of the given particlce by using gravity.
- * The floor can be used to achieve a jumping motion.
+ * Alters the position and momentum of the player by using gravity and force.
  * Very similar the implementation found here:
  * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
- * @param {Number} p The particle index.
- * @param {Number} floor The y position at which the floor should be.
  */
 function applyGravityToPlayer() {
     const g = GRAVITY;
     const f = force;
-    const m = playerMass;
+    const m = PLAYER_MASS;
     var mom = playerMomentum;
 
     % Momentum += gravity + force
@@ -472,20 +503,26 @@ function applyGravityToPlayer() {
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
+/**
+ * Calculate the current y-position for the given x-position.
+ * The y-positions are generated by a sin-function around the given baseline.
+ * @param {Number} xPos The x-position for which the y-position shall be returned.
+ * @param {Number} baseline The y-height around which the sin-function should run.
+ * @return {Number} The calculated y-position.
+ */
 function getLine(xPos, baseline) {
-    % xPos to radians (4x)
     const period = 1;
     var rad = (xPos / FIELD_WIDTH) * Math.PI * 2.0 * period;
     return Math.round(Math.sin(rad) * LINE_OFFSET + baseline);
 }
 
 /**
- * TODO
  * Shows next frame for the canvas, by adding the next symbol at the right and
  * shifting all lines one to the left.
- * If the game is over the animation interval is cleared.
+ * For the top and bot line a * is printed all other lines get a space.
  */
 function drawField() {
+    % Get the top and bot line
     var tL = getLine(fieldCounter, START_TOP_LINE);
     var bL = getLine(fieldCounter, START_BOT_LINE);
 
@@ -498,6 +535,7 @@ function drawField() {
 
         addToField("line" + m,  symb);
 
+        % Shift only after the field was filled once
         if (fieldCounter >= FIELD_WIDTH) {
             shiftFieldLeft("line" + m);
         }
@@ -505,6 +543,10 @@ function drawField() {
     fieldCounter++;
 }
 
+/**
+ * Draws the box of the player by using its position and
+ * adding the PLAYER_WIDTH to it.
+ */
 function drawPlayer() {
     var field = this.getField("player");
     field.delay = true;
@@ -520,6 +562,11 @@ function drawPlayer() {
     field.delay = false;
 }
 
+/**
+ * Draws all obstacles by iterating through them and adjusting their rectangle.
+ * The rectangle is capped at the left border and gradually appears at the right
+ * border of the canvas. Sets also the value of the field to the obstacle symbol.
+ */
 function drawObstacles() {
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
         var field = this.getField("obstacle" + i);
@@ -527,6 +574,8 @@ function drawObstacles() {
         field.value = obstacles[i][SYMB];
 
         % upper-left x, upper-left y, lower-right x and lower-right y
+        % Min and max are used to cap the rectangle at the borders.
+        % This leads to a gradually (dis-)appearance at the borders.
         field.rect = [
             Math.min(
                 Math.max(obstacles[i][X] - PLAYER_WIDTH, CANVAS_LTRB[LEFT]),
@@ -544,6 +593,11 @@ function drawObstacles() {
     }
 }
 
+/**
+ * Enables or disables the blue highlight mode for the given obstacle id.
+ * @param {Number} obs The obstacle id.
+ * @param {Boolen} enable True for enabling, else false.
+ */
 function markObstacle(obs, enable) {
     var field = this.getField("obstacle" + obs);
     field.delay = true;
@@ -620,7 +674,7 @@ function printInfoText(text) {
         % Header
         \begin{multicols}{2}
             % Title
-            \section*{Gamename}
+            \section*{Side-Scroller}
         \columnbreak
             % Tooltip object
             \begin{flushright}%
