@@ -34,7 +34,7 @@ Text.";
 
 % Outside variables
 const CARD_COUNT = AFMakeNumber(\cards);
-const ANIMATION_SPEED = 200;
+const ANIMATION_SPEED = 20;
 
 % Constants
 const TEXT_SIZE = 14;
@@ -57,8 +57,8 @@ const CANVAS_CENTER_H = CANVAS_HEIGHT * 0.5 + CANVAS_LTRB[BOT];
 const CANVAS_CENTER_W = CANVAS_WIDTH * 0.5 + CANVAS_LTRB[LEFT];
 
 const CARD_WIDTH = 20;
-const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - 100];
-const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H - 100];
+const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H];
+const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H];
 
 const PLAYER_POS = [
     [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[BOT] + CARD_WIDTH],
@@ -281,6 +281,24 @@ function chooseCard(cardIdx) {
     curPlayer = (curPlayer + 1) \% playerCount;
 }
 
+function openFirstCard() {
+    cardOwner[stack[0]] = GRAVEYARD;
+    var card = this.getField("card" + stack[0]);
+    card.delay = true;
+    card.rect = [
+        GRAVE_POS[X] - CARD_WIDTH,
+        GRAVE_POS[Y] + CARD_WIDTH,
+        GRAVE_POS[X] + CARD_WIDTH,
+        GRAVE_POS[Y] - CARD_WIDTH
+    ];
+    card.delay = false;
+
+    drawCardFront(stack[0]);
+    stack.splice(0, 1);
+
+    printInfoText("The game has started. Player " + curPlayer + " your Turn.");
+}
+
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
@@ -291,23 +309,28 @@ function initCardPositions() {
         app.clearInterval(gameInterval);
 
         this.getField("tooltiptxt").setFocus();
-        % TODO place top card of stack on graveyard
+
+        % Place top card of stack on graveyard
+        openFirstCard();
 
         return;
     }
 
     var idx = stack[curCardIdx];
     var card = this.getField("card" + idx);
+    card.hidden = false;
+
+    var offset = [-5 + getRandomInt(11), -5 + getRandomInt(11)];
 
     card.rect = [
-        STACK_POS[X] - CARD_WIDTH,
+        STACK_POS[X] - CARD_WIDTH + offset[X],
         % STACK_POS[X] - CARD_WIDTH + curCardIdx * 30,
         % STACK_POS[X] * 0.5 - CARD_WIDTH + curCardIdx * 10,
-        STACK_POS[Y] + CARD_WIDTH,
-        STACK_POS[X] + CARD_WIDTH,
+        STACK_POS[Y] + CARD_WIDTH + offset[Y],
+        STACK_POS[X] + CARD_WIDTH + offset[X],
         % STACK_POS[X] + CARD_WIDTH + curCardIdx * 30,
         % STACK_POS[X] * 0.5 + CARD_WIDTH + curCardIdx * 10,
-        STACK_POS[Y] - CARD_WIDTH
+        STACK_POS[Y] - CARD_WIDTH + offset[Y]
     ];
 
     drawCardBack(stack[curCardIdx]);
@@ -409,11 +432,10 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % TODO make them readonly but carefull because of setFocus
         \begin{tcolorbox}[height=\linewidth, valign=center]
             \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
                 \TextField[name=card#1, width=1cm, height=1cm,%
-                    bordercolor=red, backgroundcolor=white, readonly=true%
+                    bordercolor=gray, backgroundcolor=white, readonly=true, hidden%
                 ]{}%
             }%
         \end{tcolorbox}
