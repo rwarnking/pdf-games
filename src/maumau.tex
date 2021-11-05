@@ -34,7 +34,7 @@ Text.";
 
 % Outside variables
 const CARD_COUNT = AFMakeNumber(\cards);
-const ANIMATION_SPEED = 20;
+const ANIMATION_SPEED = 50;
 
 % Constants
 const TEXT_SIZE = 14;
@@ -75,11 +75,14 @@ var curCardIdx = -1;
 % TODO get this from the gui
 var playerCount = 4;
 %
+var cardsPerPlayer = 5;
+%
 var curPlayer = 0;
 % Player cards
 var playerCards = [
     [], [], [], []
 ];
+var rotations = [0, 0, 0, 270, 180, 90];
 
 % Spades, clubs, hearts, diamonds
 % const CARD_COLORS = ["S", "C", "H", "D"];
@@ -93,8 +96,7 @@ const CARD_COLORS = [
 const CARD_VALUES = ["7", "8", "9", "10", "B", "Q", "K", "A"];
 const CARDS = [];
 
-% TODO graveyard?
-var unusedCards = [];
+var graveyard = [];
 var stack = [];
 
 const STACK = -1;
@@ -130,18 +132,18 @@ function initialise() {
 
     % Init unused cards
     for (var i = 0; i < CARD_COUNT; i++) {
-        unusedCards.push(i);
+        graveyard.push(i);
     }
     for (var i = 0; i < CARD_COUNT; i++) {
         % Get random element from the  and remove the card afterwards
-        var rnd = getRandomInt(unusedCards.length);
-        stack.push(unusedCards[rnd]);
+        var rnd = getRandomInt(graveyard.length);
+        stack.push(graveyard[rnd]);
         cardOwner.push(STACK);
-        unusedCards.splice(rnd, 1);
+        graveyard.splice(rnd, 1);
     }
 
     curCardIdx = stack.length - 1;
-    gameInterval = app.setInterval("initCardPositions()", ANIMATION_SPEED);
+    gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
 }
 
 /**
@@ -258,7 +260,13 @@ function chooseCard(cardIdx) {
             return;
         }
 
+        if (!validMove(cardIdx)) {
+            % printInfoText("This is not a valid move, select another card!");
+            return;
+        }
+
         cardOwner[cardIdx] = GRAVEYARD;
+        graveyard.push(cardIdx);
         const index = playerCards[curPlayer].indexOf(cardIdx);
         playerCards[curPlayer].splice(index, 1);
 
@@ -281,8 +289,25 @@ function chooseCard(cardIdx) {
     curPlayer = (curPlayer + 1) \% playerCount;
 }
 
+function validMove(cardIdx) {
+    const topGraveIdx = graveyard[graveyard.length - 1];
+    const c1 = CARDS[topGraveIdx];
+    const c2 = CARDS[cardIdx];
+    const l1 = c1.length;
+    const l2 = c2.length;
+
+    printInfoText(c1.charAt(l1 - 2) + " " + c2.charAt(l2 - 2) + " " +
+        c1.charAt(l1 - 1) + " " + c2.charAt(l2 - 1)
+    );
+    if (c1.charAt(l1 - 2) == c2.charAt(l2 - 2) || c1.charAt(l1 - 1) == c2.charAt(l2 - 1)) {
+        return true;
+    }
+    return false;
+}
+
 function openFirstCard() {
     cardOwner[stack[0]] = GRAVEYARD;
+    graveyard.push(stack[0]);
     var card = this.getField("card" + stack[0]);
     card.delay = true;
     card.rect = [
@@ -302,17 +327,11 @@ function openFirstCard() {
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
-function initCardPositions() {
-    printInfoText("jo " + curCardIdx + " " + stack[curCardIdx]);
-
+function initStack() {
     if (curCardIdx < 0) {
         app.clearInterval(gameInterval);
-
-        this.getField("tooltiptxt").setFocus();
-
-        % Place top card of stack on graveyard
-        openFirstCard();
-
+        gameInterval = app.setInterval("initHandCards()", ANIMATION_SPEED * 3.0);
+        curCardIdx = playerCount * cardsPerPlayer - 1;
         return;
     }
 
@@ -338,7 +357,21 @@ function initCardPositions() {
     curCardIdx--;
 }
 
-var rotations = [0, 0, 0, 270, 180, 90];
+function initHandCards() {
+    if (curCardIdx < 0) {
+        app.clearInterval(gameInterval);
+        % TODO
+        % this.getField("tooltiptxt").setFocus();
+
+        % Place top card of stack on graveyard
+        openFirstCard();
+
+        return;
+    }
+
+    chooseCard(stack[0]);
+    curCardIdx--;
+}
 
 function drawCardFront(cardIdx) {
     var card = this.getField("card" + cardIdx);
