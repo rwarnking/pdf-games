@@ -61,10 +61,10 @@ const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - 100];
 const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H - 100];
 
 const PLAYER_POS = [
-    [CANVAS_LTRB[LEFT], CANVAS_LTRB[BOT] + CARD_WIDTH],
-    [CANVAS_LTRB[LEFT] + CARD_WIDTH, CANVAS_CENTER_H],
-    [CANVAS_CENTER_W, CANVAS_LTRB[TOP] - CARD_WIDTH],
-    [CANVAS_LTRB[RIGHT] - CARD_WIDTH, CANVAS_CENTER_H]
+    [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[BOT] + CARD_WIDTH],
+    [CANVAS_LTRB[LEFT] + CARD_WIDTH, CANVAS_LTRB[BOT] + CARD_WIDTH * 2.0],
+    [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[TOP] - CARD_WIDTH],
+    [CANVAS_LTRB[RIGHT] - CARD_WIDTH, CANVAS_LTRB[BOT] + CARD_WIDTH * 2.0]
 ]
 
 % Globals
@@ -73,7 +73,7 @@ var gameInterval;
 %
 var curCardIdx = -1;
 % TODO get this from the gui
-var playerCount = 2;
+var playerCount = 4;
 %
 var curPlayer = 0;
 % Player cards
@@ -313,14 +313,16 @@ function initCardPositions() {
     drawCardBack(stack[curCardIdx]);
 
     curCardIdx--;
-
 }
+
+var rotations = [0, 0, 0, 270, 180, 90];
 
 function drawCardFront(cardIdx) {
     var card = this.getField("card" + cardIdx);
     card.delay = true;
     card.fillColor = color.white;
     card.value = CARDS[cardIdx];
+    card.rotation = rotations[cardOwner[cardIdx] + 2];
     card.delay = false;
 }
 
@@ -337,8 +339,8 @@ function redrawPlayerCards(pIdx) {
         return a - b;
     });
 
-    var perCardH = CANVAS_HEIGHT / playerCards[pIdx].length;
-    var perCardW = CANVAS_WIDTH / playerCards[pIdx].length;
+    var perCardH = (CANVAS_HEIGHT - CARD_WIDTH * 4.0) / playerCards[pIdx].length;
+    var perCardW = (CANVAS_WIDTH - CARD_WIDTH * 4.0) / playerCards[pIdx].length;
     var cardWidth = Math.min(CARD_WIDTH, perCardH * 0.5 - 2);
     if (pIdx \% 2 == 0) {
         cardWidth = Math.min(CARD_WIDTH, perCardW * 0.5 - 2);
@@ -350,30 +352,25 @@ function redrawPlayerCards(pIdx) {
         var cardIdx = playerCards[pIdx][c];
         var card = this.getField("card" + cardIdx);
         card.delay = true;
-        card.rect = [
-            PLAYER_POS[pIdx][X] - cardWidth + c * perCardW + perCardW * 0.5,
-            PLAYER_POS[pIdx][Y] + cardWidth,
-            PLAYER_POS[pIdx][X] + cardWidth + c * perCardW + perCardW * 0.5,
-            PLAYER_POS[pIdx][Y] - cardWidth
-        ];
+        if (pIdx \% 2 == 0) {
+            card.rect = [
+                PLAYER_POS[pIdx][X] - cardWidth + c * perCardW + perCardW * 0.5,
+                PLAYER_POS[pIdx][Y] + cardWidth,
+                PLAYER_POS[pIdx][X] + cardWidth + c * perCardW + perCardW * 0.5,
+                PLAYER_POS[pIdx][Y] - cardWidth
+            ];
+        } else {
+            card.rect = [
+                PLAYER_POS[pIdx][X] - cardWidth,
+                PLAYER_POS[pIdx][Y] + cardWidth + c * perCardH + perCardH * 0.5,
+                PLAYER_POS[pIdx][X] + cardWidth,
+                PLAYER_POS[pIdx][Y] - cardWidth + c * perCardH + perCardH * 0.5
+            ];
+        }
         card.delay = false;
 
         drawCardFront(cardIdx);
     }
-}
-
-/**
- * Since only one cell is updated with each input,
- * only this cell needs to be redrawn.
- *
- * @param {Number} m The m position.
- * @param {Number} n The n position.
- */
-function draw(m, n) {
-    var cell = this.getField("cell" + m + "-" + n);
-    cell.delay = true;
-    cell.value = "tmp";
-    cell.delay = false;
 }
 
 /**
