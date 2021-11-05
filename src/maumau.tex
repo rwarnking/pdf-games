@@ -112,6 +112,21 @@ for (var col = 0; col < CARD_COLORS.length; col++) {
     }
 }
 
+var rules = {
+    cb7: true,
+    cb7chain: true,
+    cb8: true,
+    cb8chain: true,
+    cb9: false,
+    cb10: false,
+    cbJ: true,
+    cbJchain: false,
+    cbK: false,
+    cbKchain: false,
+    cbAcard: false,
+    cbAskip: false
+};
+
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
@@ -186,6 +201,15 @@ function initialiseButtons() {
         card.delay = false;
     }
 
+    % Copy rules to the gui by iterating all keys of the rules object
+    var cbKeys = Object.keys(rules);
+    for (var idx = 0; idx < cbKeys.length; idx++) {
+        if (rules[cbKeys[idx]] == true) {
+            var cb = this.getField(cbKeys[idx]);
+            cb.checkThisBox(0);
+        }
+    }
+
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
@@ -197,7 +221,7 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 
-    % printInfoText("Init");
+    printInfoText("Init");
 }
 
 /**
@@ -242,6 +266,14 @@ function restart() {
     for (var i = 0; i < 5; i++) {
         cardsPerPlayer += cmC.isBoxChecked(i) * (4 + i);
     };
+
+    % Get rules from gui by iterating all keys of the rules object
+    var cbKeys = Object.keys(rules);
+    for (var idx = 0; idx < cbKeys.length; idx++) {
+        var cb = this.getField(cbKeys[idx]);
+        % Convert to boolean
+        rules[cbKeys[idx]] = cb.isBoxChecked(0) == 1;
+    }
 
     if (cardsPerPlayer > 0) {
         curCardIdx = stack.length - 1;
@@ -488,8 +520,6 @@ function initStack() {
 function initHandCards() {
     if (curCardIdx < 0) {
         app.clearInterval(gameInterval);
-        % TODO
-        % this.getField("tooltiptxt").setFocus();
 
         % Place top card of stack on graveyard
         openFirstCard();
