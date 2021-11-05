@@ -79,12 +79,18 @@ const PLAYER_POS = [
     [CANVAS_LTRB[RIGHT] - CARD_WIDTH, CANVAS_LTRB[BOT] + CARD_WIDTH * 2.0]
 ];
 
-% TODOs
-% animations
-
 % Globals
 % TODO
 var gameInterval;
+
+var cardAnim = {
+    state: -1.0,
+    start: [],
+    goal: [],
+    idx: 0,
+    interval: 0
+}
+
 % Saves the index of the currently used card
 var curCardIdx = -1;
 % The playercount is read from the gui
@@ -151,6 +157,9 @@ var rules = {
     cbAcard: false,
     cbAskip: false
 };
+
+% const BACK_COLOR = [ "RGB", 0.313, 0.525, 0.560 ];
+const BACK_COLOR = [ "RGB", 0.047, 0.349, 0.047 ];
 
 %%%%%%%%%%
 % Helper %
@@ -276,27 +285,14 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 
-    printInfoText("Init");
-}
-
-function addButton(name, callback, rect, value, hidden, tsize) {
-    var btn = this.getField(name);
-    btn.delay = true;
-    btn.setAction("MouseUp", callback);
-    btn.rect = rect;
-    btn.textFont = font.Cour;
-    btn.textSize = tsize;
-    btn.alignment = "center";
-    btn.value = value;
-    btn.hidden = hidden;
-    btn.delay = false;
+    printInfoText("Initializing game.");
 }
 
 /**
  * Restart the game and clear everything
  */
 function restart() {
-    if (curCardIdx > -1) {
+    if (curCardIdx > -1 || cardAnim.state > -0.1) {
         printInfoText("Can not restart until the animation finished.");
         return;
     }
@@ -428,10 +424,18 @@ function chooseCard(cardIdx) {
     if (cardOwner[cardIdx] == STACK) {
         var card = this.getField("card" + stack[0]);
         cardOwner[stack[0]] = curPlayer;
-
         playerCards[curPlayer].push(stack[0]);
 
+        % Draw animation
+        card.hidden = true;
+        cardAnim.start = card.rect;
+        cardAnim.idx = stack[0];
+
         redrawPlayerCards(curPlayer);
+
+        cardAnim.state = 1.0;
+        cardAnim.goal = card.rect;
+        cardAnim.interval = app.setInterval("moveCard()", ANIMATION_SPEED * 1.25);
 
         stack.splice(0, 1);
 
@@ -507,6 +511,7 @@ function chooseCard(cardIdx) {
     }
 
     nextPlayer();
+    showCurHidePrev();
 }
 
 function validMove(cardIdx) {
@@ -535,10 +540,12 @@ function skip() {
     if (gameState.skip8) {
         printInfoText("Player " + (curPlayer + 1) + " was skipped.");
         nextPlayer();
+        showCurHidePrev();
         gameState.skip8 = false;
     } else if (stack.length == 0) {
         printInfoText("Player " + (curPlayer + 1) + " was skipped.");
         nextPlayer();
+        showCurHidePrev();
     } else {
         printInfoText("You can not skip!");
     }
@@ -551,6 +558,7 @@ function selectColor(colorIdx) {
     this.getField("curcolor").value = gameState.currentColor;
     printInfoText("Player " + (curPlayer + 1) + " selected " + gameState.currentColor + ".");
     nextPlayer();
+    showCurHidePrev();
     % Hide the color buttons again
     for (var col = 0; col < CARD_COLORS.length; col++) {
         this.getField("color" + col).hidden = true;
@@ -630,6 +638,7 @@ function specialRulesPlay(cardIdx) {
             printInfoText("Player " + (curPlayer + 2) + ", play 8 or skip.");
         } else {
             nextPlayer();
+            showCurHidePrev();
             printInfoText("Player " + (curPlayer + 1) + " is skipped.");
         }
     }
@@ -656,6 +665,7 @@ function specialRulesPlay(cardIdx) {
     % Skip player when played an ass
     else if (rules.cbAskip && c.charAt(0) == "A") {
         nextPlayer();
+        showCurHidePrev();
         printInfoText("Player " + (curPlayer + 1) + " is skipped.");
     }
     % Get another turn when played an ass
@@ -685,6 +695,7 @@ function openFirstCard() {
     this.getField("curcolor").value = gameState.currentColor;
     stack.splice(0, 1);
 
+    showCurHidePrev();
     gameState.gameover = false;
     printInfoText("The game has started. Player " + (curPlayer + 1) + " your Turn.");
 }
@@ -730,6 +741,10 @@ function initStack() {
 }
 
 function initHandCards() {
+    if (cardAnim.state > -0.1) {
+        return;
+    }
+
     if (curCardIdx < 0) {
         app.clearInterval(gameInterval);
 
@@ -739,14 +754,33 @@ function initHandCards() {
         return;
     }
 
-    var card = this.getField("card" + stack[0]);
     cardOwner[stack[0]] = curPlayer;
     playerCards[curPlayer].push(stack[0]);
+
+    % Draw animation
+    var card = this.getField("card" + stack[0]);
+    card.hidden = true;
+    cardAnim.start = card.rect;
+    cardAnim.idx = stack[0];
     redrawPlayerCards(curPlayer);
+    cardAnim.state = 1.0;
+    cardAnim.goal = card.rect;
+    cardAnim.interval = app.setInterval("moveCard()", ANIMATION_SPEED * 1.25);
+
     stack.splice(0, 1);
     nextPlayer();
 
     curCardIdx--;
+}
+
+function showCurHidePrev() {
+    for (var c = 0; c < playerCards[curPlayer].length; c++) {
+        drawCardFront(playerCards[curPlayer][c]);
+    }
+    var prevPlayer = (curPlayer - gameState.direction + playerCount) \% playerCount;
+    for (var c = 0; c < playerCards[prevPlayer].length; c++) {
+        drawCardBack(playerCards[prevPlayer][c]);
+    }
 }
 
 function drawCardFront(cardIdx) {
@@ -761,7 +795,7 @@ function drawCardFront(cardIdx) {
 function drawCardBack(cardIdx) {
     var card = this.getField("card" + cardIdx);
     card.delay = true;
-    card.fillColor = color.blue;
+    card.fillColor = BACK_COLOR;
     card.value = "";
     card.delay = false;
 }
@@ -801,8 +835,41 @@ function redrawPlayerCards(pIdx) {
         }
         card.delay = false;
 
-        drawCardFront(cardIdx);
+        %drawCardFront(cardIdx);
     }
+}
+
+function moveCard() {
+    if (cardAnim.state < -0.2) {
+        app.clearInterval(cardAnim.interval);
+        return;
+    }
+
+    var card = this.getField("card" + cardAnim.idx);
+    card.hidden = false;
+
+    var rect = [0, 0, 0, 0];
+    for (var i = 0; i < 4; i++) {
+        rect[i] = Math.max(cardAnim.state, 0.0) * cardAnim.start[i] +
+            (1.0 - Math.max(cardAnim.state, 0.0)) * cardAnim.goal[i];
+    }
+
+    card.rect = rect;
+
+    cardAnim.state -= 0.05;
+}
+
+function addButton(name, callback, rect, value, hidden, tsize) {
+    var btn = this.getField(name);
+    btn.delay = true;
+    btn.setAction("MouseUp", callback);
+    btn.rect = rect;
+    btn.textFont = font.Cour;
+    btn.textSize = tsize;
+    btn.alignment = "center";
+    btn.value = value;
+    btn.hidden = hidden;
+    btn.delay = false;
 }
 
 /**
@@ -844,7 +911,7 @@ function printInfoText(text) {
         \begin{tcolorbox}[height=\linewidth, valign=center]
             \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
                 \TextField[name=card#1, width=1cm, height=1cm,%
-                    bordercolor=gray, backgroundcolor=white, readonly=true, hidden%
+                    bordercolor=black, backgroundcolor=white, readonly=true, hidden%
                 ]{}%
             }%
 
@@ -852,11 +919,11 @@ function printInfoText(text) {
                 bordercolor=, backgroundcolor=, readonly=true, hidden]{}%
 
             \TextField[name=skip, width=1cm, height=1cm,%
-                bordercolor=gray, backgroundcolor=white, readonly=true, hidden]{}%
+                bordercolor=black, backgroundcolor=white, readonly=true, hidden]{}%
 
             \xintFor* #1 in {\xintSeq{0}{\colors-1}} \do {%
                 \TextField[name=color#1, width=1cm, height=1cm,%
-                    bordercolor=gray, backgroundcolor=white, readonly=true, hidden%
+                    bordercolor=black, backgroundcolor=white, readonly=true, hidden%
                 ]{}%
             }%
 
