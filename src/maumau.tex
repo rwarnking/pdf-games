@@ -20,6 +20,7 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \def\cards{32}
+\def\colors{4}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -37,7 +38,9 @@ const CARD_COUNT = AFMakeNumber(\cards);
 const ANIMATION_SPEED = 50;
 
 % Constants
-const TEXT_SIZE = 14;
+const TEXT_SIZE_SMALL = 14;
+const TEXT_SIZE_MED = 18;
+const TEXT_SIZE_BIG = 40;
 
 % Access constants
 const X = 0;
@@ -61,12 +64,19 @@ const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H];
 const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H];
 const SKIP_POS = [CANVAS_CENTER_W, CANVAS_CENTER_H + CARD_WIDTH * 2.5];
 
+const COLOR_POS = [
+    [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5],
+    [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5 * 2.0],
+    [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5],
+    [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5 * 2.0]
+];
+
 const PLAYER_POS = [
     [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[BOT] + CARD_WIDTH],
     [CANVAS_LTRB[LEFT] + CARD_WIDTH, CANVAS_LTRB[BOT] + CARD_WIDTH * 2.0],
     [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[TOP] - CARD_WIDTH],
     [CANVAS_LTRB[RIGHT] - CARD_WIDTH, CANVAS_LTRB[BOT] + CARD_WIDTH * 2.0]
-]
+];
 
 % Globals
 % TODO
@@ -93,7 +103,8 @@ var gameState = {
     skip8: false,
     take: 0,
     taking: false,
-    selColor: false
+    selectColor: false,
+    currentColor: ""
 };
 
 % Spades, clubs, hearts, diamonds
@@ -205,27 +216,31 @@ function initialiseButtons() {
             card.textColor = color.red;
         }
         card.textFont = font.Cour;
-        card.textSize = TEXT_SIZE;
+        card.textSize = TEXT_SIZE_MED;
         card.alignment = "center";
         card.delay = false;
     }
 
     % Skip button
-    var skipBtn = this.getField("skip");
-    skipBtn.delay = true;
-    skipBtn.setAction("MouseUp", "skip();");
-    skipBtn.rect = [
+    var skipRect = [
         SKIP_POS[X] - CARD_WIDTH - CARD_WIDTH * 1.25,
         SKIP_POS[Y] + CARD_WIDTH,
         SKIP_POS[X] + CARD_WIDTH + CARD_WIDTH * 1.25,
         SKIP_POS[Y] - CARD_WIDTH
     ];
-    skipBtn.textFont = font.Cour;
-    skipBtn.textSize = TEXT_SIZE;
-    skipBtn.alignment = "center";
-    skipBtn.value = "Skip turn";
-    skipBtn.hidden = false;
-    skipBtn.delay = false;
+    addButton("skip", "skip();", skipRect, "Skip turn", false, TEXT_SIZE_SMALL);
+
+    % Color buttons
+    for (var col = 0; col < CARD_COLORS.length; col++) {
+        var colorRect = [
+            COLOR_POS[col][X] - CARD_WIDTH,
+            COLOR_POS[col][Y] + CARD_WIDTH,
+            COLOR_POS[col][X] + CARD_WIDTH,
+            COLOR_POS[col][Y] - CARD_WIDTH
+        ];
+        addButton("color" + col, "selectColor(" + col + ");",
+            colorRect, CARD_COLORS[col], true, TEXT_SIZE_BIG);
+    }
 
     % Copy rules to the gui by iterating all keys of the rules object
     var cbKeys = Object.keys(rules);
@@ -250,11 +265,32 @@ function initialiseButtons() {
     printInfoText("Init");
 }
 
+function addButton(name, callback, rect, value, hidden, tsize) {
+    var btn = this.getField(name);
+    btn.delay = true;
+    btn.setAction("MouseUp", callback);
+    btn.rect = rect;
+    btn.textFont = font.Cour;
+    btn.textSize = tsize;
+    btn.alignment = "center";
+    btn.value = value;
+    btn.hidden = hidden;
+    btn.delay = false;
+}
+
 /**
  * Restart the game and clear everything
  */
 function restart() {
-    gameState.gameover = true;
+    gameState = {
+        gameover: true,
+        skip8: false,
+        take: 0,
+        taking: false,
+        selectColor: false,
+        currentColor: ""
+    };
+
     curPlayer = 0;
     playerCards = [
         [], [], [], []
@@ -408,9 +444,13 @@ function chooseCard(cardIdx) {
         }
 
         if (!validMove(cardIdx)) {
-            printInfoText("This is not a valid move, select another card!");
+            % printInfoText("This is not a valid move, select another card!");
             return;
         }
+
+        % Save color of played card
+        var cVal = CARDS[cardIdx];
+        gameState.currentColor = cVal.charAt(cVal.length - 1);
 
         % Hide last top card
         var tmpIdx = graveyard[graveyard.length - 1];
@@ -441,7 +481,7 @@ function chooseCard(cardIdx) {
             printInfoText("Player " + (curPlayer + 1) + " has no cards left and won the game!");
             return;
         } else {
-            printInfoText("Player " + (curPlayer + 1) + " played a card!");
+            printInfoText("Player " + (curPlayer + 1) + " played the card " + cVal + "!");
         }
 
         specialRulesPlay(cardIdx);
@@ -462,7 +502,7 @@ function validMove(cardIdx) {
     % Test if card has same number or color as the top graveyard card
     % Exception if enabled: all-rounder 9
     if (c1.charAt(l1 - 2) == c2.charAt(l2 - 2) ||
-        c1.charAt(l1 - 1) == c2.charAt(l2 - 1) ||
+        gameState.currentColor == c2.charAt(l2 - 1) ||
         rules.cb9 && c2.charAt(0) == "9"
     ) {
         return true;
@@ -472,11 +512,22 @@ function validMove(cardIdx) {
 
 function skip() {
     if (gameState.skip8) {
-        printInfoText("Player " + (curPlayer + 1) + " is skipped.");
+        printInfoText("Player " + (curPlayer + 1) + " was skipped.");
         curPlayer = (curPlayer + 1) \% playerCount;
         gameState.skip8 = false;
     } else {
         printInfoText("You can not skip!");
+    }
+}
+
+function selectColor(colorIdx) {
+    gameState.selectColor = false;
+    gameState.currentColor = CARD_COLORS[colorIdx];
+    printInfoText("Player " + (curPlayer + 1) + " selected " + gameState.currentColor + ".");
+    curPlayer = (curPlayer + 1) \% playerCount;
+    % Hide the color buttons again
+    for (var col = 0; col < CARD_COLORS.length; col++) {
+        this.getField("color" + col).hidden = true;
     }
 }
 
@@ -522,6 +573,11 @@ function specialRulesBegin(cardIdx) {
             return false;
         }
     }
+
+    if (gameState.selectColor) {
+        printInfoText("Player " + (curPlayer + 1) + ", still needs to select a color!");
+        return false;
+    }
     return true;
 }
 
@@ -551,6 +607,16 @@ function specialRulesPlay(cardIdx) {
             printInfoText("Player " + (curPlayer + 1) + " is skipped.");
         }
     }
+    % Player needs to select a color
+    else if (rules.cbJ && c.charAt(0) == "J") {
+        gameState.selectColor = true;
+        printInfoText("Player " + (curPlayer + 1) + " please select a color.");
+        curPlayer--;
+        % Unhide color selection buttons
+        for (var col = 0; col < CARD_COLORS.length; col++) {
+            this.getField("color" + col).hidden = false;
+        }
+    }
     % Adjust take count for next player
     else if (rules.cbK && c.charAt(0) == "K") {
         gameState.taking = false;
@@ -559,7 +625,7 @@ function specialRulesPlay(cardIdx) {
     % Skip player when played an ass
     else if (rules.cbAskip && c.charAt(0) == "A") {
         curPlayer = (curPlayer + 1) \% playerCount;
-        printInfoText("Player " + (curPlayer + 1) + " is skipped. ");
+        printInfoText("Player " + (curPlayer + 1) + " is skipped.");
     }
     % Get another turn when played an ass
     else if (rules.cbAcard && c.charAt(0) == "A") {
@@ -582,6 +648,8 @@ function openFirstCard() {
     card.delay = false;
 
     drawCardFront(stack[0]);
+    var cVal = CARDS[stack[0]];
+    gameState.currentColor = cVal.charAt(cVal.length - 1);
     stack.splice(0, 1);
 
     gameState.gameover = false;
@@ -745,6 +813,14 @@ function printInfoText(text) {
 
             \TextField[name=skip, width=1cm, height=1cm,%
                 bordercolor=gray, backgroundcolor=white, readonly=true, hidden]{}%
+
+            \xintFor* #1 in {\xintSeq{0}{\colors-1}} \do {%
+                \TextField[name=color#1, width=1cm, height=1cm,%
+                    bordercolor=gray, backgroundcolor=white, readonly=true, hidden%
+                ]{}%
+            }%
+
+            \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
         \end{tcolorbox}
 
         %%%%%%%%%%%%%%%%%%%%%%%
@@ -815,8 +891,6 @@ function printInfoText(text) {
                 %
             \end{tabularx}
         \end{center}
-
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
 
     \end{Form}
 \end{document}
