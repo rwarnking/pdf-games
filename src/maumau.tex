@@ -189,6 +189,7 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
+    gameover = true;
     curPlayer = 0;
     playerCards = [
         [], [], [], []
@@ -265,11 +266,13 @@ function tooltip(on) {
 % 4.1 if card on hand is clicked play it
 % 4.2 if card on stack is clicked take it
 
+% TODOs
 % buttons for mau und maumau
 % animations
-% hide cards that lie below the top graveyard card
 % special card rules
-% reshuffle
+% bugs:
+% 1. after reshuffle player index sometimes is wrong
+% 2. hide cards that lie below the top graveyard card
 
 function chooseCard(cardIdx) {
     this.getField("tooltiptxt").setFocus();
@@ -290,7 +293,19 @@ function chooseCard(cardIdx) {
 
         stack.splice(0, 1);
 
-        printInfoText("Player " + curPlayer + " took a card!");
+        if (stack.length <= 0) {
+            printInfoText("yoyoyo " + stack.length + " " + graveyard.length);
+            for (var i = 0; i < graveyard.length - 1; i++) {
+                stack.push(graveyard[i]);
+                cardOwner[graveyard[i]] = STACK;
+            }
+            graveyard.splice(1);
+            curCardIdx = stack.length - 1;
+            gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+        } else {
+            printInfoText("Player " + curPlayer + " took a card!");
+        }
+
     } else if (cardOwner[cardIdx] > STACK) {
         if (cardOwner[cardIdx] != curPlayer) {
             printInfoText(
@@ -325,9 +340,14 @@ function chooseCard(cardIdx) {
         if (playerCards[curPlayer].length <= 0) {
             gameover = true;
             printInfoText("Player " + curPlayer + " has no cards left and won the game!");
+            return;
         } else {
             printInfoText("Player " + curPlayer + " played a card!");
         }
+
+        % specialRules(cardIdx);
+    } else {
+        return;
     }
 
     curPlayer = (curPlayer + 1) \% playerCount;
@@ -344,6 +364,34 @@ function validMove(cardIdx) {
         return true;
     }
     return false;
+}
+
+% Rules: https://en.wikipedia.org/wiki/Mau-Mau_(card_game)
+function specialRules(cardIdx) {
+    const c = CARDS[cardIdx];
+    const l = c.length;
+
+    % TODO
+    % Next player must draw +2 but may play
+    if (c.charAt(0) == "7") {
+        var nextPlayer = (curPlayer + 1) \% playerCount;
+        printInfoText("Player " + nextPlayer + " must draw two cards, but may play.");
+    }
+    % Next player is not allowed to play
+    else if (c.charAt(0) == "8") {
+        curPlayer = (curPlayer + 1) \% playerCount;
+        printInfoText("Player " + curPlayer + " misses his turn.");
+    }
+    % TODO
+    % Player may choose a color
+    else if (c.charAt(0) == "B") {
+        printInfoText("Player " + curPlayer + " may choose a color.");
+    }
+    % Player needs to play another card
+    else if (c.charAt(0) == "A") {
+        curPlayer--;
+        printInfoText("Player " + curPlayer + " must play another card.");
+    }
 }
 
 function openFirstCard() {
@@ -414,7 +462,13 @@ function initHandCards() {
         return;
     }
 
-    chooseCard(stack[0]);
+    var card = this.getField("card" + stack[0]);
+    cardOwner[stack[0]] = curPlayer;
+    playerCards[curPlayer].push(stack[0]);
+    redrawPlayerCards(curPlayer);
+    stack.splice(0, 1);
+    curPlayer = (curPlayer + 1) \% playerCount;
+
     curCardIdx--;
 }
 
@@ -509,6 +563,12 @@ function printInfoText(text) {
                 }
             \end{flushright}%
         \end{multicols}
+
+        % Calculate the max height of a block
+        % \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        % \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
+
+        % ...
 
         \begin{tcolorbox}[height=\linewidth, valign=center]
             \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
