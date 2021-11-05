@@ -68,6 +68,7 @@ const PLAYER_POS = [
 ]
 
 % Globals
+var gameover = true;
 % TODO
 var gameInterval;
 %
@@ -188,7 +189,34 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
-    printInfoText("Restart");
+    curPlayer = 0;
+    playerCards = [
+        [], [], [], []
+    ];
+
+    graveyard = [];
+    stack = [];
+
+    for (var i = 0; i < CARD_COUNT; i++) {
+        graveyard.push(i);
+    }
+    for (var i = 0; i < CARD_COUNT; i++) {
+        % Get random element from the  and remove the card afterwards
+        var rnd = getRandomInt(graveyard.length);
+        stack.push(graveyard[rnd]);
+        cardOwner[i] = STACK;
+        graveyard.splice(rnd, 1);
+    }
+
+    for (var c = 0; c < CARDS.length; c++) {
+        var card = this.getField("card" + c);
+        card.hidden = true;
+    }
+
+    curCardIdx = stack.length - 1;
+    gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+
+    printInfoText("Restarted the game. You turn player " + curPlayer + ".");
 }
 
 /**
@@ -237,8 +265,19 @@ function tooltip(on) {
 % 4.1 if card on hand is clicked play it
 % 4.2 if card on stack is clicked take it
 
+% buttons for mau und maumau
+% animations
+% hide cards that lie below the top graveyard card
+% special card rules
+% reshuffle
+
 function chooseCard(cardIdx) {
     this.getField("tooltiptxt").setFocus();
+
+    if (gameover) {
+        printInfoText("Game is over or the new Game is not ready yet.");
+        return;
+    }
 
     % Player draws a card
     if (cardOwner[cardIdx] == STACK) {
@@ -261,7 +300,7 @@ function chooseCard(cardIdx) {
         }
 
         if (!validMove(cardIdx)) {
-            % printInfoText("This is not a valid move, select another card!");
+            printInfoText("This is not a valid move, select another card!");
             return;
         }
 
@@ -283,7 +322,12 @@ function chooseCard(cardIdx) {
         drawCardFront(cardIdx);
         redrawPlayerCards(curPlayer);
 
-        printInfoText("Player " + curPlayer + " played a card!");
+        if (playerCards[curPlayer].length <= 0) {
+            gameover = true;
+            printInfoText("Player " + curPlayer + " has no cards left and won the game!");
+        } else {
+            printInfoText("Player " + curPlayer + " played a card!");
+        }
     }
 
     curPlayer = (curPlayer + 1) \% playerCount;
@@ -296,9 +340,6 @@ function validMove(cardIdx) {
     const l1 = c1.length;
     const l2 = c2.length;
 
-    printInfoText(c1.charAt(l1 - 2) + " " + c2.charAt(l2 - 2) + " " +
-        c1.charAt(l1 - 1) + " " + c2.charAt(l2 - 1)
-    );
     if (c1.charAt(l1 - 2) == c2.charAt(l2 - 2) || c1.charAt(l1 - 1) == c2.charAt(l2 - 1)) {
         return true;
     }
@@ -321,6 +362,7 @@ function openFirstCard() {
     drawCardFront(stack[0]);
     stack.splice(0, 1);
 
+    gameover = false;
     printInfoText("The game has started. Player " + curPlayer + " your Turn.");
 }
 
@@ -330,8 +372,11 @@ function openFirstCard() {
 function initStack() {
     if (curCardIdx < 0) {
         app.clearInterval(gameInterval);
-        gameInterval = app.setInterval("initHandCards()", ANIMATION_SPEED * 3.0);
-        curCardIdx = playerCount * cardsPerPlayer - 1;
+
+        if (gameover) {
+            gameInterval = app.setInterval("initHandCards()", ANIMATION_SPEED * 3.0);
+            curCardIdx = playerCount * cardsPerPlayer - 1;
+        }
         return;
     }
 
