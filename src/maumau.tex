@@ -76,7 +76,7 @@ var curCardIdx = -1;
 % TODO get this from the gui
 var playerCount = 4;
 %
-var cardsPerPlayer = 5;
+var cardsPerPlayer = 0;
 %
 var curPlayer = 0;
 % Player cards
@@ -145,6 +145,7 @@ function initialise() {
 
     curCardIdx = stack.length - 1;
     gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+        printInfoText(cardsPerPlayer);
 }
 
 /**
@@ -154,6 +155,13 @@ function initialise() {
 function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
+
+    % Init cards per player count
+    var cb = this.getField("cmCards");
+    cb.checkThisBox(1);
+    for (var i = 0; i < 5; i++) {
+        cardsPerPlayer += cb.isBoxChecked(i) * (4 + i);
+    };
 
     for (var c = 0; c < CARDS.length; c++) {
         var callbackName = "chooseCard(" + c.toString() + ");";
@@ -214,10 +222,21 @@ function restart() {
         card.hidden = true;
     }
 
-    curCardIdx = stack.length - 1;
-    gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+    % Init cards per player count
+    cardsPerPlayer = 0;
+    var cb = this.getField("cmCards");
+    for (var i = 0; i < 5; i++) {
+        cardsPerPlayer += cb.isBoxChecked(i) * (4 + i);
+    };
 
-    printInfoText("Restarted the game. You turn player " + curPlayer + ".");
+    if (cardsPerPlayer > 0) {
+        curCardIdx = stack.length - 1;
+        gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+
+        printInfoText("Restarted the game. You turn player " + (curPlayer + 1) + ".");
+    } else {
+        printInfoText("Choose the amount of cards each player should have.");
+    }
 }
 
 /**
@@ -270,9 +289,6 @@ function tooltip(on) {
 % buttons for mau und maumau
 % animations
 % special card rules
-% bugs:
-% 1. after reshuffle player index sometimes is wrong
-% 2. hide cards that lie below the top graveyard card
 
 function chooseCard(cardIdx) {
     this.getField("tooltiptxt").setFocus();
@@ -294,23 +310,22 @@ function chooseCard(cardIdx) {
         stack.splice(0, 1);
 
         if (stack.length <= 0) {
-            printInfoText("yoyoyo " + stack.length + " " + graveyard.length);
             for (var i = 0; i < graveyard.length - 1; i++) {
                 stack.push(graveyard[i]);
                 cardOwner[graveyard[i]] = STACK;
             }
-            graveyard.splice(1);
+            graveyard.splice(0, graveyard.length - 1);
             curCardIdx = stack.length - 1;
             gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
         } else {
-            printInfoText("Player " + curPlayer + " took a card!");
+            printInfoText("Player " + (curPlayer + 1) + " took a card!");
         }
 
     } else if (cardOwner[cardIdx] > STACK) {
         if (cardOwner[cardIdx] != curPlayer) {
             printInfoText(
-                "Its not your turn Player " + cardOwner[cardIdx] + "!" +
-                " Your turn Player " + curPlayer + ".");
+                "Its not your turn Player " + (cardOwner[cardIdx] + 1) + "!" +
+                " Your turn Player " + (curPlayer + 1) + ".");
             return;
         }
 
@@ -319,6 +334,12 @@ function chooseCard(cardIdx) {
             return;
         }
 
+        % Hide last top card
+        var tmpIdx = graveyard[graveyard.length - 1];
+        var topCard = this.getField("card" + tmpIdx);
+        topCard.hidden = true;
+
+        % Put selected card on the graveyard
         cardOwner[cardIdx] = GRAVEYARD;
         graveyard.push(cardIdx);
         const index = playerCards[curPlayer].indexOf(cardIdx);
@@ -339,13 +360,13 @@ function chooseCard(cardIdx) {
 
         if (playerCards[curPlayer].length <= 0) {
             gameover = true;
-            printInfoText("Player " + curPlayer + " has no cards left and won the game!");
+            printInfoText("Player " + (curPlayer + 1) + " has no cards left and won the game!");
             return;
         } else {
-            printInfoText("Player " + curPlayer + " played a card!");
+            printInfoText("Player " + (curPlayer + 1) + " played a card!");
         }
 
-        % specialRules(cardIdx);
+        specialRules(cardIdx);
     } else {
         return;
     }
@@ -380,17 +401,17 @@ function specialRules(cardIdx) {
     % Next player is not allowed to play
     else if (c.charAt(0) == "8") {
         curPlayer = (curPlayer + 1) \% playerCount;
-        printInfoText("Player " + curPlayer + " misses his turn.");
+        printInfoText("Player " + (curPlayer + 1) + " misses his turn.");
     }
     % TODO
     % Player may choose a color
     else if (c.charAt(0) == "B") {
-        printInfoText("Player " + curPlayer + " may choose a color.");
+        printInfoText("Player " + (curPlayer + 1) + " may choose a color.");
     }
     % Player needs to play another card
     else if (c.charAt(0) == "A") {
         curPlayer--;
-        printInfoText("Player " + curPlayer + " must play another card.");
+        printInfoText("Player " + (curPlayer + 2) + " must play another card.");
     }
 }
 
@@ -411,7 +432,7 @@ function openFirstCard() {
     stack.splice(0, 1);
 
     gameover = false;
-    printInfoText("The game has started. Player " + curPlayer + " your Turn.");
+    printInfoText("The game has started. Player " + (curPlayer + 1) + " your Turn.");
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -564,12 +585,6 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max height of a block
-        % \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        % \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
-
-        % ...
-
         \begin{tcolorbox}[height=\linewidth, valign=center]
             \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
                 \TextField[name=card#1, width=1cm, height=1cm,%
@@ -587,16 +602,16 @@ function printInfoText(text) {
         %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1#2}%
         % }
 
-        % \renewcommand*{\LayoutCheckField}[2]{#1 #2}
-        % \renewcommand*{\DefaultWidthofCheckBox}{2ex}
-        % \renewcommand*{\DefaultHeightofCheckBox}{2ex}
-        % \renewcommand*{\LayoutCheckField}[2]{%
-        %     \parbox[c][\DefaultHeightofCheckBox]{0.12\linewidth}{#1}\enspace%
-        %     \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}%
-        % }
+        \renewcommand*{\LayoutCheckField}[2]{#2 #1}
+        \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        \renewcommand*{\LayoutCheckField}[2]{%
+            \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}\enspace%
+            \parbox[c][\DefaultHeightofCheckBox]{\linewidth}{#1}%
+        }
 
-        % \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
-        % \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
 
         %%%%%%%%%%%%%%%%
         % GUI elements %
@@ -613,6 +628,35 @@ function printInfoText(text) {
                 \begin{tcolorbox}
                     \TextField[name=info, width=\linewidth, readonly=true]{}
                 \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+        \vspace{-1cm}
+    \subsection*{Rules}
+        The game needs to be restarted for changes to take effect.
+
+        \ChoiceMenu[name=cmCards, bordercolor=gray, radiosymbol=5, radio]{Card count per player: }
+            {4, 5, 6, 7, 8}
+
+        \begin{center}
+            \begin{tabularx}{\textwidth}{@{} X X @{}}
+                \CheckBox[name=cb7, bordercolor=gray, checkboxsymbol=5]{7 - take 2} &%
+                \CheckBox[name=cb7chain, bordercolor=gray, checkboxsymbol=5]{7 - chaining}
+                \\%
+                \CheckBox[name=cb8, bordercolor=gray, checkboxsymbol=5]{8 - skip player} &%
+                \CheckBox[name=cb8chain, bordercolor=gray, checkboxsymbol=5]{8 - chaining}
+                \\%
+                \CheckBox[name=cb9, bordercolor=gray, checkboxsymbol=5]{9 - all-rounder} &%
+                \CheckBox[name=cb10, bordercolor=gray, checkboxsymbol=5]{10 - change direction}
+                \\%
+                \CheckBox[name=cbJ, bordercolor=gray, checkboxsymbol=5]{Jack - select color} &%
+                \CheckBox[name=cbJchain, bordercolor=gray, checkboxsymbol=5]{Jack - chaining}
+                \\%
+                \CheckBox[name=cbK, bordercolor=gray, checkboxsymbol=5]{King - take 4} &%
+                \CheckBox[name=cbKchain, bordercolor=gray, checkboxsymbol=5]{King - chaining}
+                \\%
+                \CheckBox[name=cbAcard, bordercolor=gray, checkboxsymbol=5]{Ace - play another card} &%
+                \CheckBox[name=cbAskip, bordercolor=gray, checkboxsymbol=5]{Ace - skip next player}
+                %
             \end{tabularx}
         \end{center}
 
