@@ -50,7 +50,7 @@ const BOT = 3;
 % Document dims: 842, 596
 % Canvas dims
 % upper-left x, upper-left y, lower-right x and lower-right y
-const CANVAS_LTRB = [47.5, 770, 547.5, 241];
+const CANVAS_LTRB = [47.5, 765, 547.5, 256];
 const CANVAS_HEIGHT = CANVAS_LTRB[TOP] - CANVAS_LTRB[BOT];
 const CANVAS_WIDTH = CANVAS_LTRB[RIGHT] - CANVAS_LTRB[LEFT];
 const CANVAS_CENTER_H = CANVAS_HEIGHT * 0.5 + CANVAS_LTRB[BOT];
@@ -61,10 +61,10 @@ const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - 100];
 const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H - 100];
 
 const PLAYER_POS = [
-    [CANVAS_CENTER_W, CANVAS_LTRB[BOT]],
-    [CANVAS_LTRB[LEFT], CANVAS_CENTER_H],
-    [CANVAS_CENTER_W, CANVAS_LTRB[TOP]],
-    [CANVAS_LTRB[RIGHT], CANVAS_CENTER_H]
+    [CANVAS_LTRB[LEFT], CANVAS_LTRB[BOT] + CARD_WIDTH],
+    [CANVAS_LTRB[LEFT] + CARD_WIDTH, CANVAS_CENTER_H],
+    [CANVAS_CENTER_W, CANVAS_LTRB[TOP] - CARD_WIDTH],
+    [CANVAS_LTRB[RIGHT] - CARD_WIDTH, CANVAS_CENTER_H]
 ]
 
 % Globals
@@ -73,7 +73,7 @@ var gameInterval;
 %
 var curCardIdx = -1;
 % TODO get this from the gui
-var playerCount = 4;
+var playerCount = 2;
 %
 var curPlayer = 0;
 % Player cards
@@ -251,6 +251,17 @@ function chooseCard(cardIdx) {
 
         printInfoText("Player " + curPlayer + " took a card!");
     } else if (cardOwner[cardIdx] > STACK) {
+        if (cardOwner[cardIdx] != curPlayer) {
+            printInfoText(
+                "Its not your turn Player " + cardOwner[cardIdx] + "!" +
+                " Your turn Player " + curPlayer + ".");
+            return;
+        }
+
+        cardOwner[cardIdx] = GRAVEYARD;
+        const index = playerCards[curPlayer].indexOf(cardIdx);
+        playerCards[curPlayer].splice(index, 1);
+
         var card = this.getField("card" + cardIdx);
         card.delay = true;
         card.rect = [
@@ -262,6 +273,7 @@ function chooseCard(cardIdx) {
         card.delay = false;
 
         drawCardFront(cardIdx);
+        redrawPlayerCards(curPlayer);
 
         printInfoText("Player " + curPlayer + " played a card!");
     }
@@ -273,7 +285,7 @@ function chooseCard(cardIdx) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 function initCardPositions() {
-    printInfoText("jo" + curCardIdx + " " + stack[curCardIdx]);
+    printInfoText("jo " + curCardIdx + " " + stack[curCardIdx]);
 
     if (curCardIdx < 0) {
         app.clearInterval(gameInterval);
@@ -325,15 +337,24 @@ function redrawPlayerCards(pIdx) {
         return a - b;
     });
 
+    var perCardH = CANVAS_HEIGHT / playerCards[pIdx].length;
+    var perCardW = CANVAS_WIDTH / playerCards[pIdx].length;
+    var cardWidth = Math.min(CARD_WIDTH, perCardH * 0.5 - 2);
+    if (pIdx \% 2 == 0) {
+        cardWidth = Math.min(CARD_WIDTH, perCardW * 0.5 - 2);
+    }
+
     for (var c = 0; c < playerCards[pIdx].length; c++) {
+        var pos = playerCards[pIdx].length * 0.5 - c;
+
         var cardIdx = playerCards[pIdx][c];
         var card = this.getField("card" + cardIdx);
         card.delay = true;
         card.rect = [
-            PLAYER_POS[pIdx][X] - CARD_WIDTH + c * CARD_WIDTH * 2.0,
-            PLAYER_POS[pIdx][Y] + CARD_WIDTH,
-            PLAYER_POS[pIdx][X] + CARD_WIDTH + c * CARD_WIDTH * 2.0,
-            PLAYER_POS[pIdx][Y] - CARD_WIDTH
+            PLAYER_POS[pIdx][X] - cardWidth + c * perCardW + perCardW * 0.5,
+            PLAYER_POS[pIdx][Y] + cardWidth,
+            PLAYER_POS[pIdx][X] + cardWidth + c * perCardW + perCardW * 0.5,
+            PLAYER_POS[pIdx][Y] - cardWidth
         ];
         card.delay = false;
 
