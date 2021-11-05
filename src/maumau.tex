@@ -40,6 +40,27 @@ Text.";
 % Constants
 const TEXT_SIZE = 14;
 
+% Access constants
+const X = 0;
+const Y = 1;
+const SYMB = 2;
+const LEFT = 0;
+const TOP = 1;
+const RIGHT = 2;
+const BOT = 3;
+% Document dims: 842, 596
+% Canvas dims
+% upper-left x, upper-left y, lower-right x and lower-right y
+const CANVAS_LTRB = [47.5, 770, 547.5, 241];
+const CANVAS_HEIGHT = CANVAS_LTRB[TOP] - CANVAS_LTRB[BOT];
+const CANVAS_WIDTH = CANVAS_LTRB[RIGHT] - CANVAS_LTRB[LEFT];
+const CANVAS_CENTER_H = CANVAS_HEIGHT * 0.5 + CANVAS_LTRB[BOT];
+const CANVAS_CENTER_W = CANVAS_WIDTH * 0.5 + CANVAS_LTRB[LEFT];
+
+const CARD_WIDTH = 20;
+const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H];
+const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H];
+
 % Globals
 % Player cards
 var playerCards = [
@@ -57,6 +78,9 @@ const CARD_COLORS = [
 
 const CARD_VALUES = ["7", "8", "9", "10", "B", "Q", "K", "A"];
 const CARDS = [];
+
+% var cardIdxList = [];
+% var cardOrder = [];
 
 for (var col = 0; col < CARD_COLORS.length; col++) {
     for (var val = 0; val < CARD_VALUES.length; val++) {
@@ -86,6 +110,7 @@ function initialise() {
     initialiseButtons();
 
     fillCards();
+    initCardPositions();
 }
 
 /**
@@ -181,6 +206,44 @@ function fillCards() {
     }
 }
 
+function initCardPositions() {
+    for (var c = 1; c < CARDS.length; c++) {
+        var card = this.getField("card" + c);
+        card.delay = true;
+        card.rect = [
+            STACK_POS[X] - CARD_WIDTH,
+            STACK_POS[Y] + CARD_WIDTH,
+            STACK_POS[X] + CARD_WIDTH,
+            STACK_POS[Y] - CARD_WIDTH
+        ];
+        card.delay = false;
+    }
+
+    var card = this.getField("card" + 0);
+    card.delay = true;
+    card.rect = [
+        GRAVE_POS[X] - CARD_WIDTH,
+        GRAVE_POS[Y] + CARD_WIDTH,
+        GRAVE_POS[X] + CARD_WIDTH,
+        GRAVE_POS[Y] - CARD_WIDTH
+    ];
+    card.delay = false;
+}
+
+/**
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
+ *
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ */
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    cell.value = "tmp";
+    cell.delay = false;
+}
+
 /**
  * Print information about the winner and the gamestate.
  */
@@ -217,11 +280,13 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
-            \TextField[name=card#1, width=1cm, height=1cm,%
-                bordercolor=red, backgroundcolor=white, readonly=true%
-            ]{}%
-        }%
+        \begin{tcolorbox}[height=\linewidth, valign=center]
+            \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
+                \TextField[name=card#1, width=1cm, height=1cm,%
+                    bordercolor=red, backgroundcolor=white, readonly=true%
+                ]{}%
+            }%
+        \end{tcolorbox}
 
         %%%%%%%%%%%%%%%%%%%%%%%
         % Commandredifinition %
