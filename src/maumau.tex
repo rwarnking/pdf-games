@@ -59,6 +59,7 @@ const CANVAS_CENTER_W = CANVAS_WIDTH * 0.5 + CANVAS_LTRB[LEFT];
 const CARD_WIDTH = 20;
 const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H];
 const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H];
+const SKIP_POS = [CANVAS_CENTER_W, CANVAS_CENTER_H + CARD_WIDTH * 2.5];
 
 const PLAYER_POS = [
     [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[BOT] + CARD_WIDTH],
@@ -68,7 +69,6 @@ const PLAYER_POS = [
 ]
 
 % Globals
-var gameover = true;
 % TODO
 var gameInterval;
 % Saves the index of the currently used card
@@ -87,6 +87,15 @@ var playerCards = [
 % The first two slots are padding to allow the use of the cardOwner index
 var rotations = [0, 0, 0, 270, 180, 90];
 
+% Information about the gamestate and special rules
+var gameState = {
+    gameover: true,
+    skip8: false,
+    take: 0,
+    taking: false,
+    selColor: false
+};
+
 % Spades, clubs, hearts, diamonds
 % const CARD_COLORS = ["S", "C", "H", "D"];
 const CARD_COLORS = [
@@ -96,7 +105,7 @@ const CARD_COLORS = [
     String.fromCharCode(0x2666)
 ];
 
-const CARD_VALUES = ["7", "8", "9", "10", "B", "Q", "K", "A"];
+const CARD_VALUES = ["7", "8", "9", "10", "J", "Q", "K", "A"];
 const CARDS = [];
 
 var graveyard = [];
@@ -201,6 +210,23 @@ function initialiseButtons() {
         card.delay = false;
     }
 
+    % Skip button
+    var skipBtn = this.getField("skip");
+    skipBtn.delay = true;
+    skipBtn.setAction("MouseUp", "skip();");
+    skipBtn.rect = [
+        SKIP_POS[X] - CARD_WIDTH - CARD_WIDTH * 1.25,
+        SKIP_POS[Y] + CARD_WIDTH,
+        SKIP_POS[X] + CARD_WIDTH + CARD_WIDTH * 1.25,
+        SKIP_POS[Y] - CARD_WIDTH
+    ];
+    skipBtn.textFont = font.Cour;
+    skipBtn.textSize = TEXT_SIZE;
+    skipBtn.alignment = "center";
+    skipBtn.value = "Skip turn";
+    skipBtn.hidden = false;
+    skipBtn.delay = false;
+
     % Copy rules to the gui by iterating all keys of the rules object
     var cbKeys = Object.keys(rules);
     for (var idx = 0; idx < cbKeys.length; idx++) {
@@ -228,7 +254,7 @@ function initialiseButtons() {
  * Restart the game and clear everything
  */
 function restart() {
-    gameover = true;
+    gameState.gameover = true;
     curPlayer = 0;
     playerCards = [
         [], [], [], []
@@ -339,8 +365,12 @@ function tooltip(on) {
 function chooseCard(cardIdx) {
     this.getField("tooltiptxt").setFocus();
 
-    if (gameover) {
+    if (gameState.gameover) {
         printInfoText("Game is over or the new Game is not ready yet.");
+        return;
+    }
+
+    if (!specialRulesBegin(cardIdx)) {
         return;
     }
 
@@ -366,6 +396,8 @@ function chooseCard(cardIdx) {
         } else {
             printInfoText("Player " + (curPlayer + 1) + " took a card!");
         }
+
+        specialRulesDraw();
 
     } else if (cardOwner[cardIdx] > STACK) {
         if (cardOwner[cardIdx] != curPlayer) {
@@ -405,14 +437,14 @@ function chooseCard(cardIdx) {
         redrawPlayerCards(curPlayer);
 
         if (playerCards[curPlayer].length <= 0) {
-            gameover = true;
+            gameState.gameover = true;
             printInfoText("Player " + (curPlayer + 1) + " has no cards left and won the game!");
             return;
         } else {
             printInfoText("Player " + (curPlayer + 1) + " played a card!");
         }
 
-        specialRules(cardIdx);
+        specialRulesPlay(cardIdx);
     } else {
         return;
     }
@@ -427,37 +459,112 @@ function validMove(cardIdx) {
     const l1 = c1.length;
     const l2 = c2.length;
 
-    if (c1.charAt(l1 - 2) == c2.charAt(l2 - 2) || c1.charAt(l1 - 1) == c2.charAt(l2 - 1)) {
+    % Test if card has same number or color as the top graveyard card
+    % Exception if enabled: all-rounder 9
+    if (c1.charAt(l1 - 2) == c2.charAt(l2 - 2) ||
+        c1.charAt(l1 - 1) == c2.charAt(l2 - 1) ||
+        rules.cb9 && c2.charAt(0) == "9"
+    ) {
         return true;
     }
     return false;
 }
 
+function skip() {
+    if (gameState.skip8) {
+        printInfoText("Player " + (curPlayer + 1) + " is skipped.");
+        curPlayer = (curPlayer + 1) \% playerCount;
+        gameState.skip8 = false;
+    } else {
+        printInfoText("You can not skip!");
+    }
+}
+
 % Rules: https://en.wikipedia.org/wiki/Mau-Mau_(card_game)
-function specialRules(cardIdx) {
+function specialRulesBegin(cardIdx) {
+    % Get top card value (graveyard card)
+    const gC = CARDS[graveyard[graveyard.length - 1]];
+    % Get playing Card
+    const pC = CARDS[cardIdx];
+
+    % If a take card was played
+    if (gameState.take > 0) {
+        % If chaining is allowed, check if correct card was played
+        % and the player has not already started drawing cards
+        if (rules.cb7chain && !gameState.taking && pC.charAt(0) == "7" && gC.charAt(0) == "7" ||
+            rules.cbKchain && !gameState.taking && pC.charAt(0) == "K" && gC.charAt(0) == "K"
+        ) {
+            return true;
+        }
+        % If chaining is disabled, or the card is not valid the player needs to draw
+        else {
+            if (cardOwner[cardIdx] == STACK) {
+                gameState.take--;
+                gameState.taking = true;
+                printInfoText("Player " + (curPlayer + 1) + " took a card! " +
+                    gameState.take + " cards left.");
+                return true;
+            } else {
+                printInfoText("Player " + (curPlayer + 1) + " you still have " +
+                    gameState.take + " cards to draw!");
+                return false;
+            }
+        }
+    }
+
+    % If a not processed eight was played last and chaining is allowed
+    % allow the player to play an eight
+    if (gameState.skip8) {
+        if (pC.charAt(0) == "8") {
+            return true;
+        } else {
+            printInfoText("Player " + (curPlayer + 1) + ", that is not a valid move!");
+            return false;
+        }
+    }
+    return true;
+}
+
+function specialRulesDraw() {
+    if (gameState.take > 0) {
+        curPlayer--;
+    }
+}
+
+function specialRulesPlay(cardIdx) {
+    % Get top card value
     const c = CARDS[cardIdx];
     const l = c.length;
 
-    % TODO
-    % Next player must draw +2 but may play
-    if (c.charAt(0) == "7") {
-        var nextPlayer = (curPlayer + 1) \% playerCount;
-        printInfoText("Player " + nextPlayer + " must draw two cards, but may play.");
+    % Adjust take count for next player
+    if (rules.cb7 && c.charAt(0) == "7") {
+        gameState.taking = false;
+        gameState.take += 2;
     }
-    % Next player is not allowed to play
-    else if (c.charAt(0) == "8") {
+    % Skip player when played an eight
+    else if (rules.cb8 && c.charAt(0) == "8") {
+        if (rules.cb8chain) {
+            gameState.skip8 = true;
+            printInfoText("Player " + (curPlayer + 2) + ", play 8 or skip.");
+        } else {
+            curPlayer = (curPlayer + 1) \% playerCount;
+            printInfoText("Player " + (curPlayer + 1) + " is skipped.");
+        }
+    }
+    % Adjust take count for next player
+    else if (rules.cbK && c.charAt(0) == "K") {
+        gameState.taking = false;
+        gameState.take += 4;
+    }
+    % Skip player when played an ass
+    else if (rules.cbAskip && c.charAt(0) == "A") {
         curPlayer = (curPlayer + 1) \% playerCount;
-        printInfoText("Player " + (curPlayer + 1) + " misses his turn.");
+        printInfoText("Player " + (curPlayer + 1) + " is skipped. ");
     }
-    % TODO
-    % Player may choose a color
-    else if (c.charAt(0) == "B") {
-        printInfoText("Player " + (curPlayer + 1) + " may choose a color.");
-    }
-    % Player needs to play another card
-    else if (c.charAt(0) == "A") {
+    % Get another turn when played an ass
+    else if (rules.cbAcard && c.charAt(0) == "A") {
+        printInfoText("Player " + (curPlayer + 1) + " has played an ass and must play another card.");
         curPlayer--;
-        printInfoText("Player " + (curPlayer + 2) + " must play another card.");
     }
 }
 
@@ -477,7 +584,7 @@ function openFirstCard() {
     drawCardFront(stack[0]);
     stack.splice(0, 1);
 
-    gameover = false;
+    gameState.gameover = false;
     printInfoText("The game has started. Player " + (curPlayer + 1) + " your Turn.");
 }
 
@@ -488,7 +595,7 @@ function initStack() {
     if (curCardIdx < 0) {
         app.clearInterval(gameInterval);
 
-        if (gameover) {
+        if (gameState.gameover) {
             gameInterval = app.setInterval("initHandCards()", ANIMATION_SPEED * 3.0);
             curCardIdx = playerCount * cardsPerPlayer - 1;
         }
@@ -635,6 +742,9 @@ function printInfoText(text) {
                     bordercolor=gray, backgroundcolor=white, readonly=true, hidden%
                 ]{}%
             }%
+
+            \TextField[name=skip, width=1cm, height=1cm,%
+                bordercolor=gray, backgroundcolor=white, readonly=true, hidden]{}%
         \end{tcolorbox}
 
         %%%%%%%%%%%%%%%%%%%%%%%
@@ -685,23 +795,23 @@ function printInfoText(text) {
 
         \begin{center}
             \begin{tabularx}{\textwidth}{@{} X X @{}}
-                \CheckBox[name=cb7, bordercolor=gray, checkboxsymbol=5]{7 - take 2} &%
-                \CheckBox[name=cb7chain, bordercolor=gray, checkboxsymbol=5]{7 - chaining}
+                \CheckBox[name=cb7, bordercolor=gray, checkboxsymbol=5]{7: take 2} &%
+                \CheckBox[name=cb7chain, bordercolor=gray, checkboxsymbol=5]{7: chaining}
                 \\%
-                \CheckBox[name=cb8, bordercolor=gray, checkboxsymbol=5]{8 - skip player} &%
-                \CheckBox[name=cb8chain, bordercolor=gray, checkboxsymbol=5]{8 - chaining}
+                \CheckBox[name=cb8, bordercolor=gray, checkboxsymbol=5]{8: skip player} &%
+                \CheckBox[name=cb8chain, bordercolor=gray, checkboxsymbol=5]{8: chaining}
                 \\%
-                \CheckBox[name=cb9, bordercolor=gray, checkboxsymbol=5]{9 - all-rounder} &%
-                \CheckBox[name=cb10, bordercolor=gray, checkboxsymbol=5]{10 - change direction}
+                \CheckBox[name=cb9, bordercolor=gray, checkboxsymbol=5]{9: all-rounder} &%
+                \CheckBox[name=cb10, bordercolor=gray, checkboxsymbol=5]{10: change direction}
                 \\%
-                \CheckBox[name=cbJ, bordercolor=gray, checkboxsymbol=5]{Jack - select color} &%
-                \CheckBox[name=cbJchain, bordercolor=gray, checkboxsymbol=5]{Jack - chaining}
+                \CheckBox[name=cbJ, bordercolor=gray, checkboxsymbol=5]{Jack: select color} &%
+                \CheckBox[name=cbJchain, bordercolor=gray, checkboxsymbol=5]{Jack: chaining}
                 \\%
-                \CheckBox[name=cbK, bordercolor=gray, checkboxsymbol=5]{King - take 4} &%
-                \CheckBox[name=cbKchain, bordercolor=gray, checkboxsymbol=5]{King - chaining}
+                \CheckBox[name=cbK, bordercolor=gray, checkboxsymbol=5]{King: take 4} &%
+                \CheckBox[name=cbKchain, bordercolor=gray, checkboxsymbol=5]{King: chaining}
                 \\%
-                \CheckBox[name=cbAcard, bordercolor=gray, checkboxsymbol=5]{Ace - play another card} &%
-                \CheckBox[name=cbAskip, bordercolor=gray, checkboxsymbol=5]{Ace - skip next player}
+                \CheckBox[name=cbAcard, bordercolor=gray, checkboxsymbol=5]{Ace: play another card} &%
+                \CheckBox[name=cbAskip, bordercolor=gray, checkboxsymbol=5]{Ace: skip player}
                 %
             \end{tabularx}
         \end{center}
