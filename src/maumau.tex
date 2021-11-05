@@ -34,8 +34,7 @@ Text.";
 
 % Outside variables
 const CARD_COUNT = AFMakeNumber(\cards);
-% TODO get this from the gui
-var playerCount = 4;
+const ANIMATION_SPEED = 200;
 
 % Constants
 const TEXT_SIZE = 14;
@@ -61,7 +60,21 @@ const CARD_WIDTH = 20;
 const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - 100];
 const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H - 100];
 
+const PLAYER_POS = [
+    [CANVAS_CENTER_W, CANVAS_LTRB[BOT]],
+    [CANVAS_LTRB[LEFT], CANVAS_CENTER_H],
+    [CANVAS_CENTER_W, CANVAS_LTRB[TOP]],
+    [CANVAS_LTRB[RIGHT], CANVAS_CENTER_H]
+]
+
 % Globals
+% TODO
+var gameInterval;
+%
+var curCardIdx = -1;
+% TODO get this from the gui
+var playerCount = 4;
+%
 var curPlayer = 0;
 % Player cards
 var playerCards = [
@@ -105,12 +118,6 @@ function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
-% TODO
-var gameInterval;
-const ANIMATION_SPEED = 200;
-% TODO
-var curCardIdx = -1;
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -133,8 +140,6 @@ function initialise() {
         unusedCards.splice(rnd, 1);
     }
 
-    fillCards();
-
     curCardIdx = stack.length - 1;
     gameInterval = app.setInterval("initCardPositions()", ANIMATION_SPEED);
 }
@@ -150,7 +155,15 @@ function initialiseButtons() {
     for (var c = 0; c < CARDS.length; c++) {
         var callbackName = "chooseCard(" + c.toString() + ");";
         var card = this.getField("card" + c);
+        card.delay = true;
         card.setAction("MouseUp", callbackName);
+        if (c >= CARDS.length * 0.5) {
+            card.textColor = color.red;
+        }
+        card.textFont = font.Cour;
+        card.textSize = TEXT_SIZE;
+        card.alignment = "center";
+        card.delay = false;
     }
 
     % Assign each button the coresponding function and disable the highlights
@@ -222,29 +235,18 @@ function tooltip(on) {
 % 4.1 if card on hand is clicked play it
 % 4.2 if card on stack is clicked take it
 
-const PLAYER_POS = [
-    [CANVAS_CENTER_W, CANVAS_LTRB[BOT]],
-    [CANVAS_LTRB[LEFT], CANVAS_CENTER_H],
-    [CANVAS_CENTER_W, CANVAS_LTRB[TOP]],
-    [CANVAS_LTRB[RIGHT], CANVAS_CENTER_H]
-]
-
 function chooseCard(cardIdx) {
+    this.getField("tooltiptxt").setFocus();
+
     % Player draws a card
     if (cardOwner[cardIdx] == STACK) {
         var card = this.getField("card" + stack[0]);
         cardOwner[stack[0]] = curPlayer;
 
-        card.delay = true;
-        card.rect = [
-            PLAYER_POS[curPlayer][X] - CARD_WIDTH,
-            PLAYER_POS[curPlayer][Y] + CARD_WIDTH,
-            PLAYER_POS[curPlayer][X] + CARD_WIDTH,
-            PLAYER_POS[curPlayer][Y] - CARD_WIDTH
-        ];
-        card.delay = false;
+        playerCards[curPlayer].push(stack[0]);
 
-        drawCardFront(stack[0]);
+        redrawPlayerCards(curPlayer);
+
         stack.splice(0, 1);
 
         printInfoText("Player " + curPlayer + " took a card!");
@@ -270,22 +272,36 @@ function chooseCard(cardIdx) {
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
-/**
- * Draw all cells.
- */
-function fillCards() {
-    for (var c = 0; c < CARDS.length; c++) {
-        var card = this.getField("card" + c);
-        card.delay = true;
-        if (c >= CARDS.length * 0.5) {
-            card.textColor = color.red;
-        }
-        card.textFont = font.Cour;
-        card.textSize = TEXT_SIZE;
-        card.alignment = "center";
-        %card.value = CARDS[c];
-        card.delay = false;
+function initCardPositions() {
+    printInfoText("jo" + curCardIdx + " " + stack[curCardIdx]);
+
+    if (curCardIdx < 0) {
+        app.clearInterval(gameInterval);
+
+        this.getField("tooltiptxt").setFocus();
+        % TODO place top card of stack on graveyard
+
+        return;
     }
+
+    var idx = stack[curCardIdx];
+    var card = this.getField("card" + idx);
+
+    card.rect = [
+        STACK_POS[X] - CARD_WIDTH,
+        % STACK_POS[X] - CARD_WIDTH + curCardIdx * 30,
+        % STACK_POS[X] * 0.5 - CARD_WIDTH + curCardIdx * 10,
+        STACK_POS[Y] + CARD_WIDTH,
+        STACK_POS[X] + CARD_WIDTH,
+        % STACK_POS[X] + CARD_WIDTH + curCardIdx * 30,
+        % STACK_POS[X] * 0.5 + CARD_WIDTH + curCardIdx * 10,
+        STACK_POS[Y] - CARD_WIDTH
+    ];
+
+    drawCardBack(stack[curCardIdx]);
+
+    curCardIdx--;
+
 }
 
 function drawCardFront(cardIdx) {
@@ -304,59 +320,25 @@ function drawCardBack(cardIdx) {
     card.delay = false;
 }
 
-const FOCUS_CARD = false;
-var initState = !FOCUS_CARD;
+function redrawPlayerCards(pIdx) {
+    playerCards[pIdx].sort(function(a, b) {
+        return a - b;
+    });
 
-function initCardPositions() {
-    printInfoText("jo" + curCardIdx + " " + stack[curCardIdx]);
-
-    if (curCardIdx < 0) {
-        app.clearInterval(gameInterval);
-
-        this.getField("tooltiptxt").setFocus();
-        % for (var i = 0; i < CARD_COUNT; i++) {
-        %     var idx2 = stack[i];
-        %     var card = this.getField("card" + idx2);
-        %     card.readonly = true;
-        % }
-
-        % TODO place top card of stack on graveyard
-
-        return;
-    }
-
-    % initState = !initState;
-    % if (initState == FOCUS_CARD) {
-    %     var idx = stack[curCardIdx];
-    %     var card = this.getField("card" + idx);
-    %     card.setFocus();
-    %     return;
-    % }
-
-    % for (var c = stack.length - 1; c >= 0; c--) {
-        var idx = stack[curCardIdx];
-        var card = this.getField("card" + idx);
-        %card.delay = true;
-
-        % card.setFocus();
-
+    for (var c = 0; c < playerCards[pIdx].length; c++) {
+        var cardIdx = playerCards[pIdx][c];
+        var card = this.getField("card" + cardIdx);
+        card.delay = true;
         card.rect = [
-            STACK_POS[X] - CARD_WIDTH,
-            % STACK_POS[X] - CARD_WIDTH + curCardIdx * 30,
-            % STACK_POS[X] * 0.5 - CARD_WIDTH + curCardIdx * 10,
-            STACK_POS[Y] + CARD_WIDTH,
-            STACK_POS[X] + CARD_WIDTH,
-            % STACK_POS[X] + CARD_WIDTH + curCardIdx * 30,
-            % STACK_POS[X] * 0.5 + CARD_WIDTH + curCardIdx * 10,
-            STACK_POS[Y] - CARD_WIDTH
+            PLAYER_POS[pIdx][X] - CARD_WIDTH + c * CARD_WIDTH * 2.0,
+            PLAYER_POS[pIdx][Y] + CARD_WIDTH,
+            PLAYER_POS[pIdx][X] + CARD_WIDTH + c * CARD_WIDTH * 2.0,
+            PLAYER_POS[pIdx][Y] - CARD_WIDTH
         ];
-        %card.delay = false;
-    % }
+        card.delay = false;
 
-    drawCardBack(curCardIdx);
-
-    curCardIdx--;
-
+        drawCardFront(cardIdx);
+    }
 }
 
 /**
