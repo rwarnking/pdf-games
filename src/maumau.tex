@@ -71,18 +71,20 @@ const PLAYER_POS = [
 var gameover = true;
 % TODO
 var gameInterval;
-%
+% Saves the index of the currently used card
 var curCardIdx = -1;
-% TODO get this from the gui
-var playerCount = 4;
-%
+% The playercount is read from the gui
+var playerCount = 0;
+% The cards per player is read from the gui
 var cardsPerPlayer = 0;
-%
+% Saves which turn it is
 var curPlayer = 0;
 % Player cards
 var playerCards = [
     [], [], [], []
 ];
+% Used to rotate the shown cards in the direction of the player
+% The first two slots are padding to allow the use of the cardOwner index
 var rotations = [0, 0, 0, 270, 180, 90];
 
 % Spades, clubs, hearts, diamonds
@@ -145,7 +147,6 @@ function initialise() {
 
     curCardIdx = stack.length - 1;
     gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
-        printInfoText(cardsPerPlayer);
 }
 
 /**
@@ -156,11 +157,19 @@ function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
+    % Init player count
+    var cmP = this.getField("cmPlayer");
+    cmP.checkThisBox(2);
+    playerCount = 0;
+    for (var i = 0; i < 3; i++) {
+        playerCount += cmP.isBoxChecked(i) * (2 + i);
+    };
+
     % Init cards per player count
-    var cb = this.getField("cmCards");
-    cb.checkThisBox(1);
+    var cmC = this.getField("cmCards");
+    cmC.checkThisBox(1);
     for (var i = 0; i < 5; i++) {
-        cardsPerPlayer += cb.isBoxChecked(i) * (4 + i);
+        cardsPerPlayer += cmC.isBoxChecked(i) * (4 + i);
     };
 
     for (var c = 0; c < CARDS.length; c++) {
@@ -179,7 +188,6 @@ function initialiseButtons() {
 
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    %this.getField("restart").highlight="none";
 
     % Info field setup
     this.getField("info").fillColor = color.transparent;
@@ -188,9 +196,8 @@ function initialiseButtons() {
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    %this.getField("tooltipbtn").highlight="none";
 
-    printInfoText("Init");
+    % printInfoText("Init");
 }
 
 /**
@@ -222,11 +229,18 @@ function restart() {
         card.hidden = true;
     }
 
+    % Init player count
+    var cmP = this.getField("cmPlayer");
+    playerCount = 0;
+    for (var i = 0; i < 3; i++) {
+        playerCount += cmP.isBoxChecked(i) * (2 + i);
+    };
+
     % Init cards per player count
     cardsPerPlayer = 0;
-    var cb = this.getField("cmCards");
+    var cmC = this.getField("cmCards");
     for (var i = 0; i < 5; i++) {
-        cardsPerPlayer += cb.isBoxChecked(i) * (4 + i);
+        cardsPerPlayer += cmC.isBoxChecked(i) * (4 + i);
     };
 
     if (cardsPerPlayer > 0) {
@@ -634,8 +648,10 @@ function printInfoText(text) {
     \subsection*{Rules}
         The game needs to be restarted for changes to take effect.
 
-        \ChoiceMenu[name=cmCards, bordercolor=gray, radiosymbol=5, radio]{Card count per player: }
-            {4, 5, 6, 7, 8}
+        \ChoiceMenu[name=cmPlayer, bordercolor=gray, radiosymbol=5, radio]
+            {Player Count: }{2, 3, 4}\hfill
+        \ChoiceMenu[name=cmCards, bordercolor=gray, radiosymbol=5, radio]
+            {Player card count: }{4, 5, 6, 7, 8}
 
         \begin{center}
             \begin{tabularx}{\textwidth}{@{} X X @{}}
