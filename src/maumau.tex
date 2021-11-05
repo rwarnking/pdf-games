@@ -64,6 +64,7 @@ const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H];
 const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H];
 const SKIP_POS = [CANVAS_CENTER_W, CANVAS_CENTER_H + CARD_WIDTH * 2.5];
 
+const CUR_COLOR_POS = [CANVAS_CENTER_W, CANVAS_CENTER_H + CARD_WIDTH * 2.5 * 2.0];
 const COLOR_POS = [
     [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5],
     [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5 * 2.0],
@@ -77,6 +78,9 @@ const PLAYER_POS = [
     [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[TOP] - CARD_WIDTH],
     [CANVAS_LTRB[RIGHT] - CARD_WIDTH, CANVAS_LTRB[BOT] + CARD_WIDTH * 2.0]
 ];
+
+% TODOs
+% animations
 
 % Globals
 % TODO
@@ -104,7 +108,8 @@ var gameState = {
     take: 0,
     taking: false,
     selectColor: false,
-    currentColor: ""
+    currentColor: "",
+    direction: 1
 };
 
 % Spades, clubs, hearts, diamonds
@@ -230,9 +235,18 @@ function initialiseButtons() {
     ];
     addButton("skip", "skip();", skipRect, "Skip turn", false, TEXT_SIZE_SMALL);
 
+    % The current color box
+    var colorRect = [
+        CUR_COLOR_POS[X] - CARD_WIDTH,
+        CUR_COLOR_POS[Y] + CARD_WIDTH,
+        CUR_COLOR_POS[X] + CARD_WIDTH,
+        CUR_COLOR_POS[Y] - CARD_WIDTH
+    ];
+    addButton("curcolor", "", colorRect, gameState.currentColor, false, TEXT_SIZE_BIG);
+
     % Color buttons
     for (var col = 0; col < CARD_COLORS.length; col++) {
-        var colorRect = [
+        colorRect = [
             COLOR_POS[col][X] - CARD_WIDTH,
             COLOR_POS[col][Y] + CARD_WIDTH,
             COLOR_POS[col][X] + CARD_WIDTH,
@@ -282,13 +296,19 @@ function addButton(name, callback, rect, value, hidden, tsize) {
  * Restart the game and clear everything
  */
 function restart() {
+    if (curCardIdx > -1) {
+        printInfoText("Can not restart until the animation finished.");
+        return;
+    }
+
     gameState = {
         gameover: true,
         skip8: false,
         take: 0,
         taking: false,
         selectColor: false,
-        currentColor: ""
+        currentColor: "",
+        direction: 1
     };
 
     curPlayer = 0;
@@ -392,12 +412,6 @@ function tooltip(on) {
 % 3. Open first card
 % 4.1 if card on hand is clicked play it
 % 4.2 if card on stack is clicked take it
-
-% TODOs
-% buttons for mau und maumau
-% animations
-% special card rules
-
 function chooseCard(cardIdx) {
     this.getField("tooltiptxt").setFocus();
 
@@ -421,17 +435,7 @@ function chooseCard(cardIdx) {
 
         stack.splice(0, 1);
 
-        if (stack.length <= 0) {
-            for (var i = 0; i < graveyard.length - 1; i++) {
-                stack.push(graveyard[i]);
-                cardOwner[graveyard[i]] = STACK;
-            }
-            graveyard.splice(0, graveyard.length - 1);
-            curCardIdx = stack.length - 1;
-            gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
-        } else {
-            printInfoText("Player " + (curPlayer + 1) + " took a card!");
-        }
+        printInfoText("Player " + (curPlayer + 1) + " took a card!");
 
         specialRulesDraw();
 
@@ -444,7 +448,7 @@ function chooseCard(cardIdx) {
         }
 
         if (!validMove(cardIdx)) {
-            % printInfoText("This is not a valid move, select another card!");
+            printInfoText("This is not a valid move, select another card!");
             return;
         }
 
@@ -473,6 +477,7 @@ function chooseCard(cardIdx) {
         ];
         card.delay = false;
 
+        this.getField("curcolor").value = gameState.currentColor;
         drawCardFront(cardIdx);
         redrawPlayerCards(curPlayer);
 
@@ -489,7 +494,19 @@ function chooseCard(cardIdx) {
         return;
     }
 
-    curPlayer = (curPlayer + 1) \% playerCount;
+    % Reshuffle cards from the graveyard to the stack if there are any and the stack is empty
+    if (stack.length <= 0 && graveyard.length > 1) {
+        for (var i = 0; i < graveyard.length - 1; i++) {
+            var rnd = getRandomInt(graveyard.length - 1);
+            stack.push(graveyard[rnd]);
+            cardOwner[graveyard[i]] = STACK;
+            graveyard.splice(rnd, 1);
+        }
+        curCardIdx = stack.length - 1;
+        gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+    }
+
+    nextPlayer();
 }
 
 function validMove(cardIdx) {
@@ -505,6 +522,10 @@ function validMove(cardIdx) {
         gameState.currentColor == c2.charAt(l2 - 1) ||
         rules.cb9 && c2.charAt(0) == "9"
     ) {
+        % Check if jack chaining is enabled
+        if (!rules.cbJchain && c1.charAt(l1 - 2) == "J" && c2.charAt(l1 - 2) == "J") {
+            return false;
+        }
         return true;
     }
     return false;
@@ -513,8 +534,11 @@ function validMove(cardIdx) {
 function skip() {
     if (gameState.skip8) {
         printInfoText("Player " + (curPlayer + 1) + " was skipped.");
-        curPlayer = (curPlayer + 1) \% playerCount;
+        nextPlayer();
         gameState.skip8 = false;
+    } else if (stack.length == 0) {
+        printInfoText("Player " + (curPlayer + 1) + " was skipped.");
+        nextPlayer();
     } else {
         printInfoText("You can not skip!");
     }
@@ -523,8 +547,10 @@ function skip() {
 function selectColor(colorIdx) {
     gameState.selectColor = false;
     gameState.currentColor = CARD_COLORS[colorIdx];
+    % Show current color
+    this.getField("curcolor").value = gameState.currentColor;
     printInfoText("Player " + (curPlayer + 1) + " selected " + gameState.currentColor + ".");
-    curPlayer = (curPlayer + 1) \% playerCount;
+    nextPlayer();
     % Hide the color buttons again
     for (var col = 0; col < CARD_COLORS.length; col++) {
         this.getField("color" + col).hidden = true;
@@ -583,7 +609,7 @@ function specialRulesBegin(cardIdx) {
 
 function specialRulesDraw() {
     if (gameState.take > 0) {
-        curPlayer--;
+        prevPlayer();
     }
 }
 
@@ -595,7 +621,7 @@ function specialRulesPlay(cardIdx) {
     % Adjust take count for next player
     if (rules.cb7 && c.charAt(0) == "7") {
         gameState.taking = false;
-        gameState.take += 2;
+        gameState.take += Math.min(2, stack.length);
     }
     % Skip player when played an eight
     else if (rules.cb8 && c.charAt(0) == "8") {
@@ -603,15 +629,20 @@ function specialRulesPlay(cardIdx) {
             gameState.skip8 = true;
             printInfoText("Player " + (curPlayer + 2) + ", play 8 or skip.");
         } else {
-            curPlayer = (curPlayer + 1) \% playerCount;
+            nextPlayer();
             printInfoText("Player " + (curPlayer + 1) + " is skipped.");
         }
+    }
+    % Change direction after playing a ten
+    else if (rules.cb10 && c.charAt(0) == "1") {
+        gameState.direction *=  -1;
+        printInfoText("Player " + (curPlayer + 1) + " played a 10. Direction is reversed!");
     }
     % Player needs to select a color
     else if (rules.cbJ && c.charAt(0) == "J") {
         gameState.selectColor = true;
         printInfoText("Player " + (curPlayer + 1) + " please select a color.");
-        curPlayer--;
+        prevPlayer();
         % Unhide color selection buttons
         for (var col = 0; col < CARD_COLORS.length; col++) {
             this.getField("color" + col).hidden = false;
@@ -620,17 +651,17 @@ function specialRulesPlay(cardIdx) {
     % Adjust take count for next player
     else if (rules.cbK && c.charAt(0) == "K") {
         gameState.taking = false;
-        gameState.take += 4;
+        gameState.take += Math.min(4, stack.length);
     }
     % Skip player when played an ass
     else if (rules.cbAskip && c.charAt(0) == "A") {
-        curPlayer = (curPlayer + 1) \% playerCount;
+        nextPlayer();
         printInfoText("Player " + (curPlayer + 1) + " is skipped.");
     }
     % Get another turn when played an ass
     else if (rules.cbAcard && c.charAt(0) == "A") {
         printInfoText("Player " + (curPlayer + 1) + " has played an ass and must play another card.");
-        curPlayer--;
+        prevPlayer();
     }
 }
 
@@ -650,10 +681,20 @@ function openFirstCard() {
     drawCardFront(stack[0]);
     var cVal = CARDS[stack[0]];
     gameState.currentColor = cVal.charAt(cVal.length - 1);
+    % Show current color
+    this.getField("curcolor").value = gameState.currentColor;
     stack.splice(0, 1);
 
     gameState.gameover = false;
     printInfoText("The game has started. Player " + (curPlayer + 1) + " your Turn.");
+}
+
+function nextPlayer() {
+    curPlayer = (curPlayer + gameState.direction + playerCount) \% playerCount;
+}
+
+function prevPlayer() {
+    curPlayer = (curPlayer - gameState.direction + playerCount) \% playerCount;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -665,7 +706,7 @@ function initStack() {
 
         if (gameState.gameover) {
             gameInterval = app.setInterval("initHandCards()", ANIMATION_SPEED * 3.0);
-            curCardIdx = playerCount * cardsPerPlayer - 1;
+            curCardIdx = Math.min(playerCount * cardsPerPlayer - 1, CARD_COUNT - 2);
         }
         return;
     }
@@ -678,12 +719,8 @@ function initStack() {
 
     card.rect = [
         STACK_POS[X] - CARD_WIDTH + offset[X],
-        % STACK_POS[X] - CARD_WIDTH + curCardIdx * 30,
-        % STACK_POS[X] * 0.5 - CARD_WIDTH + curCardIdx * 10,
         STACK_POS[Y] + CARD_WIDTH + offset[Y],
         STACK_POS[X] + CARD_WIDTH + offset[X],
-        % STACK_POS[X] + CARD_WIDTH + curCardIdx * 30,
-        % STACK_POS[X] * 0.5 + CARD_WIDTH + curCardIdx * 10,
         STACK_POS[Y] - CARD_WIDTH + offset[Y]
     ];
 
@@ -707,7 +744,7 @@ function initHandCards() {
     playerCards[curPlayer].push(stack[0]);
     redrawPlayerCards(curPlayer);
     stack.splice(0, 1);
-    curPlayer = (curPlayer + 1) \% playerCount;
+    nextPlayer();
 
     curCardIdx--;
 }
@@ -810,6 +847,9 @@ function printInfoText(text) {
                     bordercolor=gray, backgroundcolor=white, readonly=true, hidden%
                 ]{}%
             }%
+
+            \TextField[name=curcolor, width=1cm, height=1cm,%
+                bordercolor=, backgroundcolor=, readonly=true, hidden]{}%
 
             \TextField[name=skip, width=1cm, height=1cm,%
                 bordercolor=gray, backgroundcolor=white, readonly=true, hidden]{}%
