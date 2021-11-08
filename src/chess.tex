@@ -45,12 +45,18 @@ const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 % Constants
 const M = 0;
 const N = 1;
+%
 const PICE = 0;
 const EMPTY = "";
+%
 const COLOR = 1;
+const WHITE = -1;
 const NONE = 0;
-const WHITE = 1;
-const BLACK = 2;
+const BLACK = 1;
+%
+const STATE = 2;
+const UNMOVED = 0;
+const MOVED = 1;
 
 % Globals
 % The game field array
@@ -69,6 +75,11 @@ const COLORS = new Array(
     color.white,
     color.black
 );
+
+% Highlightcolor for selection
+const SELECTION_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
+% Highlightcolor for possible moves
+const POSS_MOVE_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 
 %%%%%%%%%%
 % Helper %
@@ -92,30 +103,12 @@ function initialise() {
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         var row = new Array();
         for (var n = 0; n < FIELD_WIDTH; n++) {
-            row.push([EMPTY, NONE]);
+            row.push([EMPTY, NONE, UNMOVED]);
         }
         complField.push(row);
     }
 
-    % Init pawns
-    for (var n = 0; n < FIELD_WIDTH; n++) {
-        complField[1][n] = ["P", BLACK];
-        complField[FIELD_HEIGHT - 2][n] = ["P", WHITE];
-    }
-
-    % Init ROOKS, KNIGHT, BISHOP
-    const PICES = ["R", "N", "B"];
-    for (var n = 0; n < PICES.length; n++) {
-        complField[0][n] = [PICES[n], BLACK];
-        complField[0][FIELD_WIDTH - n - 1] = [PICES[n], BLACK];
-        complField[FIELD_HEIGHT - 1][n] = [PICES[n], WHITE];
-        complField[FIELD_HEIGHT - 1][FIELD_WIDTH - n - 1] = [PICES[n], WHITE];
-    }
-
-    complField[0][3] = ["Q", BLACK];
-    complField[0][4] = ["K", BLACK];
-    complField[FIELD_HEIGHT - 1][3] = ["Q", WHITE];
-    complField[FIELD_HEIGHT - 1][4] = ["K", WHITE];
+    addPices();
 
     % Init the GUI
     initialiseButtons();
@@ -139,9 +132,8 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
             var c = this.getField("cell" + m + "-" + n);
             c.setAction("MouseDown", callbackName);
-            c.borderColor = color.black;
-            c.fillColor = color.white;
             c.alignment = "center";
+            c.borderWidth = 5;
         }
     }
 
@@ -168,14 +160,38 @@ function restart() {
     checkmate = false;
 
     % Clear the field
-    for (var m = 0; m < FIELD_WIDTH; m++) {
-        for (var n = 0; n < FIELD_HEIGHT; n++) {
-             complField[m][n] = [EMPTY, NONE];
+    for (var m = 2; m < FIELD_HEIGHT - 2; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+             complField[m][n] = [EMPTY, NONE, UNMOVED];
         }
     }
 
+    addPices();
+
     drawAll();
     printInfoText("Restarted the game.");
+}
+
+function addPices() {
+    % Init pawns
+    for (var n = 0; n < FIELD_WIDTH; n++) {
+        complField[1][n] = ["P", BLACK, UNMOVED];
+        complField[FIELD_HEIGHT - 2][n] = ["P", WHITE, UNMOVED];
+    }
+
+    % Init ROOKS, KNIGHT, BISHOP
+    const PICES = ["R", "N", "B"];
+    for (var n = 0; n < PICES.length; n++) {
+        complField[0][n] = [PICES[n], BLACK, UNMOVED];
+        complField[0][FIELD_WIDTH - n - 1] = [PICES[n], BLACK, UNMOVED];
+        complField[FIELD_HEIGHT - 1][n] = [PICES[n], WHITE, UNMOVED];
+        complField[FIELD_HEIGHT - 1][FIELD_WIDTH - n - 1] = [PICES[n], WHITE, UNMOVED];
+    }
+
+    complField[0][3] = ["Q", BLACK, UNMOVED];
+    complField[0][4] = ["K", BLACK, UNMOVED];
+    complField[FIELD_HEIGHT - 1][3] = ["Q", WHITE, UNMOVED];
+    complField[FIELD_HEIGHT - 1][4] = ["K", WHITE, UNMOVED];
 }
 
 /**
@@ -226,12 +242,17 @@ function move(m, n) {
     if (lastSelection.length == 0) {
         if (validSelection(m, n)) {
             lastSelection = [m, n];
+            % Highlight selection
+            highlight(m, n, SELECTION_COLOR, true);
+            % Highlight possible moves
+            %highlight(m, n, POSS_MOVE_COLOR, true);
             printInfoText("Pice selected.");
         }
     }
     % If a selection is already saved check if the move is valid and if so move the piece there
     else if (validMove(m, n)) {
         complField[m][n] = complField[lastSelection[M]][lastSelection[N]];
+        complField[m][n][STATE] = MOVED;
         complField[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE];
         printInfoText("Piece moved!");
         draw(m, n);
@@ -242,6 +263,14 @@ function move(m, n) {
         } else {
             currentTurn = WHITE;
         }
+        % Clear highlights
+        highlight(m, n, 0, false);
+    } else if (lastSelection[M] == m && lastSelection[N] == n) {
+        lastSelection = [];
+        highlight(m, n, SELECTION_COLOR, false);
+        % Highlight possible moves
+        %highlight(m, n, POSS_MOVE_COLOR, true);
+        printInfoText("Unselected pice.");
     }
 }
 
@@ -257,24 +286,90 @@ function validSelection(m, n) {
     return true;
 }
 
+% One could also save the valid moves after marking them or one could check
+% If the border color of the cell is identical with the POSS_MOVE_COLOR, but
+% since it is unclear whether a cell lookup and comparison is faster then
+% simply checking the math, the latter solution was used.
 function validMove(m, n) {
     % TODO path must be free, check for that
     if (currentTurn == complField[m][n][COLOR]) {
         printInfoText("Move not valid, thats your own pice!");
         return false;
     }
+    % Rook
     if (complField[lastSelection[M]][lastSelection[N]][PICE] == "R") {
         if (lastSelection[M] == m || lastSelection[N] == n) {
             return true;
         } else {
-            printInfoText("Rook can not move in that direction.");
+            printInfoText("Rook can not move there.");
             return false;
         }
-    } else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "B") {
+    }
+    % Bishop
+    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "B") {
         if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N])) {
             return true;
         } else {
-            printInfoText("Bishop can not move in that direction.");
+            printInfoText("Bishop can not move there.");
+            return false;
+        }
+    }
+    % Knight
+    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "N") {
+        if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N])) {
+            return true;
+        } else {
+            printInfoText("Knight can not move there.");
+            return false;
+        }
+    }
+    % King
+    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "K") {
+        % Only move one in each direction
+        % TODO unless there is an enemy king in the neighboorhood of that field
+        % TODO allow for castling
+        if (Math.abs(m - lastSelection[M]) <= 1 && Math.abs(n - lastSelection[N]) <= 1) {
+            return true;
+        } else {
+            printInfoText("King can not move there.");
+            return false;
+        }
+    }
+    % Queen
+    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "Q") {
+        if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N]) ||
+            lastSelection[M] == m || lastSelection[N] == n
+        ) {
+            return true;
+        } else {
+            printInfoText("Queen can not move there.");
+            return false;
+        }
+    }
+    % Pawn
+    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "P") {
+        var state = complField[lastSelection[M]][lastSelection[N]][STATE];
+        var piceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+        var targetColor = complField[m][n][COLOR];
+
+        % Math.sign is not available
+        var sign = function(x) { return ((x > 0) - (x < 0)) || +x; }
+
+        % If enemy has jump over field allow for en passant TODO
+        if (
+            % If unmoved allow for a movement of two spaces
+            state == UNMOVED && lastSelection[M] + piceColor * 2 == m ||
+            % If there is an enemy across allow that move (opposite color)
+            % Since black and white have the values 1 and -1 this calculation works
+            sign(targetColor) == sign(piceColor) * -1 &&
+            Math.abs(n - lastSelection[N]) == 1 &&
+            lastSelection[M] + piceColor == m ||
+            % Else allow only moving one forward when field empty
+            targetColor == NONE && lastSelection[M] + piceColor == m && lastSelection[N] == n
+        ) {
+            return true;
+        } else {
+            printInfoText("Pawn can not move there.");
             return false;
         }
     }
@@ -317,13 +412,25 @@ function draw(m, n) {
     }
 
     if ((m + n) \% 2 == 0) {
-        cell.borderColor = color.white;
-        cell.fillColor = color.white;
+        cell.borderColor = COLORS[WHITE + 1];
+        cell.fillColor = COLORS[WHITE + 1];
     } else {
-        cell.borderColor = color.black;
-        cell.fillColor = color.black;
+        cell.borderColor = COLORS[BLACK];
+        cell.fillColor = COLORS[BLACK];
     }
 
+    cell.delay = false;
+}
+
+function highlight(m, n, color, enable) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+
+    if (enable) {
+        cell.borderColor = color;
+    } else {
+        cell.borderColor = cell.fillColor;
+    }
     cell.delay = false;
 }
 
