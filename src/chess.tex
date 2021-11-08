@@ -1,0 +1,349 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+% \usepackage[utf8x]{inputenc}
+% \usepackage[T1]{fontenc}
+% \usepackage[ngerman]{babel}
+% \usepackage{xcolor}
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage[nomessages]{fp}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\fieldWidth{8}
+\def\fieldHeight{8}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{insDLJS}[]{JSDateiname}{chess}
+
+const GAME_DESC = "Text.\
+Text.\
+Text.\
+Text.\
+Text.";
+
+% Outside variables
+const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
+const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+
+% Constants
+const PICE = 0;
+const EMPTY = "";
+const COLOR = 1;
+const NONE = 0;
+const WHITE = 1;
+const BLACK = 2;
+
+% Globals
+% The game field array
+var complField = new Array();
+%
+var gameover = false;
+%
+var lastSelection = [];
+
+% Color data
+const COLORS = new Array(
+    color.white,
+    color.black
+);
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+/**
+ * Returns a random number between 0 and the param.
+ * @param {Number} max The upperbound
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Fill the array with the default content and infos
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            row.push([EMPTY, NONE]);
+        }
+        complField.push(row);
+    }
+
+    % Init pawns
+    for (var n = 0; n < FIELD_WIDTH; n++) {
+        complField[1][n] = ["P", BLACK];
+        complField[FIELD_HEIGHT - 2][n] = ["P", WHITE];
+    }
+
+    % Init ROOKS, KNIGHT, BISHOP
+    const PICES = ["R", "N", "B"];
+    for (var n = 0; n < PICES.length; n++) {
+        complField[0][n] = [PICES[n], BLACK];
+        complField[0][FIELD_WIDTH - n - 1] = [PICES[n], BLACK];
+        complField[FIELD_HEIGHT - 1][n] = [PICES[n], WHITE];
+        complField[FIELD_HEIGHT - 1][FIELD_WIDTH - n - 1] = [PICES[n], WHITE];
+    }
+
+    complField[0][3] = ["Q", BLACK];
+    complField[0][4] = ["K", BLACK];
+    complField[FIELD_HEIGHT - 1][3] = ["Q", WHITE];
+    complField[FIELD_HEIGHT - 1][4] = ["K", WHITE];
+
+    % Init the GUI
+    initialiseButtons();
+
+    drawAll();
+    printInfoText("Ready to play, good luck.");
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Set the callbacks and attributes of each small field
+    var funcName = "move";
+    for (var m = 0; m < FIELD_WIDTH; m++) {
+        for (var n = 0; n < FIELD_HEIGHT; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            var c = this.getField("cell" + m + "-" + n);
+            c.setAction("MouseDown", callbackName);
+            c.borderColor = color.black;
+            c.fillColor = color.white;
+            c.alignment = "center";
+        }
+    }
+
+    % Restat button setup
+    this.getField("restart").setAction("MouseDown", "restart();");
+
+    % Info field setup
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip button setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+}
+
+/**
+ * Restart the game by reseting everything to default.
+ */
+function restart() {
+    % Remove focus so the cursor is not shown
+    this.getField("info").setFocus();
+
+    gameover = false;
+
+    % Clear the field
+    for (var m = 0; m < FIELD_WIDTH; m++) {
+        for (var n = 0; n < FIELD_HEIGHT; n++) {
+             complField[m][n] = [EMPTY, NONE];
+        }
+    }
+
+    drawAll();
+    printInfoText("Restarted the game.");
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = false;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+
+function move(m, n) {
+
+}
+
+%%%%%%%%%%%%%%%%%%%%%
+% Draw and coloring %
+%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Draws the complete field.
+ */
+function drawAll() {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            draw(m, n);
+        }
+    }
+}
+
+/**
+ * Draw the field at the coordinates m, n.
+ *
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
+ */
+function draw(m, n) {
+    % Retrieve the field data
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+
+    var val = complField[m][n][PICE];
+    cell.value = val;
+    printInfoText("hi " + m + " " + n);
+
+    if (complField[m][n][COLOR] == WHITE) {
+        cell.textColor = color.green;
+    } else if (complField[m][n][COLOR] == BLACK) {
+        cell.textColor = color.red;
+    }
+
+    if ((m + n) \% 2 == 0) {
+        cell.borderColor = color.white;
+        cell.fillColor = color.white;
+    } else {
+        cell.borderColor = color.black;
+        cell.fillColor = color.black;
+    }
+
+    cell.delay = false;
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Chess}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+
+        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+
+        % Define the blocksize via the smaller amount
+        \ifnum\blocksizeW<\blocksizeH
+            \def\blocksize{\blocksizeW}
+        \else
+            \def\blocksize{\blocksizeH}
+        \fi
+
+        % The gamefield
+        \begin{tcolorbox}
+            \begin{flushright}
+                \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            width=\blocksize, height=\blocksize,%
+                            bordercolor=white, name=cell#1-#2, readonly=true]{}\hspace{3pt}%
+                    }\vspace{3pt}
+                    \newline%
+                }%
+            \end{flushright}%
+        \end{tcolorbox}
+
+        % Game related buttons
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=restart, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart
+                        \strut
+                    \end{tcolorbox}
+                } &%
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+
+        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+
+    \end{Form}
+
+\end{document}
