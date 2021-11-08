@@ -414,19 +414,32 @@ function validMove(m, n) {
     return true;
 }
 
-const dirsQ = [
-    [1, 0],
-    [1, 1],
-    [0, 1],
-    [-1, 1],
-    [-1, 0],
-    [-1, -1],
-    [0, -1],
-    [1, -1]
-];
+const DIRS = [
+    [ % King
+        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
+    ],
+    [ % Queen
+        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
+    ],
+    [ % Bishop
+        [1, 1], [-1, 1], [-1, -1], [1, -1]
+    ],
+    [ % Knight               | |1| |2| |
+        [ 2, -1], % 1        -----------
+        [ 2,  1], % 2        |8| | | |3|
+        [ 1,  2], % 3        -----------
+        [-1,  2], % 4        | | |x| | |
+        [-2,  1], % 5        -----------
+        [-2, -1], % 6        |7| | | |4|
+        [-1, -2], % 7        -----------
+        [ 1, -2]  % 8        | |6| |5| |
+    ],
+    [ % Rook
+        [1, 0], [0, 1], [-1, 0], [0, -1]
+    ]
+]
 
 function highlightValidMoves(enable) {
-    % TODO one big dirs array (dirsQ == dirsK)
     % TODO test for pawn check
 
     % Pawn
@@ -473,65 +486,26 @@ function highlightValidMoves(enable) {
     }
     % Queen
     else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[QUEEN]) {
-        loopPositions(dirsQ, Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
+        loopPositions(DIRS[QUEEN], Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
     }
     % Knight
     else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KNIGHT]) {
-
-        const positionsN = [ %    | |1| |2| |
-            [ 2, -1], % 1        -----------
-            [ 2,  1], % 2        |8| | | |3|
-            [ 1,  2], % 3        -----------
-            [-1,  2], % 4        | | |x| | |
-            [-2,  1], % 5        -----------
-            [-2, -1], % 6        |7| | | |4|
-            [-1, -2], % 7        -----------
-            [ 1, -2], % 8        | |6| |5| |
-        ];
-
-        loopPositions(positionsN, 2, enable);
+        loopPositions(DIRS[KNIGHT], 2, enable);
     }
     % Rook
     else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[ROOK]) {
-
-        const dirsR = [
-            [1, 0],
-            [0, 1],
-            [-1, 0],
-            [0, -1]
-        ];
-
-        loopPositions(dirsR, Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
+        loopPositions(DIRS[ROOK], Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
     }
     % Bishop
     else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[BISHOP]) {
-        const dirsB = [
-            [1, 1],
-            [-1, 1],
-            [-1, -1],
-            [1, -1]
-        ];
-
-        loopPositions(dirsB, Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
+        loopPositions(DIRS[BISHOP], Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
     }
     % King
     else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KING]) {
         % Only move one in each direction
         % TODO unless there is an enemy king in the neighboorhood of that field
         % TODO allow for castling
-
-        const dirsK = [
-            [1, 0],
-            [1, 1],
-            [0, 1],
-            [-1, 1],
-            [-1, 0],
-            [-1, -1],
-            [0, -1],
-            [1, -1]
-        ];
-
-        loopPositions(dirsK, 2, enable);
+        loopPositions(DIRS[KING], 2, enable);
     }
 }
 
