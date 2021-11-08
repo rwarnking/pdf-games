@@ -43,6 +43,8 @@ const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 
 % Constants
+const M = 0;
+const N = 1;
 const PICE = 0;
 const EMPTY = "";
 const COLOR = 1;
@@ -213,7 +215,35 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 
 function move(m, n) {
+    printInfoText("Move attempt: TODO");
+    % If no selection was made, save this press and show potential destinations
+    if (lastSelection.length == 0) {
+        if (complField[m][n][PICE] != EMPTY) {
+            lastSelection = [m, n];
+            printInfoText("Pice selected.");
+        }
+        % else if () {
+        %     printInfoText("Thats an enemy pice!");
+        % }
+        else {
+            printInfoText("Field empty, could not select!");
+        }
+    }
+    % If a selection is already saved check if the move is valid and if so move the piece there
+    else if (validMove(m, n)) {
+        complField[m][n] = complField[lastSelection[M]][lastSelection[N]];
+        complField[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE];
+        printInfoText("Piece moved!");
+        draw(m, n);
+        draw(lastSelection[M], lastSelection[N]);
+        lastSelection = [];
+    } else {
+        printInfoText("Move not valid!");
+    }
+}
 
+function validMove(m, n) {
+    return true;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -243,7 +273,6 @@ function draw(m, n) {
 
     var val = complField[m][n][PICE];
     cell.value = val;
-    printInfoText("hi " + m + " " + n);
 
     if (complField[m][n][COLOR] == WHITE) {
         cell.textColor = color.green;
