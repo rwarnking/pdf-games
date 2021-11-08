@@ -56,9 +56,13 @@ const BLACK = 2;
 % The game field array
 var complField = new Array();
 %
-var gameover = false;
+var checkmate = false;
+%
+var check = false;
 %
 var lastSelection = [];
+%
+var currentTurn = WHITE;
 
 % Color data
 const COLORS = new Array(
@@ -160,7 +164,8 @@ function restart() {
     % Remove focus so the cursor is not shown
     this.getField("info").setFocus();
 
-    gameover = false;
+    check = false;
+    checkmate = false;
 
     % Clear the field
     for (var m = 0; m < FIELD_WIDTH; m++) {
@@ -215,18 +220,13 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 
 function move(m, n) {
-    printInfoText("Move attempt: TODO");
+    this.getField("tooltiptxt").setFocus();
+
     % If no selection was made, save this press and show potential destinations
     if (lastSelection.length == 0) {
-        if (complField[m][n][PICE] != EMPTY) {
+        if (validSelection(m, n)) {
             lastSelection = [m, n];
             printInfoText("Pice selected.");
-        }
-        % else if () {
-        %     printInfoText("Thats an enemy pice!");
-        % }
-        else {
-            printInfoText("Field empty, could not select!");
         }
     }
     % If a selection is already saved check if the move is valid and if so move the piece there
@@ -237,12 +237,48 @@ function move(m, n) {
         draw(m, n);
         draw(lastSelection[M], lastSelection[N]);
         lastSelection = [];
-    } else {
-        printInfoText("Move not valid!");
+        if (currentTurn == WHITE) {
+            currentTurn = BLACK;
+        } else {
+            currentTurn = WHITE;
+        }
     }
 }
 
+function validSelection(m, n) {
+    if (complField[m][n][PICE] == EMPTY) {
+        printInfoText("Field empty, could not select!");
+        return false;
+    } else if (currentTurn != complField[m][n][COLOR]) {
+        printInfoText("Thats an enemy pice, could not select!");
+        return false;
+    }
+
+    return true;
+}
+
 function validMove(m, n) {
+    % TODO path must be free, check for that
+    if (currentTurn == complField[m][n][COLOR]) {
+        printInfoText("Move not valid, thats your own pice!");
+        return false;
+    }
+    if (complField[lastSelection[M]][lastSelection[N]][PICE] == "R") {
+        if (lastSelection[M] == m || lastSelection[N] == n) {
+            return true;
+        } else {
+            printInfoText("Rook can not move in that direction.");
+            return false;
+        }
+    } else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "B") {
+        if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N])) {
+            return true;
+        } else {
+            printInfoText("Bishop can not move in that direction.");
+            return false;
+        }
+    }
+
     return true;
 }
 
