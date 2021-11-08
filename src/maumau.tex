@@ -1,0 +1,1169 @@
+\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage[margin=0.5in]{geometry}
+
+\usepackage[pdftex]{hyperref}
+\usepackage{multicol}
+
+\usepackage{xinttools}
+\usepackage{tabularx}
+\usepackage{tcolorbox}
+
+\setlength{\parindent}{0pt}
+
+\usepackage[pdftex]{insdljs}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parameter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\def\cards{32}
+\def\colors{4}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Javascript
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{insDLJS}[]{JSDateiname}{Maumau}
+
+const GAME_DESC = "Mau mau is a simple card game.\
+The goal of each player is to get rid of all his or her cards.\
+Each turn the player is allowed to play one card.\
+This card needs to fit on the currently shown card in the center.\
+To fit a card must have either the same number or the same symbol.\
+Furthermore there are multiple special rules that can be enabled.";
+
+% Outside variables
+const CARD_COUNT = AFMakeNumber(\cards);
+const ANIMATION_SPEED = 50;
+
+% Constants
+const TEXT_SIZE_SMALL = 14;
+const TEXT_SIZE_MED = 18;
+const TEXT_SIZE_BIG = 40;
+
+% Access constants
+const X = 0;
+const Y = 1;
+const SYMB = 2;
+const LEFT = 0;
+const TOP = 1;
+const RIGHT = 2;
+const BOT = 3;
+% Document dims: 842, 596
+% Canvas dims
+% upper-left x, upper-left y, lower-right x and lower-right y
+const CANVAS_LTRB = [47.5, 765, 547.5, 256];
+const CANVAS_HEIGHT = CANVAS_LTRB[TOP] - CANVAS_LTRB[BOT];
+const CANVAS_WIDTH = CANVAS_LTRB[RIGHT] - CANVAS_LTRB[LEFT];
+const CANVAS_CENTER_H = CANVAS_HEIGHT * 0.5 + CANVAS_LTRB[BOT];
+const CANVAS_CENTER_W = CANVAS_WIDTH * 0.5 + CANVAS_LTRB[LEFT];
+
+% Positioning data
+const CARD_WIDTH = 20;
+const STACK_POS = [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H];
+const GRAVE_POS = [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H];
+const SKIP_POS = [CANVAS_CENTER_W, CANVAS_CENTER_H + CARD_WIDTH * 2.5];
+
+const CUR_COLOR_POS = [CANVAS_CENTER_W, CANVAS_CENTER_H + CARD_WIDTH * 2.5 * 2.0];
+const COLOR_POS = [
+    [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5],
+    [CANVAS_CENTER_W - CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5 * 2.0],
+    [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5],
+    [CANVAS_CENTER_W + CARD_WIDTH * 1.25, CANVAS_CENTER_H - CARD_WIDTH * 2.5 * 2.0]
+];
+
+% Positions of player cards, left aligned
+const PLAYER_POS = [
+    [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[BOT] + CARD_WIDTH],
+    [CANVAS_LTRB[LEFT] + CARD_WIDTH, CANVAS_LTRB[BOT] + CARD_WIDTH * 2.0],
+    [CANVAS_LTRB[LEFT] + CARD_WIDTH * 2.0, CANVAS_LTRB[TOP] - CARD_WIDTH],
+    [CANVAS_LTRB[RIGHT] - CARD_WIDTH, CANVAS_LTRB[BOT] + CARD_WIDTH * 2.0]
+];
+
+% Globals
+% The interval used for shuffling and distributing the cards of the stack
+var gameInterval;
+% Card animation data
+var cardAnim = {
+    state: -1.0,
+    start: [],
+    goal: [],
+    idx: 0,
+    interval: 0 % The interval used for the card animation
+}
+% Saves the index of the currently used card
+var curCardIdx = -1;
+% The playercount is read from the gui
+var playerCount = 0;
+% The cards per player is read from the gui
+var cardsPerPlayer = 0;
+% Saves which turn it is
+var curPlayer = 0;
+% Lists of player cards
+var playerCards = [
+    [], [], [], []
+];
+% Used to rotate the shown cards in the direction of the player
+% The first two slots are padding to allow the use of the cardOwner index
+var rotations = [0, 0, 0, 270, 180, 90];
+
+% Information about the game state and special rules
+var gameState = {
+    gameover: true,
+    skip8: false,
+    take: 0,
+    taking: false,
+    selectColor: false,
+    currentColor: "",
+    direction: 1
+};
+
+% Spades, clubs, hearts, diamonds
+const CARD_COLORS = [
+    String.fromCharCode(0x2660),
+    String.fromCharCode(0x2663),
+    String.fromCharCode(0x2665),
+    String.fromCharCode(0x2666)
+];
+
+const CARD_VALUES = ["7", "8", "9", "10", "J", "Q", "K", "A"];
+% A list of all cards, each being a combination of card color and value
+const CARDS = [];
+for (var col = 0; col < CARD_COLORS.length; col++) {
+    for (var val = 0; val < CARD_VALUES.length; val++) {
+        CARDS.push(CARD_VALUES[val] + CARD_COLORS[col]);
+    }
+}
+
+% A list of all played cards
+var graveyard = [];
+% A list of all cards that are available to be drawn
+var stack = [];
+
+const STACK = -1;
+const GRAVEYARD = -2;
+% A list with an index representing the owner of each card
+var cardOwner = [];
+
+% Rule object saving the currently active rules
+% Origin: https://en.wikipedia.org/wiki/Mau-Mau_(card_game)
+var rules = {
+    cb7: true,
+    cb7chain: true,
+    cb8: true,
+    cb8chain: true,
+    cb9: false,
+    cb10: false,
+    cbJ: true,
+    cbJchain: false,
+    cbK: false,
+    cbKchain: false,
+    cbAcard: false,
+    cbAskip: false
+};
+
+% Color for the backside of the cards
+% const BACK_COLOR = [ "RGB", 0.313, 0.525, 0.560 ];
+const BACK_COLOR = [ "RGB", 0.047, 0.349, 0.047 ];
+
+%%%%%%%%%%
+% Helper %
+%%%%%%%%%%
+/**
+ * Returns a random integer between 0 and the param.
+ * @param {Number} max The upperbound.
+ */
+function getRandomInt(max) {
+    return Math.floor(Math.random() * max);
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Initialisation and Restart %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialise the default game state.
+ */
+function initialise() {
+    % Init the GUI
+    initialiseButtons();
+
+    % Push all cards to the graveyard
+    for (var i = 0; i < CARD_COUNT; i++) {
+        graveyard.push(i);
+    }
+    for (var i = 0; i < CARD_COUNT; i++) {
+        % Get random card from the graveyard, remove it and push it on top of the stack
+        var rnd = getRandomInt(graveyard.length);
+        stack.push(graveyard[rnd]);
+        cardOwner.push(STACK);
+        graveyard.splice(rnd, 1);
+    }
+
+    % Start the card distribution
+    curCardIdx = stack.length - 1;
+    gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+}
+
+/**
+ * Initialise all buttons from the GUI.
+ * For example add callbacks and set the correct colors.
+ */
+function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Read player count from gui
+    var cmP = this.getField("cmPlayer");
+    cmP.checkThisBox(2);
+    playerCount = 0;
+    for (var i = 0; i < 3; i++) {
+        playerCount += cmP.isBoxChecked(i) * (2 + i);
+    };
+
+    % Read cards per player count from gui
+    var cmC = this.getField("cmCards");
+    cmC.checkThisBox(1);
+    for (var i = 0; i < 5; i++) {
+        cardsPerPlayer += cmC.isBoxChecked(i) * (4 + i);
+    };
+
+    % Assign each card a callback and initialize the correct font etc
+    for (var c = 0; c < CARDS.length; c++) {
+        var callbackName = "chooseCard(" + c.toString() + ");";
+        var card = this.getField("card" + c);
+        card.delay = true;
+        card.setAction("MouseUp", callbackName);
+        if (c >= CARDS.length * 0.5) {
+            card.textColor = color.red;
+        }
+        card.textFont = font.Cour;
+        card.textSize = TEXT_SIZE_MED;
+        card.alignment = "center";
+        card.delay = false;
+    }
+
+    % Add skip button
+    var skipRect = [
+        SKIP_POS[X] - CARD_WIDTH - CARD_WIDTH * 1.25,
+        SKIP_POS[Y] + CARD_WIDTH,
+        SKIP_POS[X] + CARD_WIDTH + CARD_WIDTH * 1.25,
+        SKIP_POS[Y] - CARD_WIDTH
+    ];
+    addButton("skip", "skip();", skipRect, "Skip turn", false, TEXT_SIZE_SMALL);
+
+    % Add current color box
+    var colorRect = [
+        CUR_COLOR_POS[X] - CARD_WIDTH,
+        CUR_COLOR_POS[Y] + CARD_WIDTH,
+        CUR_COLOR_POS[X] + CARD_WIDTH,
+        CUR_COLOR_POS[Y] - CARD_WIDTH
+    ];
+    addButton("curcolor", "", colorRect, gameState.currentColor, false, TEXT_SIZE_BIG);
+
+    % Add color selection buttons
+    for (var col = 0; col < CARD_COLORS.length; col++) {
+        colorRect = [
+            COLOR_POS[col][X] - CARD_WIDTH,
+            COLOR_POS[col][Y] + CARD_WIDTH,
+            COLOR_POS[col][X] + CARD_WIDTH,
+            COLOR_POS[col][Y] - CARD_WIDTH
+        ];
+        addButton("color" + col, "selectColor(" + col + ");",
+            colorRect, CARD_COLORS[col], true, TEXT_SIZE_BIG);
+    }
+
+    % Copy rules to the gui by iterating all keys of the rules object
+    var cbKeys = Object.keys(rules);
+    for (var idx = 0; idx < cbKeys.length; idx++) {
+        if (rules[cbKeys[idx]] == true) {
+            var cb = this.getField(cbKeys[idx]);
+            cb.checkThisBox(0);
+        }
+    }
+
+    % Assign each button the coresponding function and disable the highlights
+    this.getField("restart").setAction("MouseUp", "restart();");
+
+    % Info field setup
+    this.getField("info").fillColor = color.transparent;
+    this.getField("info").borderColor = color.transparent;
+
+    % Tooltip setup
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
+
+    printInfoText("Initializing game.");
+}
+
+/**
+ * Restart the game and clear everything
+ */
+function restart() {
+    % While an animation is running disable restart
+    if (curCardIdx > -1 || cardAnim.state > -0.1) {
+        printInfoText("Can not restart until the animation finished.");
+        return;
+    }
+
+    % Reset current gamestate
+    gameState = {
+        gameover: true,
+        skip8: false,
+        take: 0,
+        taking: false,
+        selectColor: false,
+        currentColor: "",
+        direction: 1
+    };
+
+    % Reset player data
+    curPlayer = 0;
+    playerCards = [
+        [], [], [], []
+    ];
+
+    % Update stack and graveyard by deleting all contents and reshuffle all cards to the stack
+    graveyard = [];
+    stack = [];
+    for (var i = 0; i < CARD_COUNT; i++) {
+        graveyard.push(i);
+    }
+    for (var i = 0; i < CARD_COUNT; i++) {
+        % Get random element from the  and remove the card afterwards
+        var rnd = getRandomInt(graveyard.length);
+        stack.push(graveyard[rnd]);
+        cardOwner[i] = STACK;
+        graveyard.splice(rnd, 1);
+    }
+
+    % Hide all cards, otherwise they would stay at their last position until they are updated
+    for (var c = 0; c < CARDS.length; c++) {
+        var card = this.getField("card" + c);
+        card.hidden = true;
+    }
+
+    % Read player count from gui
+    var cmP = this.getField("cmPlayer");
+    playerCount = 0;
+    for (var i = 0; i < 3; i++) {
+        playerCount += cmP.isBoxChecked(i) * (2 + i);
+    };
+
+    % Read cards per player count from gui
+    cardsPerPlayer = 0;
+    var cmC = this.getField("cmCards");
+    for (var i = 0; i < 5; i++) {
+        cardsPerPlayer += cmC.isBoxChecked(i) * (4 + i);
+    };
+
+    % Get rules from gui by iterating all keys of the rules object
+    var cbKeys = Object.keys(rules);
+    for (var idx = 0; idx < cbKeys.length; idx++) {
+        var cb = this.getField(cbKeys[idx]);
+        % Convert to boolean
+        rules[cbKeys[idx]] = cb.isBoxChecked(0) == 1;
+    }
+
+    % Check that there are cards to distribute (should always be the case)
+    if (cardsPerPlayer > 0) {
+        curCardIdx = stack.length - 1;
+        gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+
+        printInfoText("Restarted the game. You turn player " + (curPlayer + 1) + ".");
+    } else {
+        printInfoText("Choose the amount of cards each player should have.");
+    }
+}
+
+/**
+ * Enable or disable the tooltip
+ *
+ * @param {Boolean} on Enable or disable tooltip
+ */
+function tooltip(on) {
+    if (on) {
+        % Move the tooltip field to the center of the screen
+        % and adjust the size so the text can be displayed
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = false;
+        field.value = GAME_DESC;
+
+        field.multiline = true;
+        field.textSize = 16;
+        field.fillColor = color.gray;
+        % height 842, width 596
+        % upper-left x, upper-left y, lower-right x and lower-right y
+        field.rect = [128, 601, 468, 401];
+
+        field.delay = false;
+    } else {
+        % Remove the field such that it is not visible
+        var field = this.getField("tooltiptxt");
+        field.delay = true;
+        field.hidden = true;
+        field.value = "";
+
+        field.multiline = false;
+        field.fillColor = color.gray;
+        field.rect = [0, 0, 0, 0];
+
+        field.delay = false;
+    }
+}
+
+%%%%%%%%%%%%%
+% Gamelogic %
+%%%%%%%%%%%%%
+/**
+ * Chooses and processes the card that was clicked on.
+ * This results in either the top card from the stack being drawn
+ * or the selected card is played and put onto the graveyard.
+ * If the stack is empty the cards from the graveyard are used to refill it.
+ * Also processes special rules, like skipping or color selection.
+ *
+ * @param {Number} cardIdx The index of the clicked on card.
+ */
+function chooseCard(cardIdx) {
+    this.getField("tooltiptxt").setFocus();
+
+    if (gameState.gameover) {
+        printInfoText("Game is over or the new Game is not ready yet.");
+        return;
+    }
+
+    % Do not process the selected card if the special rules disallow it
+    if (!specialRulesBegin(cardIdx)) {
+        return;
+    }
+
+    % Player draws a card
+    if (cardOwner[cardIdx] == STACK) {
+        % Assign card to the player and update cardowner
+        var card = this.getField("card" + stack[0]);
+        cardOwner[stack[0]] = curPlayer;
+        playerCards[curPlayer].push(stack[0]);
+
+        % Setup draw card animation
+        card.hidden = true;
+        cardAnim.start = card.rect;
+        cardAnim.idx = stack[0];
+        % Update current card positions
+        redrawPlayerCards(curPlayer);
+        cardAnim.state = 1.0;
+        cardAnim.goal = card.rect;
+        % Start draw card animation
+        cardAnim.interval = app.setInterval("moveCard()", ANIMATION_SPEED * 1.25);
+        % Remove card from stack
+        stack.splice(0, 1);
+
+        printInfoText("Player " + (curPlayer + 1) + " took a card!");
+        % Check for special rules (for example take 2)
+        specialRulesDraw();
+    }
+    % Player wants to play the selected card
+    else if (cardOwner[cardIdx] > STACK) {
+        % Check if the card belongs to the current player
+        if (cardOwner[cardIdx] != curPlayer) {
+            printInfoText(
+                "Its not your turn Player " + (cardOwner[cardIdx] + 1) + "!" +
+                " Your turn Player " + (curPlayer + 1) + ".");
+            return;
+        }
+
+        % If the card does not match to the last played card reject the input
+        if (!validMove(cardIdx)) {
+            printInfoText("This is not a valid move, select another card!");
+            return;
+        }
+
+        % Save color of played card
+        var cVal = CARDS[cardIdx];
+        gameState.currentColor = cVal.charAt(cVal.length - 1);
+
+        % Hide last top graveyard card to disable overdrawing
+        var tmpIdx = graveyard[graveyard.length - 1];
+        var topCard = this.getField("card" + tmpIdx);
+        topCard.hidden = true;
+
+        % Put selected card on the graveyard
+        cardOwner[cardIdx] = GRAVEYARD;
+        graveyard.push(cardIdx);
+        const index = playerCards[curPlayer].indexOf(cardIdx);
+        playerCards[curPlayer].splice(index, 1);
+
+        % Update card position
+        var card = this.getField("card" + cardIdx);
+        card.delay = true;
+        card.rect = [
+            GRAVE_POS[X] - CARD_WIDTH,
+            GRAVE_POS[Y] + CARD_WIDTH,
+            GRAVE_POS[X] + CARD_WIDTH,
+            GRAVE_POS[Y] - CARD_WIDTH
+        ];
+        card.delay = false;
+
+        this.getField("curcolor").value = gameState.currentColor;
+        % Reveal top side of the card and update the player cards (one slot removed)
+        drawCardFront(cardIdx);
+        redrawPlayerCards(curPlayer);
+
+        % Check for a winner
+        if (playerCards[curPlayer].length <= 0) {
+            gameState.gameover = true;
+            printInfoText("Player " + (curPlayer + 1) + " has no cards left and won the game!");
+            return;
+        } else {
+            printInfoText("Player " + (curPlayer + 1) + " played the card " + cVal + "!");
+        }
+        % Check if the played card has a special rule
+        specialRulesPlay(cardIdx);
+    } else {
+        return;
+    }
+
+    % Reshuffle cards from the graveyard to the stack if there are any and the stack is empty
+    if (stack.length <= 0 && graveyard.length > 1) {
+        for (var i = 0; i < graveyard.length - 1; i++) {
+            var rnd = getRandomInt(graveyard.length - 1);
+            stack.push(graveyard[rnd]);
+            cardOwner[graveyard[i]] = STACK;
+            graveyard.splice(rnd, 1);
+        }
+        curCardIdx = stack.length - 1;
+        % Start stack animation
+        gameInterval = app.setInterval("initStack()", ANIMATION_SPEED);
+    }
+
+    % Hide the cards of the current player and reveal them for the next player
+    nextPlayer();
+    showCurHidePrev();
+}
+
+/**
+ * Check if the selected card matches onto the top graveyard card.
+ * For this either color or number must match.
+ * There might be special rules active like:
+ * 9 can be placed on every other card and
+ * J can not be placed on another J.
+ *
+ * @param {Number} cardIdx The card to test.
+ */
+function validMove(cardIdx) {
+    const topGraveIdx = graveyard[graveyard.length - 1];
+    const c1 = CARDS[topGraveIdx];
+    const c2 = CARDS[cardIdx];
+    % Since not every card is two characters in length (10)
+    % the test is done from the back of the card name
+    const l1 = c1.length;
+    const l2 = c2.length;
+
+    % Test if card has same number or color as the top graveyard card
+    % Exception if enabled: all-rounder 9
+    if (c1.charAt(l1 - 2) == c2.charAt(l2 - 2) ||
+        gameState.currentColor == c2.charAt(l2 - 1) ||
+        rules.cb9 && c2.charAt(0) == "9"
+    ) {
+        % Check if jack chaining is enabled
+        if (!rules.cbJchain && c1.charAt(l1 - 2) == "J" && c2.charAt(l1 - 2) == "J") {
+            return false;
+        }
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Skips the turn of the current player.
+ * This is only allowed after the previous player played an eight or
+ * the stack is empty.
+ */
+function skip() {
+    if (gameState.skip8) {
+        printInfoText("Player " + (curPlayer + 1) + " was skipped.");
+        nextPlayer();
+        showCurHidePrev();
+        % Disable skipping for the eight ontop of the graveyard,
+        % otherwise following player could all skip until another card is played
+        gameState.skip8 = false;
+    } else if (stack.length == 0) {
+        printInfoText("Player " + (curPlayer + 1) + " was skipped.");
+        nextPlayer();
+        showCurHidePrev();
+    } else {
+        printInfoText("You can not skip!");
+    }
+}
+
+/**
+ * Assigns the selected color as the color to currently be played.
+ * This is only possible with the select color rule and after playing a J.
+ * This overrides the color of the played card until a new card is played.
+ * The color selection buttons are hidden after selection.
+ *
+ * @param {Number} colorIdx The index of the selected color.
+ */
+function selectColor(colorIdx) {
+    gameState.selectColor = false;
+    gameState.currentColor = CARD_COLORS[colorIdx];
+    % Show current color
+    this.getField("curcolor").value = gameState.currentColor;
+    printInfoText("Player " + (curPlayer + 1) + " selected " + gameState.currentColor + ".");
+    nextPlayer();
+    showCurHidePrev();
+    % Hide the color buttons again
+    for (var col = 0; col < CARD_COLORS.length; col++) {
+        this.getField("color" + col).hidden = true;
+    }
+}
+
+/**
+ * Since there might be special rules selected, a function a the start of each turn
+ * and at the end are needed to check for special cases. These are processed here.
+ * Examples:
+ * Check if player wants to chain 7s or Ks.
+ * Check if player wants to or must take cards after a 7 or K.
+ * Check if player wants to chain 8s.
+ * Checks if a player still need to select a new color after playing J.
+ *
+ * @param {Number} cardIdx The selected card.
+ */
+function specialRulesBegin(cardIdx) {
+    % Get top card value (graveyard card)
+    const gC = CARDS[graveyard[graveyard.length - 1]];
+    % Get playing Card
+    const pC = CARDS[cardIdx];
+
+    % If a take card was played
+    if (gameState.take > 0) {
+        % If chaining is allowed, check if correct card was played
+        % and the player has not already started drawing cards
+        if (rules.cb7chain && !gameState.taking && pC.charAt(0) == "7" && gC.charAt(0) == "7" ||
+            rules.cbKchain && !gameState.taking && pC.charAt(0) == "K" && gC.charAt(0) == "K"
+        ) {
+            return true;
+        }
+        % If chaining is disabled, or the card is not valid the player needs to draw
+        else {
+            if (cardOwner[cardIdx] == STACK) {
+                gameState.take--;
+                gameState.taking = true;
+                printInfoText("Player " + (curPlayer + 1) + " took a card! " +
+                    gameState.take + " cards left.");
+                return true;
+            } else {
+                printInfoText("Player " + (curPlayer + 1) + " you still have " +
+                    gameState.take + " cards to draw!");
+                return false;
+            }
+        }
+    }
+
+    % If a not processed eight was played last and chaining is allowed
+    % allow the player to play an eight
+    if (gameState.skip8) {
+        if (pC.charAt(0) == "8") {
+            return true;
+        } else {
+            printInfoText("Player " + (curPlayer + 1) + ", that is not a valid move!");
+            return false;
+        }
+    }
+
+    % If the player still needs to select a color
+    if (gameState.selectColor) {
+        printInfoText("Player " + (curPlayer + 1) + ", still needs to select a color!");
+        return false;
+    }
+    return true;
+}
+
+/**
+ * Process special rules at the end of a draw turn.
+ * Allows for drawing multiple times when taking due to 7 or K.
+ */
+function specialRulesDraw() {
+    if (gameState.take > 0) {
+        prevPlayer();
+    }
+}
+
+/**
+ * Process special rules at the end of a play turn.
+ * For example:
+ * Adjusting take count after 7 or K.
+ * Mark next turn as skipped after 8 or A.
+ * Change playing direction after 10.
+ * Show color selection gui after J.
+ * Player gets another turn after A.
+ *
+ * @param {Number} cardIdx The selected card.
+ */
+function specialRulesPlay(cardIdx) {
+    % Get top card value
+    const c = CARDS[cardIdx];
+    const l = c.length;
+
+    % Adjust take count for next player
+    if (rules.cb7 && c.charAt(0) == "7") {
+        gameState.taking = false;
+        gameState.take += Math.min(2, stack.length);
+    }
+    % Skip player when played an eight
+    else if (rules.cb8 && c.charAt(0) == "8") {
+        if (rules.cb8chain) {
+            gameState.skip8 = true;
+            printInfoText("Player " + (curPlayer + 2) + ", play 8 or skip.");
+        } else {
+            nextPlayer();
+            showCurHidePrev();
+            printInfoText("Player " + (curPlayer + 1) + " is skipped.");
+        }
+    }
+    % Change direction after playing a ten
+    else if (rules.cb10 && c.charAt(0) == "1") {
+        gameState.direction *=  -1;
+        printInfoText("Player " + (curPlayer + 1) + " played a 10. Direction is reversed!");
+    }
+    % Player needs to select a color
+    else if (rules.cbJ && c.charAt(0) == "J") {
+        gameState.selectColor = true;
+        printInfoText("Player " + (curPlayer + 1) + " please select a color.");
+        prevPlayer();
+        % Reveal color selection buttons
+        for (var col = 0; col < CARD_COLORS.length; col++) {
+            this.getField("color" + col).hidden = false;
+        }
+    }
+    % Adjust take count for next player
+    else if (rules.cbK && c.charAt(0) == "K") {
+        gameState.taking = false;
+        gameState.take += Math.min(4, stack.length);
+    }
+    % Skip player when played an ass
+    else if (rules.cbAskip && c.charAt(0) == "A") {
+        nextPlayer();
+        showCurHidePrev();
+        printInfoText("Player " + (curPlayer + 1) + " is skipped.");
+    }
+    % Get another turn when played an ass
+    else if (rules.cbAcard && c.charAt(0) == "A") {
+        printInfoText("Player " + (curPlayer + 1) + " has played an ass and must play another card.");
+        prevPlayer();
+    }
+}
+
+/**
+ * Advance the player index.
+ * Is able to respond in changes in the playing direction.
+ */
+function nextPlayer() {
+    curPlayer = (curPlayer + gameState.direction + playerCount) \% playerCount;
+}
+
+/**
+ * Decrease the player index.
+ * Is able to respond in changes in the playing direction.
+ */
+function prevPlayer() {
+    curPlayer = (curPlayer - gameState.direction + playerCount) \% playerCount;
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Distribute, move and draw cards %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initializes the stack by moving one card to the stack position.
+ * Is used inside an interval which is cleared when no cards are left
+ * to put on the stack. The card that is moved is selected by the
+ * current value of the curCardIdx. All card positions are slightly offset,
+ * to simulate the appearance of a real card pile.
+ * For all cards the backside is drawn.
+ * Also starts the interval for hand card distribution when the game is over.
+ */
+function initStack() {
+    % Clear the interval and start hand card distribution unless the game is not over
+    if (curCardIdx < 0) {
+        app.clearInterval(gameInterval);
+
+        if (gameState.gameover) {
+            % Distribute as many cards to the players as possible
+            gameInterval = app.setInterval("initHandCards()", ANIMATION_SPEED * 3.0);
+            curCardIdx = Math.min(playerCount * cardsPerPlayer - 1, CARD_COUNT - 2);
+        }
+        return;
+    }
+
+    var offset = [-5 + getRandomInt(11), -5 + getRandomInt(11)];
+    % Get card, reveal it and adjust position
+    var idx = stack[curCardIdx];
+    var card = this.getField("card" + idx);
+    card.hidden = false;
+    card.rect = [
+        STACK_POS[X] - CARD_WIDTH + offset[X],
+        STACK_POS[Y] + CARD_WIDTH + offset[Y],
+        STACK_POS[X] + CARD_WIDTH + offset[X],
+        STACK_POS[Y] - CARD_WIDTH + offset[Y]
+    ];
+
+    drawCardBack(stack[curCardIdx]);
+
+    curCardIdx--;
+}
+
+/**
+ * Initializes the hand cards of all players.
+ * Is used inside an interval which is cleared when no cards are left.
+ * Each time a card is distributed an animation is started moving the
+ * card from the stack to the player position.
+ */
+function initHandCards() {
+    % Check if animation has finished
+    if (cardAnim.state > -0.1) {
+        return;
+    }
+
+    % Clear interval after distributing all cards
+    if (curCardIdx < 0) {
+        app.clearInterval(gameInterval);
+
+        % Place top card of stack on graveyard
+        openFirstCard();
+
+        return;
+    }
+
+    % Update owner and player cards
+    cardOwner[stack[0]] = curPlayer;
+    playerCards[curPlayer].push(stack[0]);
+
+    % Setup draw card animation
+    var card = this.getField("card" + stack[0]);
+    card.hidden = true;
+    cardAnim.start = card.rect;
+    cardAnim.idx = stack[0];
+    % Update current card positions
+    redrawPlayerCards(curPlayer);
+    cardAnim.state = 1.0;
+    cardAnim.goal = card.rect;
+    % Start draw card animation
+    cardAnim.interval = app.setInterval("moveCard()", ANIMATION_SPEED * 1.25);
+    % Remove card from stack
+    stack.splice(0, 1);
+    nextPlayer();
+
+    curCardIdx--;
+}
+
+/**
+ * Reveal the first graveyard card after shuffling the deck and distributing the cards.
+ * Pushes the top stack card onto the graveyard.
+ */
+function openFirstCard() {
+    cardOwner[stack[0]] = GRAVEYARD;
+    graveyard.push(stack[0]);
+    % Update position
+    var card = this.getField("card" + stack[0]);
+    card.delay = true;
+    card.rect = [
+        GRAVE_POS[X] - CARD_WIDTH,
+        GRAVE_POS[Y] + CARD_WIDTH,
+        GRAVE_POS[X] + CARD_WIDTH,
+        GRAVE_POS[Y] - CARD_WIDTH
+    ];
+    card.delay = false;
+
+    % Reveal front of the card
+    drawCardFront(stack[0]);
+    var cVal = CARDS[stack[0]];
+    % Get and show beginning color
+    gameState.currentColor = cVal.charAt(cVal.length - 1);
+    this.getField("curcolor").value = gameState.currentColor;
+    stack.splice(0, 1);
+
+    % Reveal first player
+    showCurHidePrev();
+    gameState.gameover = false;
+    printInfoText("The game has started. Player " + (curPlayer + 1) + " your Turn.");
+}
+
+%%%%%%%%%%%
+% Drawing %
+%%%%%%%%%%%
+/**
+ * Shows the cards (front) of the current player and
+ * hides the cards (back) of the last active player.
+ */
+function showCurHidePrev() {
+    % Show frontside (reveal)
+    for (var c = 0; c < playerCards[curPlayer].length; c++) {
+        drawCardFront(playerCards[curPlayer][c]);
+    }
+    % Show backside (hide)
+    var prevPlayer = (curPlayer - gameState.direction + playerCount) \% playerCount;
+    for (var c = 0; c < playerCards[prevPlayer].length; c++) {
+        drawCardBack(playerCards[prevPlayer][c]);
+    }
+}
+
+/**
+ * Updates the card positions of the selected player.
+ * This is used after drawing or playing a card, since then
+ * the area for each card changes and they need to be re-positioned.
+ * The area for each card is dependent on the cardamount and the complete areawidth.
+ *
+ * @param {Number} pIdx The player index.
+ */
+function redrawPlayerCards(pIdx) {
+    % Sort the cards for the nicer looks
+    playerCards[pIdx].sort(function(a, b) {
+        return a - b;
+    });
+
+    % Calculate the space each card has, resulting in shrinking cards
+    % when the space does not allow to use the predefined card width
+    var perCardH = (CANVAS_HEIGHT - CARD_WIDTH * 4.0) / playerCards[pIdx].length;
+    var perCardW = (CANVAS_WIDTH - CARD_WIDTH * 4.0) / playerCards[pIdx].length;
+    var cardWidth = Math.min(CARD_WIDTH, perCardH * 0.5 - 2);
+    if (pIdx \% 2 == 0) {
+        cardWidth = Math.min(CARD_WIDTH, perCardW * 0.5 - 2);
+    }
+
+    % Iterate all player cards
+    for (var c = 0; c < playerCards[pIdx].length; c++) {
+        var cardIdx = playerCards[pIdx][c];
+        var card = this.getField("card" + cardIdx);
+        card.delay = true;
+        % Depending on the player the cards need to be aligned top, bot, left or right
+        % The PLAYER_POS are left/bot aligned allowing to increase the position depending on c
+        if (pIdx \% 2 == 0) {
+            card.rect = [
+                PLAYER_POS[pIdx][X] - cardWidth + c * perCardW + perCardW * 0.5,
+                PLAYER_POS[pIdx][Y] + cardWidth,
+                PLAYER_POS[pIdx][X] + cardWidth + c * perCardW + perCardW * 0.5,
+                PLAYER_POS[pIdx][Y] - cardWidth
+            ];
+        } else {
+            card.rect = [
+                PLAYER_POS[pIdx][X] - cardWidth,
+                PLAYER_POS[pIdx][Y] + cardWidth + c * perCardH + perCardH * 0.5,
+                PLAYER_POS[pIdx][X] + cardWidth,
+                PLAYER_POS[pIdx][Y] - cardWidth + c * perCardH + perCardH * 0.5
+            ];
+        }
+        card.delay = false;
+    }
+}
+
+/**
+ * Drawmode for the front side. In reality the textelements do not have
+ * multiple sides therefore two states are needed in which the visualisation changes.
+ * The frontside changes the color to white, rotates the field if necessary and
+ * add the value of the selected card.
+ *
+ * @param {Number} cardIdx The selected card.
+ */
+function drawCardFront(cardIdx) {
+    var card = this.getField("card" + cardIdx);
+    card.delay = true;
+    card.fillColor = color.white;
+    card.value = CARDS[cardIdx];
+    card.rotation = rotations[cardOwner[cardIdx] + 2];
+    card.delay = false;
+}
+
+/**
+ * Drawmode for the back side. In reality the textelements do not have
+ * multiple sides therefore two states are needed in which the visualisation changes.
+ * The backside changes the color and removes the value.
+ *
+ * @param {Number} cardIdx The selected card.
+ */
+function drawCardBack(cardIdx) {
+    var card = this.getField("card" + cardIdx);
+    card.delay = true;
+    card.fillColor = BACK_COLOR;
+    card.value = "";
+    card.delay = false;
+}
+
+/**
+ * Move the card (cardAnim.idx) from the start position (cardAnim.start) to
+ * the goal position (cardAnim.goal), by linear interpolation.
+ * This is used with an interval to gradually change the position.
+ * When the goal is reached the interval is cleared.
+ */
+function moveCard() {
+    % Clear interval when goal is reached
+    if (cardAnim.state < -0.2) {
+        app.clearInterval(cardAnim.interval);
+        return;
+    }
+
+    var card = this.getField("card" + cardAnim.idx);
+    card.hidden = false;
+
+    % Interpolate positions
+    var rect = [0, 0, 0, 0];
+    for (var i = 0; i < 4; i++) {
+        rect[i] = Math.max(cardAnim.state, 0.0) * cardAnim.start[i] +
+            (1.0 - Math.max(cardAnim.state, 0.0)) * cardAnim.goal[i];
+    }
+
+    card.rect = rect;
+
+    cardAnim.state -= 0.05;
+}
+
+/**
+ * Utility function.
+ * Adds a button to the gui using the given parameter.
+ * @param {String} name The field name.
+ * @param {String} callback The function called on mouseup.
+ * @param {Array} rect The field position.
+ * @param {String} value The field value.
+ * @param {Boolean} hidden Should the field be hidden.
+ * @param {Number} tsize The text size.
+ */
+function addButton(name, callback, rect, value, hidden, tsize) {
+    var btn = this.getField(name);
+    btn.delay = true;
+    btn.setAction("MouseUp", callback);
+    btn.rect = rect;
+    btn.textFont = font.Cour;
+    btn.textSize = tsize;
+    btn.alignment = "center";
+    btn.value = value;
+    btn.hidden = hidden;
+    btn.delay = false;
+}
+
+/**
+ * Print information about the winner and the gamestate.
+ */
+function printInfoText(text) {
+    var field = this.getField("info");
+    field.delay = true;
+    field.value = text;
+    field.delay = false;
+}
+
+\end{insDLJS}
+
+\OpenAction{/S /JavaScript /JS (initialise();)}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dokument
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+    \begin{Form}
+
+        % Header
+        \begin{multicols}{2}
+            % Title
+            \section*{Mau mau}
+        \columnbreak
+            % Tooltip object
+            \begin{flushright}%
+                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
+                        \centering?\strut{}
+                    \end{tcolorbox}%
+                }
+            \end{flushright}%
+        \end{multicols}
+
+        \begin{tcolorbox}[height=\linewidth, valign=center]
+            % The playing cards
+            \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
+                \TextField[name=card#1, width=1cm, height=1cm,%
+                    bordercolor=black, backgroundcolor=white, readonly=true, hidden%
+                ]{}%
+            }%
+
+            % Field to show the currently active color
+            \TextField[name=curcolor, width=1cm, height=1cm,%
+                bordercolor=, backgroundcolor=, readonly=true, hidden]{}%
+            % Skip button to skip a turn
+            \TextField[name=skip, width=1cm, height=1cm,%
+                bordercolor=black, backgroundcolor=white, readonly=true, hidden]{}%
+            % For each color a button to allow for color selection
+            \xintFor* #1 in {\xintSeq{0}{\colors-1}} \do {%
+                \TextField[name=color#1, width=1cm, height=1cm,%
+                    bordercolor=black, backgroundcolor=white, readonly=true, hidden%
+                ]{}%
+            }%
+
+            \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+        \end{tcolorbox}
+
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \renewcommand*{\LayoutCheckField}[2]{#2 #1}
+        \renewcommand*{\DefaultWidthofCheckBox}{2ex}
+        \renewcommand*{\DefaultHeightofCheckBox}{2ex}
+        \renewcommand*{\LayoutCheckField}[2]{%
+            \parbox[c][\DefaultHeightofCheckBox]{\DefaultWidthofCheckBox}{#2}\enspace%
+            \parbox[c][\DefaultHeightofCheckBox]{\linewidth}{#1}%
+        }
+
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        \begin{center}
+            % Game related buttons
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart game\strut
+                    \end{tcolorbox}
+                } &
+                \begin{tcolorbox}
+                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                \end{tcolorbox}
+            \end{tabularx}
+        \end{center}
+        \vspace{-1cm}
+    \subsection*{Rules}
+        The game needs to be restarted for changes to take effect.
+
+        \ChoiceMenu[name=cmPlayer, bordercolor=gray, radiosymbol=5, radio]
+            {Player Count: }{2, 3, 4}\hfill
+        \ChoiceMenu[name=cmCards, bordercolor=gray, radiosymbol=5, radio]
+            {Player card count: }{4, 5, 6, 7, 8}
+
+        % Gui options for special rules like, take 2, skip, choose color, ...
+        \begin{center}
+            \begin{tabularx}{\textwidth}{@{} X X @{}}
+                \CheckBox[name=cb7, bordercolor=gray, checkboxsymbol=5]{7: take 2} &%
+                \CheckBox[name=cb7chain, bordercolor=gray, checkboxsymbol=5]{7: chaining}
+                \\%
+                \CheckBox[name=cb8, bordercolor=gray, checkboxsymbol=5]{8: skip player} &%
+                \CheckBox[name=cb8chain, bordercolor=gray, checkboxsymbol=5]{8: chaining}
+                \\%
+                \CheckBox[name=cb9, bordercolor=gray, checkboxsymbol=5]{9: all-rounder} &%
+                \CheckBox[name=cb10, bordercolor=gray, checkboxsymbol=5]{10: change direction}
+                \\%
+                \CheckBox[name=cbJ, bordercolor=gray, checkboxsymbol=5]{Jack: select color} &%
+                \CheckBox[name=cbJchain, bordercolor=gray, checkboxsymbol=5]{Jack: chaining}
+                \\%
+                \CheckBox[name=cbK, bordercolor=gray, checkboxsymbol=5]{King: take 4} &%
+                \CheckBox[name=cbKchain, bordercolor=gray, checkboxsymbol=5]{King: chaining}
+                \\%
+                \CheckBox[name=cbAcard, bordercolor=gray, checkboxsymbol=5]{Ace: play another card} &%
+                \CheckBox[name=cbAskip, bordercolor=gray, checkboxsymbol=5]{Ace: skip player}
+                %
+            \end{tabularx}
+        \end{center}
+
+    \end{Form}
+\end{document}
