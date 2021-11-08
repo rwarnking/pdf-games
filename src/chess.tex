@@ -281,25 +281,37 @@ function move(m, n) {
         draw(m, n);
         draw(lastSelection[M], lastSelection[N]);
 
-        % TODO check for
+        % TODO
         % checkmate
         % pawn promotion
 
         if (currentTurn == WHITE) {
+            % Update the king position
+            if (complField[m][n][PIECE] == PIECE_SYMBOLS[KING]) {
+                KING_POS[WHITE] = [m, n];
+            }
+            % Test if the enemy is checked
             check = testCheck(BLACK);
+            % Advance turn
             currentTurn = BLACK;
         } else {
+            % Update the king position
+            if (complField[m][n][PIECE] == PIECE_SYMBOLS[KING]) {
+                KING_POS[BLACK] = [m, n];
+            }
+            % Test if the enemy is checked
             check = testCheck(WHITE);
+            % Advance turn
             currentTurn = WHITE;
         }
 
         lastSelection = [];
 
-        % if (check) {
-        %     printInfoText("Check!");
-        % } else {
-        %     printInfoText("Piece moved!");
-        % }
+        if (check) {
+            printInfoText("Check!");
+        } else {
+            printInfoText("Piece moved!");
+        }
     }
     else if (lastSelection[M] == m && lastSelection[N] == n) {
         % Remove selection highlight
@@ -311,25 +323,39 @@ function move(m, n) {
     }
 }
 
-function testCheck(col) {
-    % TODO tmp
-    const dirsTmp = [
-        [ 1,  0],
-        [ 1,  1],
-        [ 0,  1],
-        [-1,  1],
-        [-1,  0],
-        [-1, -1],
-        [ 0, -1],
-        [ 1, -1]
-    ];
+% TODO move up
+const DIRS = [
+    [ % King
+        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
+    ],
+    [ % Queen
+        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
+    ],
+    [ % Bishop
+        [1, 1], [-1, 1], [-1, -1], [1, -1]
+    ],
+    [ % Knight               | |1| |2| |
+        [ 2, -1], % 1        -----------
+        [ 2,  1], % 2        |8| | | |3|
+        [ 1,  2], % 3        -----------
+        [-1,  2], % 4        | | |x| | |
+        [-2,  1], % 5        -----------
+        [-2, -1], % 6        |7| | | |4|
+        [-1, -2], % 7        -----------
+        [ 1, -2]  % 8        | |6| |5| |
+    ],
+    [ % Rook
+        [1, 0], [0, 1], [-1, 0], [0, -1]
+    ]
+];
 
+function testCheck(col) {
     % Check in all directions if there is an enemy piece
     % if there is one check whether it would be able to capture the king
-    for (var i = 0; i < dirsTmp.length; i++) {
+    for (var i = 0; i < DIRS[KING].length; i++) {
         for (var o = 1; o < Math.max(FIELD_WIDTH, FIELD_HEIGHT); o++) {
-            var m = KING_POS[col + 1][M] + o * dirsTmp[i][M];
-            var n = KING_POS[col + 1][N] + o * dirsTmp[i][N];
+            var m = KING_POS[col + 1][M] + o * DIRS[KING][i][M];
+            var n = KING_POS[col + 1][N] + o * DIRS[KING][i][N];
 
             % If the piece has the same color do nothing
             if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
@@ -339,12 +365,14 @@ function testCheck(col) {
             }
             % Otherwise the king might be attacked
             if (complField[m][n][PIECE] != EMPTY) {
-                % TODO pawn
                 % If indeed the king is attacked mark his position
                 if (complField[m][n][PIECE] == PIECE_SYMBOLS[QUEEN] ||
                     (complField[m][n][PIECE] == PIECE_SYMBOLS[BISHOP] && (i \% 2 == 1)) ||
-                    (complField[m][n][PIECE] == PIECE_SYMBOLS[ROOK] && (i \% 2 == 0))
+                    (complField[m][n][PIECE] == PIECE_SYMBOLS[ROOK] && (i \% 2 == 0)) ||
+                    (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN] &&
+                        o == 1 && m + col * -1 == KING_POS[col + 1][M])
                 ) {
+                    % TODO highlight should be possible to disable
                     highlight(KING_POS[col + 1][M], KING_POS[col + 1][N], CHECK_COLOR, true);
                     return true;
                 }
@@ -356,11 +384,6 @@ function testCheck(col) {
     return false;
 
     % TODO knight
-                %     if (complField[m][n][PIECE] == PIECE_SYMBOLS[KING]) {
-                %     highlight(m, n, CHECK_COLOR, enable);
-                %     %check = true;
-                % }
-
 }
 
 function validSelection(m, n) {
@@ -414,34 +437,7 @@ function validMove(m, n) {
     return true;
 }
 
-const DIRS = [
-    [ % King
-        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
-    ],
-    [ % Queen
-        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
-    ],
-    [ % Bishop
-        [1, 1], [-1, 1], [-1, -1], [1, -1]
-    ],
-    [ % Knight               | |1| |2| |
-        [ 2, -1], % 1        -----------
-        [ 2,  1], % 2        |8| | | |3|
-        [ 1,  2], % 3        -----------
-        [-1,  2], % 4        | | |x| | |
-        [-2,  1], % 5        -----------
-        [-2, -1], % 6        |7| | | |4|
-        [-1, -2], % 7        -----------
-        [ 1, -2]  % 8        | |6| |5| |
-    ],
-    [ % Rook
-        [1, 0], [0, 1], [-1, 0], [0, -1]
-    ]
-]
-
 function highlightValidMoves(enable) {
-    % TODO test for pawn check
-
     % Pawn
     if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[PAWN]) {
         const pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
@@ -479,7 +475,9 @@ function highlightValidMoves(enable) {
                 targetColor += complField[lastSelection[M] + pieceColor][n][COLOR];
             }
 
-            if (positions[i][CONDITION](targetColor, pieceColor)) {
+            % Check the different conditions
+            % Guarantee that the player does resolve potential checks and does not check himself
+            if (positions[i][CONDITION](targetColor, pieceColor) && noCheck(m, n, pieceColor)) {
                 highlight(m, n, POSS_MOVE_COLOR, enable);
             }
         }
@@ -510,7 +508,8 @@ function highlightValidMoves(enable) {
 }
 
 function loopPositions(dirs, len, enable) {
-    var targetColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+    % The color of the currently selected piece
+    var pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
 
     for (var i = 0; i < dirs.length; i++) {
         for (var o = 1; o < len; o++) {
@@ -521,11 +520,11 @@ function loopPositions(dirs, len, enable) {
             % If the piece has the same color do not mark the position
             % otherwise the piece can be captured and therefore the position must be marked
             if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
-                targetColor == complField[m][n][COLOR]
+                pieceColor == complField[m][n][COLOR]
             ) {
                 break;
             }
-            if (noCheck(m, n, targetColor)) {
+            if (noCheck(m, n, pieceColor)) {
                 highlight(m, n, POSS_MOVE_COLOR, enable);
             }
             if (complField[m][n][PIECE] != EMPTY) {
@@ -537,6 +536,13 @@ function loopPositions(dirs, len, enable) {
 
 function noCheck(m, n, color) {
     var result = true;
+
+    % If the selected piece is the king adjust his position
+    var isKing = complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KING];
+    if (isKing) {
+        KING_POS[color + 1] = [m, n];
+    }
+
     % Set the piece to that position
     var tmp = complField[m][n];
     complField[m][n] = complField[lastSelection[M]][lastSelection[N]];
@@ -544,6 +550,11 @@ function noCheck(m, n, color) {
 
     % If the players king does not end up checked allow move
     result = !testCheck(color);
+
+    % If the selected piece was the king reset his position
+    if (isKing) {
+        KING_POS[color + 1] = [lastSelection[M], lastSelection[N]];
+    }
 
     % Reset the piece to its origin
     complField[lastSelection[M]][lastSelection[N]] = complField[m][n];
