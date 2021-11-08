@@ -352,6 +352,7 @@ function testCheck(col) {
             }
         }
     }
+    highlight(KING_POS[col + 1][M], KING_POS[col + 1][N], CHECK_COLOR, false);
     return false;
 
     % TODO knight
@@ -426,7 +427,7 @@ const dirsQ = [
 
 function highlightValidMoves(enable) {
     % TODO one big dirs array (dirsQ == dirsK)
-    % TODO test for check
+    % TODO test for pawn check
 
     % Pawn
     if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[PAWN]) {
@@ -550,7 +551,9 @@ function loopPositions(dirs, len, enable) {
             ) {
                 break;
             }
-            highlight(m, n, POSS_MOVE_COLOR, enable);
+            if (noCheck(m, n, targetColor)) {
+                highlight(m, n, POSS_MOVE_COLOR, enable);
+            }
             if (complField[m][n][PIECE] != EMPTY) {
                 break;
             }
@@ -558,6 +561,22 @@ function loopPositions(dirs, len, enable) {
     }
 }
 
+function noCheck(m, n, color) {
+    var result = true;
+    % Set the piece to that position
+    var tmp = complField[m][n];
+    complField[m][n] = complField[lastSelection[M]][lastSelection[N]];
+    complField[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE, UNMOVED];
+
+    % If the players king does not end up checked allow move
+    result = !testCheck(color);
+
+    % Reset the piece to its origin
+    complField[lastSelection[M]][lastSelection[N]] = complField[m][n];
+    complField[m][n] = tmp;
+
+    return result;
+}
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
