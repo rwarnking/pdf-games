@@ -79,7 +79,7 @@ const COLORS = new Array(
 % Highlightcolor for selection
 const SELECTION_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 % Highlightcolor for possible moves
-const POSS_MOVE_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
+const POSS_MOVE_COLOR = [ "RGB", 0.54, 0.800, 0.176 ];
 
 %%%%%%%%%%
 % Helper %
@@ -245,31 +245,38 @@ function move(m, n) {
             % Highlight selection
             highlight(m, n, SELECTION_COLOR, true);
             % Highlight possible moves
-            %highlight(m, n, POSS_MOVE_COLOR, true);
+            highlightValidMoves(true);
             printInfoText("Pice selected.");
         }
     }
     % If a selection is already saved check if the move is valid and if so move the piece there
     else if (validMove(m, n)) {
+        % Remove selection highlight
+        highlight(m, n, 0, false);
+        % Remove highlight of possible moves
+        highlightValidMoves(false);
+
         complField[m][n] = complField[lastSelection[M]][lastSelection[N]];
         complField[m][n][STATE] = MOVED;
-        complField[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE];
-        printInfoText("Piece moved!");
+        complField[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE, UNMOVED];
+
         draw(m, n);
         draw(lastSelection[M], lastSelection[N]);
-        lastSelection = [];
+
         if (currentTurn == WHITE) {
             currentTurn = BLACK;
         } else {
             currentTurn = WHITE;
         }
-        % Clear highlights
-        highlight(m, n, 0, false);
-    } else if (lastSelection[M] == m && lastSelection[N] == n) {
+
         lastSelection = [];
-        highlight(m, n, SELECTION_COLOR, false);
-        % Highlight possible moves
-        %highlight(m, n, POSS_MOVE_COLOR, true);
+        printInfoText("Piece moved!");
+    } else if (lastSelection[M] == m && lastSelection[N] == n) {
+        % Remove selection highlight
+        highlight(m, n, 0, false);
+        % Remove highlight of possible moves
+        highlightValidMoves(false);
+        lastSelection = [];
         printInfoText("Unselected pice.");
     }
 }
@@ -290,91 +297,136 @@ function validSelection(m, n) {
 % If the border color of the cell is identical with the POSS_MOVE_COLOR, but
 % since it is unclear whether a cell lookup and comparison is faster then
 % simply checking the math, the latter solution was used.
+
+/**
+ * To check if a move is valid the bordercolor of the target field that was selected is
+ * checked, since it should be marked with POSS_MOVE_COLOR if the move would be valid.
+ * It is not totally clear whether that is faster than just using math to check the
+ * validity but since it also would be necessary to check if there is a pice between
+ * source and target this approach at least saves a few lines of duplicated code.
+ */
 function validMove(m, n) {
     % TODO path must be free, check for that
     if (currentTurn == complField[m][n][COLOR]) {
         printInfoText("Move not valid, thats your own pice!");
         return false;
     }
+
+    % Retrieve the field data
+    var cell = this.getField("cell" + m + "-" + n);
+    if (cell.borderColor == POSS_MOVE_COLOR) {
+        return true;
+    } else {
+        printInfoText(complField[lastSelection[M]][lastSelection[N]][PICE] + " can not move there.");
+        return false;
+    }
+
+
     % Rook
-    if (complField[lastSelection[M]][lastSelection[N]][PICE] == "R") {
-        if (lastSelection[M] == m || lastSelection[N] == n) {
-            return true;
-        } else {
-            printInfoText("Rook can not move there.");
-            return false;
-        }
-    }
-    % Bishop
-    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "B") {
-        if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N])) {
-            return true;
-        } else {
-            printInfoText("Bishop can not move there.");
-            return false;
-        }
-    }
-    % Knight
-    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "N") {
-        if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N])) {
-            return true;
-        } else {
-            printInfoText("Knight can not move there.");
-            return false;
-        }
-    }
-    % King
-    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "K") {
-        % Only move one in each direction
-        % TODO unless there is an enemy king in the neighboorhood of that field
-        % TODO allow for castling
-        if (Math.abs(m - lastSelection[M]) <= 1 && Math.abs(n - lastSelection[N]) <= 1) {
-            return true;
-        } else {
-            printInfoText("King can not move there.");
-            return false;
-        }
-    }
-    % Queen
-    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "Q") {
-        if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N]) ||
-            lastSelection[M] == m || lastSelection[N] == n
-        ) {
-            return true;
-        } else {
-            printInfoText("Queen can not move there.");
-            return false;
-        }
-    }
-    % Pawn
-    else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "P") {
-        var state = complField[lastSelection[M]][lastSelection[N]][STATE];
-        var piceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
-        var targetColor = complField[m][n][COLOR];
+    % if (complField[lastSelection[M]][lastSelection[N]][PICE] == "R") {
+    %     if (lastSelection[M] == m || lastSelection[N] == n) {
+    %         return true;
+    %     } else {
+    %         printInfoText("Rook can not move there.");
+    %         return false;
+    %     }
+    % }
+    % % Bishop
+    % else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "B") {
+    %     if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N])) {
+    %         return true;
+    %     } else {
+    %         printInfoText("Bishop can not move there.");
+    %         return false;
+    %     }
+    % }
+    % % Knight
+    % else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "N") {
+    %     if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N])) {
+    %         return true;
+    %     } else {
+    %         printInfoText("Knight can not move there.");
+    %         return false;
+    %     }
+    % }
+    % % King
+    % else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "K") {
+    %     % Only move one in each direction
+    %     % TODO unless there is an enemy king in the neighboorhood of that field
+    %     % TODO allow for castling
+    %     if (Math.abs(m - lastSelection[M]) <= 1 && Math.abs(n - lastSelection[N]) <= 1) {
+    %         return true;
+    %     } else {
+    %         printInfoText("King can not move there.");
+    %         return false;
+    %     }
+    % }
+    % % Queen
+    % else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "Q") {
+    %     if (Math.abs(m - lastSelection[M]) == Math.abs(n - lastSelection[N]) ||
+    %         lastSelection[M] == m || lastSelection[N] == n
+    %     ) {
+    %         return true;
+    %     } else {
+    %         printInfoText("Queen can not move there.");
+    %         return false;
+    %     }
+    % }
+    % % Pawn
+    % else if (complField[lastSelection[M]][lastSelection[N]][PICE] == "P") {
+    %     var state = complField[lastSelection[M]][lastSelection[N]][STATE];
+    %     var piceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+    %     var targetColor = complField[m][n][COLOR];
 
-        % Math.sign is not available
-        var sign = function(x) { return ((x > 0) - (x < 0)) || +x; }
+    %     % Math.sign is not available
+    %     var sign = function(x) { return ((x > 0) - (x < 0)) || +x; }
 
-        % If enemy has jump over field allow for en passant TODO
-        if (
-            % If unmoved allow for a movement of two spaces
-            state == UNMOVED && lastSelection[M] + piceColor * 2 == m ||
-            % If there is an enemy across allow that move (opposite color)
-            % Since black and white have the values 1 and -1 this calculation works
-            sign(targetColor) == sign(piceColor) * -1 &&
-            Math.abs(n - lastSelection[N]) == 1 &&
-            lastSelection[M] + piceColor == m ||
-            % Else allow only moving one forward when field empty
-            targetColor == NONE && lastSelection[M] + piceColor == m && lastSelection[N] == n
-        ) {
-            return true;
-        } else {
-            printInfoText("Pawn can not move there.");
-            return false;
-        }
-    }
+    %     % If enemy has jump over field allow for en passant TODO
+    %     if (
+    %         % If unmoved allow for a movement of two spaces
+    %         state == UNMOVED && lastSelection[M] + piceColor * 2 == m ||
+    %         % If there is an enemy across allow that move (opposite color)
+    %         % Since black and white have the values 1 and -1 this calculation works
+    %         sign(targetColor) == sign(piceColor) * -1 &&
+    %         Math.abs(n - lastSelection[N]) == 1 &&
+    %         lastSelection[M] + piceColor == m ||
+    %         % Else allow only moving one forward when field empty
+    %         targetColor == NONE && lastSelection[M] + piceColor == m && lastSelection[N] == n
+    %     ) {
+    %         return true;
+    %     } else {
+    %         printInfoText("Pawn can not move there.");
+    %         return false;
+    %     }
+    % }
 
     return true;
+}
+
+function highlightValidMoves(enable) {
+    if (complField[lastSelection[M]][lastSelection[N]][PICE] == "R") {
+
+        const dirs = [
+            [-1, 0],
+            [1, 0],
+            [0, -1],
+            [0, 1]
+        ];
+
+        for (var i = 0; i < dirs.length; i++) {
+            for (var o = 1; o < Math.max(FIELD_WIDTH, FIELD_HEIGHT); o++) {
+                var m = lastSelection[M] + o * dirs[i][M];
+                var n = lastSelection[N] + o * dirs[i][N];
+
+                if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
+                    complField[m][n][PICE] != EMPTY
+                ) {
+                    break;
+                }
+                highlight(m, n, POSS_MOVE_COLOR, enable);
+            }
+        }
+    }
 }
 
 %%%%%%%%%%%%%%%%%%%%%
