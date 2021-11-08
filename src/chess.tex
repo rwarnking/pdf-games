@@ -285,22 +285,25 @@ function move(m, n) {
         % checkmate
         % pawn promotion
 
+        highlight(KING_POS[currentTurn + 1][M], KING_POS[currentTurn + 1][N], CHECK_COLOR, false);
         if (currentTurn == WHITE) {
             % Update the king position
             if (complField[m][n][PIECE] == PIECE_SYMBOLS[KING]) {
-                KING_POS[WHITE] = [m, n];
+                KING_POS[WHITE + 1] = [m, n];
             }
             % Test if the enemy is checked
             check = testCheck(BLACK);
+            highlight(KING_POS[BLACK + 1][M], KING_POS[BLACK + 1][N], CHECK_COLOR, check);
             % Advance turn
             currentTurn = BLACK;
         } else {
             % Update the king position
             if (complField[m][n][PIECE] == PIECE_SYMBOLS[KING]) {
-                KING_POS[BLACK] = [m, n];
+                KING_POS[BLACK + 1] = [m, n];
             }
             % Test if the enemy is checked
             check = testCheck(WHITE);
+            highlight(KING_POS[WHITE + 1][M], KING_POS[WHITE + 1][N], CHECK_COLOR, check);
             % Advance turn
             currentTurn = WHITE;
         }
@@ -320,6 +323,13 @@ function move(m, n) {
         highlightValidMoves(false);
         lastSelection = [];
         printInfoText("Unselected piece.");
+
+        % Rehighlight the king is he is checked
+        if (currentTurn == BLACK && check) {
+            highlight(KING_POS[BLACK + 1][M], KING_POS[BLACK + 1][N], CHECK_COLOR, check);
+        } else if (check) {
+            highlight(KING_POS[WHITE + 1][M], KING_POS[WHITE + 1][N], CHECK_COLOR, check);
+        }
     }
 }
 
@@ -372,18 +382,31 @@ function testCheck(col) {
                     (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN] &&
                         o == 1 && m + col * -1 == KING_POS[col + 1][M])
                 ) {
-                    % TODO highlight should be possible to disable
-                    highlight(KING_POS[col + 1][M], KING_POS[col + 1][N], CHECK_COLOR, true);
                     return true;
                 }
                 break;
             }
         }
     }
-    highlight(KING_POS[col + 1][M], KING_POS[col + 1][N], CHECK_COLOR, false);
-    return false;
 
-    % TODO knight
+    for (var i = 0; i < DIRS[KNIGHT].length; i++) {
+        var m = KING_POS[col + 1][M] + DIRS[KNIGHT][i][M];
+        var n = KING_POS[col + 1][N] + DIRS[KNIGHT][i][N];
+
+        % If the piece has the same color do nothing
+        if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
+            col == complField[m][n][COLOR]
+        ) {
+            continue;
+        }
+
+        % Otherwise the king is attacked
+        if (complField[m][n][PIECE] == PIECE_SYMBOLS[KNIGHT]) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function validSelection(m, n) {
