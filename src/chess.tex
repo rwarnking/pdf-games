@@ -47,6 +47,12 @@ const M = 0;
 const N = 1;
 %
 const PICE = 0;
+const KING = 0;
+const QUEEN = 1;
+const BISHOP = 2;
+const KNIGHT = 3;
+const ROOK = 4;
+const PAWN = 5;
 const EMPTY = "";
 %
 const COLOR = 1;
@@ -69,6 +75,10 @@ var check = false;
 var lastSelection = [];
 %
 var currentTurn = WHITE;
+
+const PICE_SYMBOLS = new Array(
+    "K", "Q", "B", "N", "R", "P"
+);
 
 % Color data
 const COLORS = new Array(
@@ -175,12 +185,12 @@ function restart() {
 function addPices() {
     % Init pawns
     for (var n = 0; n < FIELD_WIDTH; n++) {
-        complField[1][n] = ["P", BLACK, UNMOVED];
-        complField[FIELD_HEIGHT - 2][n] = ["P", WHITE, UNMOVED];
+        complField[1][n] = [PICE_SYMBOLS[PAWN], BLACK, UNMOVED];
+        complField[FIELD_HEIGHT - 2][n] = [PICE_SYMBOLS[PAWN], WHITE, UNMOVED];
     }
 
     % Init ROOKS, KNIGHT, BISHOP
-    const PICES = ["R", "N", "B"];
+    const PICES = [PICE_SYMBOLS[ROOK], PICE_SYMBOLS[KNIGHT], PICE_SYMBOLS[BISHOP]];
     for (var n = 0; n < PICES.length; n++) {
         complField[0][n] = [PICES[n], BLACK, UNMOVED];
         complField[0][FIELD_WIDTH - n - 1] = [PICES[n], BLACK, UNMOVED];
@@ -188,10 +198,10 @@ function addPices() {
         complField[FIELD_HEIGHT - 1][FIELD_WIDTH - n - 1] = [PICES[n], WHITE, UNMOVED];
     }
 
-    complField[0][3] = ["Q", BLACK, UNMOVED];
-    complField[0][4] = ["K", BLACK, UNMOVED];
-    complField[FIELD_HEIGHT - 1][3] = ["Q", WHITE, UNMOVED];
-    complField[FIELD_HEIGHT - 1][4] = ["K", WHITE, UNMOVED];
+    complField[0][3] = [PICE_SYMBOLS[QUEEN], BLACK, UNMOVED];
+    complField[0][4] = [PICE_SYMBOLS[KING], BLACK, UNMOVED];
+    complField[FIELD_HEIGHT - 1][3] = [PICE_SYMBOLS[QUEEN], WHITE, UNMOVED];
+    complField[FIELD_HEIGHT - 1][4] = [PICE_SYMBOLS[KING], WHITE, UNMOVED];
 }
 
 /**
@@ -404,7 +414,7 @@ function validMove(m, n) {
 }
 
 function highlightValidMoves(enable) {
-    if (complField[lastSelection[M]][lastSelection[N]][PICE] == "R") {
+    if (complField[lastSelection[M]][lastSelection[N]][PICE] == PICE_SYMBOLS[ROOK]) {
 
         const dirs = [
             [-1, 0],
