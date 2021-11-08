@@ -60,9 +60,8 @@ const WHITE = -1;
 const NONE = 0;
 const BLACK = 1;
 %
-const STATE = 2;
+const MOVES = 2;
 const UNMOVED = 0;
-const MOVED = 1;
 
 % Globals
 % The game field array
@@ -80,6 +79,12 @@ const PIECE_SYMBOLS = new Array(
     "K", "Q", "B", "N", "R", "P"
 );
 
+const KING_POS = [
+    [7, 4],
+    [-1, -1], % padding
+    [0, 4]
+];
+
 % Color data
 const COLORS = new Array(
     color.white,
@@ -90,6 +95,8 @@ const COLORS = new Array(
 const SELECTION_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 % Highlightcolor for possible moves
 const POSS_MOVE_COLOR = [ "RGB", 0.54, 0.800, 0.176 ];
+% Highlightcolor for check
+const CHECK_COLOR = [ "RGB", 0.9, 0.100, 0.176 ];
 
 %%%%%%%%%%
 % Helper %
@@ -267,21 +274,34 @@ function move(m, n) {
         highlightValidMoves(false);
 
         complField[m][n] = complField[lastSelection[M]][lastSelection[N]];
-        complField[m][n][STATE] = MOVED;
+        % The piece was moved, mark it as such
+        complField[m][n][MOVES] = complField[lastSelection[M]][lastSelection[N]][MOVES] + 1;
         complField[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE, UNMOVED];
 
         draw(m, n);
         draw(lastSelection[M], lastSelection[N]);
 
+        % TODO check for
+        % checkmate
+        % pawn promotion
+
         if (currentTurn == WHITE) {
+            check = testCheck(BLACK);
             currentTurn = BLACK;
         } else {
+            check = testCheck(WHITE);
             currentTurn = WHITE;
         }
 
         lastSelection = [];
-        printInfoText("Piece moved!");
-    } else if (lastSelection[M] == m && lastSelection[N] == n) {
+
+        % if (check) {
+        %     printInfoText("Check!");
+        % } else {
+        %     printInfoText("Piece moved!");
+        % }
+    }
+    else if (lastSelection[M] == m && lastSelection[N] == n) {
         % Remove selection highlight
         highlight(m, n, 0, false);
         % Remove highlight of possible moves
@@ -289,6 +309,57 @@ function move(m, n) {
         lastSelection = [];
         printInfoText("Unselected piece.");
     }
+}
+
+function testCheck(col) {
+    % TODO tmp
+    const dirsTmp = [
+        [ 1,  0],
+        [ 1,  1],
+        [ 0,  1],
+        [-1,  1],
+        [-1,  0],
+        [-1, -1],
+        [ 0, -1],
+        [ 1, -1]
+    ];
+
+    % Check in all directions if there is an enemy piece
+    % if there is one check whether it would be able to capture the king
+    for (var i = 0; i < dirsTmp.length; i++) {
+        for (var o = 1; o < Math.max(FIELD_WIDTH, FIELD_HEIGHT); o++) {
+            var m = KING_POS[col + 1][M] + o * dirsTmp[i][M];
+            var n = KING_POS[col + 1][N] + o * dirsTmp[i][N];
+
+            % If the piece has the same color do nothing
+            if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
+                col == complField[m][n][COLOR]
+            ) {
+                break;
+            }
+            % Otherwise the king might be attacked
+            if (complField[m][n][PIECE] != EMPTY) {
+                % TODO pawn
+                % If indeed the king is attacked mark his position
+                if (complField[m][n][PIECE] == PIECE_SYMBOLS[QUEEN] ||
+                    (complField[m][n][PIECE] == PIECE_SYMBOLS[BISHOP] && (i \% 2 == 1)) ||
+                    (complField[m][n][PIECE] == PIECE_SYMBOLS[ROOK] && (i \% 2 == 0))
+                ) {
+                    highlight(KING_POS[col + 1][M], KING_POS[col + 1][N], CHECK_COLOR, true);
+                    return true;
+                }
+                break;
+            }
+        }
+    }
+    return false;
+
+    % TODO knight
+                %     if (complField[m][n][PIECE] == PIECE_SYMBOLS[KING]) {
+                %     highlight(m, n, CHECK_COLOR, enable);
+                %     %check = true;
+                % }
+
 }
 
 function validSelection(m, n) {
@@ -316,7 +387,6 @@ function validSelection(m, n) {
  * source and target this approach at least saves a few lines of duplicated code.
  */
 function validMove(m, n) {
-    % TODO path must be free, check for that
     if (currentTurn == complField[m][n][COLOR]) {
         printInfoText("Move not valid, thats your own piece!");
         return false;
@@ -336,26 +406,39 @@ function validMove(m, n) {
     if (equal(cell.borderColor, POSS_MOVE_COLOR)) {
         return true;
     } else {
-        printInfoText(complField[lastSelection[M]][lastSelection[N]][PIECE] + " can not move there." + cell.borderColor + " " + POSS_MOVE_COLOR + " " + color.equal(cell.borderColor, POSS_MOVE_COLOR));
+        printInfoText(complField[lastSelection[M]][lastSelection[N]][PIECE] + " can not move there.");
         return false;
     }
 
     return true;
 }
 
+const dirsQ = [
+    [1, 0],
+    [1, 1],
+    [0, 1],
+    [-1, 1],
+    [-1, 0],
+    [-1, -1],
+    [0, -1],
+    [1, -1]
+];
+
 function highlightValidMoves(enable) {
     % TODO one big dirs array (dirsQ == dirsK)
-    % TODO test for check and checkmate
+    % TODO test for check
 
     % Pawn
     if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[PAWN]) {
         const pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+        const startPos = complField[lastSelection[M]][lastSelection[N]][MOVES] == UNMOVED;
 
         % Math.sign is not available
         var sign = function(x) { return ((x > 0) - (x < 0)) || +x; };
         % Since black and white have the values 1 and -1 this calculation works
         var diffCol = function(tC, pC) { return sign(tC) == sign(pC) * -1 };
         var cellFree = function(tC, pC) { return tC == NONE };
+        var doubStep = function(tC, pC) { return startPos && cellFree(tC, pC) }
 
         % TODO en passant
         const CONDITION = 2;
@@ -365,8 +448,7 @@ function highlightValidMoves(enable) {
             [pieceColor, 1, diffCol],
             % Allow moving one forward when field empty
             [pieceColor, 0, cellFree],
-            % TODO If unmoved allow for a movement of two spaces
-            [pieceColor * 2, 0, cellFree]
+            [pieceColor * 2, 0, doubStep]
         ];
 
         for (var i = 0; i < positions.length; i++) {
@@ -390,17 +472,6 @@ function highlightValidMoves(enable) {
     }
     % Queen
     else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[QUEEN]) {
-        const dirsQ = [
-            [1, 0],
-            [1, 1],
-            [0, 1],
-            [-1, 1],
-            [-1, 0],
-            [-1, -1],
-            [0, -1],
-            [1, -1]
-        ];
-
         loopPositions(dirsQ, Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
     }
     % Knight
@@ -468,6 +539,7 @@ function loopPositions(dirs, len, enable) {
 
     for (var i = 0; i < dirs.length; i++) {
         for (var o = 1; o < len; o++) {
+
             var m = lastSelection[M] + o * dirs[i][M];
             var n = lastSelection[N] + o * dirs[i][N];
 
@@ -484,8 +556,9 @@ function loopPositions(dirs, len, enable) {
             }
         }
     }
-
 }
+
+
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
