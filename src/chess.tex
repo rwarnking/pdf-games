@@ -109,6 +109,13 @@ function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
+/**
+ * Math.sign is not available
+ */
+function sign(x) {
+    return ((x > 0) - (x < 0)) || +x;
+};
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -281,11 +288,25 @@ function move(m, n) {
         draw(m, n);
         draw(lastSelection[M], lastSelection[N]);
 
+        % Special case: castling
+        % If the moved piece is the king and he castled also move the rook
+        if (complField[m][n][PIECE] == PIECE_SYMBOLS[KING] && Math.abs(lastSelection[N] - n) == 2) {
+            var direction = sign(lastSelection[N] - n);
+            var rookN = direction == 1 ? 0 : 7;
+            var newN = lastSelection[N] - direction;
+
+            complField[m][newN] = complField[m][rookN];
+            % The rook was moved the first time
+            complField[m][newN][MOVES] = 1;
+            complField[m][rookN] = [EMPTY, NONE, UNMOVED];
+            draw(m, newN);
+            draw(m, rookN);
+        }
+
         % TODO
         % pat (draw)
         % checkmate
         % pawn promotion
-        % if the moved piece is the king and he castled also move the rook
 
         highlight(KING_POS[currentTurn + 1][M], KING_POS[currentTurn + 1][N], CHECK_COLOR, false);
         if (currentTurn == WHITE) {
@@ -468,8 +489,6 @@ function highlightValidMoves(enable) {
         var pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
         const startPos = complField[lastSelection[M]][lastSelection[N]][MOVES] == UNMOVED;
 
-        % Math.sign is not available
-        var sign = function(x) { return ((x > 0) - (x < 0)) || +x; };
         % Since black and white have the values 1 and -1 this calculation works
         var diffCol = function(tC, pC) { return sign(tC) == sign(pC) * -1 };
         var cellFree = function(tC, pC) { return tC == NONE };
@@ -583,15 +602,18 @@ function highlightValidMoves(enable) {
                     complField[pos[M]][pos[N]][MOVES] == 0
                 ) {
                     var res = true;
+                    var nHPos = Math.round((pos[N] + lastSelection[N]) * 0.5);
                     % Check if fields in between are empty
                     for (var n = pos[N] + pos[2]; n != lastSelection[N]; n += pos[2]) {
                         res &= complField[pos[M]][n][PIECE] == EMPTY;
                     }
                     % Check if field are in check
-                    % TODO noCheck(m, n, pColor)
+                    for (var n = nHPos; n != lastSelection[N]; n += pos[2]) {
+                        res &= noCheck(pos[M], n, pColor);
+                    }
+
                     if (res) {
-                        highlight(pos[M],  Math.round((pos[N] + lastSelection[N]) * 0.5),
-                            POSS_MOVE_COLOR, enable);
+                        highlight(pos[M],  nHPos, POSS_MOVE_COLOR, enable);
                     }
                 }
             }
