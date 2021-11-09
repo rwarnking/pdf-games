@@ -282,8 +282,10 @@ function move(m, n) {
         draw(lastSelection[M], lastSelection[N]);
 
         % TODO
+        % pat (draw)
         % checkmate
         % pawn promotion
+        % if the moved piece is the king and he castled also move the rook
 
         highlight(KING_POS[currentTurn + 1][M], KING_POS[currentTurn + 1][N], CHECK_COLOR, false);
         if (currentTurn == WHITE) {
@@ -463,7 +465,7 @@ function validMove(m, n) {
 function highlightValidMoves(enable) {
     % Pawn
     if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[PAWN]) {
-        const pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+        var pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
         const startPos = complField[lastSelection[M]][lastSelection[N]][MOVES] == UNMOVED;
 
         % Math.sign is not available
@@ -523,10 +525,77 @@ function highlightValidMoves(enable) {
     }
     % King
     else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KING]) {
+        % The color of the currently selected piece
+        var pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+
+        for (var i = 0; i < DIRS[KING].length; i++) {
+            for (var o = 1; o < 2; o++) {
+
+                var m = lastSelection[M] + o * DIRS[KING][i][M];
+                var n = lastSelection[N] + o * DIRS[KING][i][N];
+
+                % If the piece has the same color do not mark the position
+                % otherwise the piece can be captured and therefore the position must be marked
+                if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
+                    pieceColor == complField[m][n][COLOR]
+                ) {
+                    break;
+                }
+
+                % Unless there is an enemy king in the neighboorhood of that field
+                var result = true;
+                for (var m2 = m - 1; m2 < m + 2; m2++) {
+                    for (var n2 = n - 1; n2 < n + 2; n2++) {
+                        if (m2 < 0 || n2 < 0 || m2 >= FIELD_HEIGHT || n2 >= FIELD_WIDTH) {
+                            continue;
+                        }
+                        if (complField[m2][n2][PIECE] == PIECE_SYMBOLS[KING] &&
+                            complField[m2][n2][COLOR] != pieceColor
+                        ) {
+                             result = false;
+                        }
+                    }
+                }
+
+                if (result && noCheck(m, n, pieceColor)) {
+                    highlight(m, n, POSS_MOVE_COLOR, enable);
+                }
+                if (complField[m][n][PIECE] != EMPTY) {
+                    break;
+                }
+            }
+        }
+
         % Only move one in each direction
-        % TODO unless there is an enemy king in the neighboorhood of that field
-        % TODO allow for castling
-        loopPositions(DIRS[KING], 2, enable);
+        % loopPositions(DIRS[KING], 2, enable);
+
+        % Castling
+        var pColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+        var rookPos = [
+            [[7, 0, +1], [7, 7, -1]], % white
+            [[], []], % padding
+            [[0, 0, +1], [0, 7, -1]] % black
+        ];
+        if (complField[lastSelection[M]][lastSelection[N]][MOVES] == 0) {
+            for (var i = 0; i < rookPos[pColor + 1].length; i++) {
+                var pos = rookPos[pColor + 1][i];
+                if (complField[pos[M]][pos[N]][PIECE] == PIECE_SYMBOLS[ROOK] &&
+                    complField[pos[M]][pos[N]][MOVES] == 0
+                ) {
+                    var res = true;
+                    % Check if fields in between are empty
+                    for (var n = pos[N] + pos[2]; n != lastSelection[N]; n += pos[2]) {
+                        res &= complField[pos[M]][n][PIECE] == EMPTY;
+                    }
+                    % Check if field are in check
+                    % TODO noCheck(m, n, pColor)
+                    if (res) {
+                        highlight(pos[M],  Math.round((pos[N] + lastSelection[N]) * 0.5),
+                            POSS_MOVE_COLOR, enable);
+                    }
+                }
+            }
+        }
     }
 }
 
