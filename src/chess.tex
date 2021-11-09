@@ -78,10 +78,38 @@ var currentTurn = WHITE;
 var promotionPos = [];
 %
 var enpassant = [-1, -1];
+% Indicates how many cells were highlighted in the last turn, used for checkmate
+var highlightCount = 0;
 
 const PIECE_SYMBOLS = new Array(
     "K", "Q", "B", "N", "R", "P"
 );
+
+% TODO move up
+const DIRS = [
+    [ % King
+        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
+    ],
+    [ % Queen
+        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
+    ],
+    [ % Bishop
+        [1, 1], [-1, 1], [-1, -1], [1, -1]
+    ],
+    [ % Knight               | |1| |2| |
+        [ 2, -1], % 1        -----------
+        [ 2,  1], % 2        |8| | | |3|
+        [ 1,  2], % 3        -----------
+        [-1,  2], % 4        | | |x| | |
+        [-2,  1], % 5        -----------
+        [-2, -1], % 6        |7| | | |4|
+        [-1, -2], % 7        -----------
+        [ 1, -2]  % 8        | |6| |5| |
+    ],
+    [ % Rook
+        [1, 0], [0, 1], [-1, 0], [0, -1]
+    ]
+];
 
 const KING_POS = [
     [7, 4],
@@ -268,16 +296,21 @@ function tooltip(on) {
     }
 }
 
-%%%%%%%%%%%%%
-% Gamelogic %
-%%%%%%%%%%%%%
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Gamelogic                     %
+% Move validation and execution %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
  * Threefold repetition is not tracked since the player needs to claim the draw but may continue
  * playing.
  */
 function move(m, n) {
     this.getField("tooltiptxt").setFocus();
+
+    if (checkmate) {
+        printInfoText("It is checkmate, the game is over!");
+        return;
+    }
 
     if (promotionPos.length > 0) {
         printInfoText("You need to promote your pawn.");
@@ -335,7 +368,7 @@ function move(m, n) {
             enpassant = [-1, -1];
             % Special case: pawn promotion
             if (m == 7 || m == 0) {
-                showPromotionCells(true);
+                showPromotionButtons(true);
                 promotionPos = [m, n];
             }
             % Special case: en passant - preparation
@@ -346,10 +379,6 @@ function move(m, n) {
             % Reset en passant, since it only is allowed for one turn
             enpassant = [-1, -1];
         }
-
-        % TODO
-        % stalemate (draw)
-        % checkmate
 
         highlight(KING_POS[currentTurn + 1][M], KING_POS[currentTurn + 1][N], CHECK_COLOR, false);
         if (currentTurn == WHITE) {
@@ -376,8 +405,14 @@ function move(m, n) {
 
         lastSelection = [];
 
+        % TODO
+        % stalemate (draw)
+
         if (check) {
             printInfoText("Check!");
+            if (testCheckmate()) {
+                printInfoText("Checkmate!");
+            }
         } else {
             printInfoText("Piece moved!");
         }
@@ -397,82 +432,6 @@ function move(m, n) {
             highlight(KING_POS[WHITE + 1][M], KING_POS[WHITE + 1][N], CHECK_COLOR, check);
         }
     }
-}
-
-% TODO move up
-const DIRS = [
-    [ % King
-        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
-    ],
-    [ % Queen
-        [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
-    ],
-    [ % Bishop
-        [1, 1], [-1, 1], [-1, -1], [1, -1]
-    ],
-    [ % Knight               | |1| |2| |
-        [ 2, -1], % 1        -----------
-        [ 2,  1], % 2        |8| | | |3|
-        [ 1,  2], % 3        -----------
-        [-1,  2], % 4        | | |x| | |
-        [-2,  1], % 5        -----------
-        [-2, -1], % 6        |7| | | |4|
-        [-1, -2], % 7        -----------
-        [ 1, -2]  % 8        | |6| |5| |
-    ],
-    [ % Rook
-        [1, 0], [0, 1], [-1, 0], [0, -1]
-    ]
-];
-
-function testCheck(col) {
-    % Check in all directions if there is an enemy piece
-    % if there is one check whether it would be able to capture the king
-    for (var i = 0; i < DIRS[KING].length; i++) {
-        for (var o = 1; o < Math.max(FIELD_WIDTH, FIELD_HEIGHT); o++) {
-            var m = KING_POS[col + 1][M] + o * DIRS[KING][i][M];
-            var n = KING_POS[col + 1][N] + o * DIRS[KING][i][N];
-
-            % If the piece has the same color do nothing
-            if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
-                col == complField[m][n][COLOR]
-            ) {
-                break;
-            }
-            % Otherwise the king might be attacked
-            if (complField[m][n][PIECE] != EMPTY) {
-                % If indeed the king is attacked mark his position
-                if (complField[m][n][PIECE] == PIECE_SYMBOLS[QUEEN] ||
-                    (complField[m][n][PIECE] == PIECE_SYMBOLS[BISHOP] && (i \% 2 == 1)) ||
-                    (complField[m][n][PIECE] == PIECE_SYMBOLS[ROOK] && (i \% 2 == 0)) ||
-                    (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN] &&
-                        o == 1 && m + col * -1 == KING_POS[col + 1][M])
-                ) {
-                    return true;
-                }
-                break;
-            }
-        }
-    }
-
-    for (var i = 0; i < DIRS[KNIGHT].length; i++) {
-        var m = KING_POS[col + 1][M] + DIRS[KNIGHT][i][M];
-        var n = KING_POS[col + 1][N] + DIRS[KNIGHT][i][N];
-
-        % If the piece has the same color do nothing
-        if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
-            col == complField[m][n][COLOR]
-        ) {
-            continue;
-        }
-
-        % Otherwise the king is attacked
-        if (complField[m][n][PIECE] == PIECE_SYMBOLS[KNIGHT]) {
-            return true;
-        }
-    }
-
-    return false;
 }
 
 function validSelection(m, n) {
@@ -698,6 +657,79 @@ function loopPositions(dirs, len, enable) {
     }
 }
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Check, noCheck, checkmate and pawn promotion test %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+function testCheck(col) {
+    % Check in all directions if there is an enemy piece
+    % if there is one check whether it would be able to capture the king
+    for (var i = 0; i < DIRS[KING].length; i++) {
+        for (var o = 1; o < Math.max(FIELD_WIDTH, FIELD_HEIGHT); o++) {
+            var m = KING_POS[col + 1][M] + o * DIRS[KING][i][M];
+            var n = KING_POS[col + 1][N] + o * DIRS[KING][i][N];
+
+            % If the piece has the same color do nothing
+            if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
+                col == complField[m][n][COLOR]
+            ) {
+                break;
+            }
+            % Otherwise the king might be attacked
+            if (complField[m][n][PIECE] != EMPTY) {
+                % If indeed the king is attacked mark his position
+                if (complField[m][n][PIECE] == PIECE_SYMBOLS[QUEEN] ||
+                    (complField[m][n][PIECE] == PIECE_SYMBOLS[BISHOP] && (i \% 2 == 1)) ||
+                    (complField[m][n][PIECE] == PIECE_SYMBOLS[ROOK] && (i \% 2 == 0)) ||
+                    (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN] &&
+                        o == 1 && m + col * -1 == KING_POS[col + 1][M])
+                ) {
+                    return true;
+                }
+                break;
+            }
+        }
+    }
+
+    for (var i = 0; i < DIRS[KNIGHT].length; i++) {
+        var m = KING_POS[col + 1][M] + DIRS[KNIGHT][i][M];
+        var n = KING_POS[col + 1][N] + DIRS[KNIGHT][i][N];
+
+        % If the piece has the same color do nothing
+        if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
+            col == complField[m][n][COLOR]
+        ) {
+            continue;
+        }
+
+        % Otherwise the king is attacked
+        if (complField[m][n][PIECE] == PIECE_SYMBOLS[KNIGHT]) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function testCheckmate() {
+    highlightCount = 0;
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            if (currentTurn == complField[m][n][COLOR]) {
+                lastSelection = [m, n];
+                % Highlight possible moves
+                highlightValidMoves(false);
+                if (highlightCount > 0) {
+                    lastSelection = [];
+                    return false;
+                }
+            }
+        }
+    }
+    lastSelection = [];
+    checkmate = true;
+    return true;
+}
+
 function noCheck(m, n, color) {
     var result = true;
 
@@ -732,7 +764,7 @@ function promotePawn(sel) {
         complField[promotionPos[M]][promotionPos[N]][PIECE] = PIECE_SYMBOLS[QUEEN + sel];
         draw(promotionPos[M], promotionPos[N]);
         promotionPos = [];
-        showPromotionCells(false);
+        showPromotionButtons(false);
         printInfoText("Pawn promoted to " + PIECE_SYMBOLS[QUEEN + sel] + ".");
         return;
     }
@@ -787,6 +819,8 @@ function highlight(m, n, color, enable) {
     var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
 
+    highlightCount++;
+
     if (enable) {
         cell.borderColor = color;
     } else {
@@ -795,7 +829,7 @@ function highlight(m, n, color, enable) {
     cell.delay = false;
 }
 
-function showPromotionCells(show) {
+function showPromotionButtons(show) {
     for (var i = 0; i < 4; i++) {
         var cell = this.getField("promote" + i);
         cell.hidden = !show;
@@ -869,7 +903,7 @@ function printInfoText(text) {
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{4}{X} @{}}%
-                \xintFor* #1 in {\xintSeq{0}{4-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{3}} \do {%
                     \begin{tcolorbox}
                         \TextField[name=promote#1, width=\linewidth, bordercolor=gray, readonly=true]{}
                     \end{tcolorbox}
