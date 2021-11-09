@@ -74,6 +74,8 @@ var check = false;
 var lastSelection = [];
 %
 var currentTurn = WHITE;
+%
+var promotionPos = [];
 
 const PIECE_SYMBOLS = new Array(
     "K", "Q", "B", "N", "R", "P"
@@ -159,6 +161,15 @@ function initialiseButtons() {
             c.alignment = "center";
             c.borderWidth = 5;
         }
+    }
+
+    % Promotion buttons
+    for (var i = 0; i < 4; i++) {
+        var cell = this.getField("promote" + i);
+        cell.setAction("MouseDown", "promotePawn(" + i.toString() + ")");
+        cell.value = PIECE_SYMBOLS[QUEEN + i];
+        cell.hidden = true;
+        cell.alignment = "center";
     }
 
     % Restat button setup
@@ -262,6 +273,11 @@ function tooltip(on) {
 function move(m, n) {
     this.getField("tooltiptxt").setFocus();
 
+    if (promotionPos.length > 0) {
+        printInfoText("You need to promote your pawn.");
+        return;
+    }
+
     % If no selection was made, save this press and show potential destinations
     if (lastSelection.length == 0) {
         if (validSelection(m, n)) {
@@ -303,10 +319,15 @@ function move(m, n) {
             draw(m, rookN);
         }
 
+        % Special case: pawn promotion
+        if (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN] && (m == 7 || m == 0)) {
+            showPromotionCells(true);
+            promotionPos = [m, n];
+        }
+
         % TODO
         % pat (draw)
         % checkmate
-        % pawn promotion
 
         highlight(KING_POS[currentTurn + 1][M], KING_POS[currentTurn + 1][N], CHECK_COLOR, false);
         if (currentTurn == WHITE) {
@@ -595,7 +616,7 @@ function highlightValidMoves(enable) {
             [[], []], % padding
             [[0, 0, +1], [0, 7, -1]] % black
         ];
-        if (complField[lastSelection[M]][lastSelection[N]][MOVES] == 0) {
+        if (complField[lastSelection[M]][lastSelection[N]][MOVES] == 0 && !check) {
             for (var i = 0; i < rookPos[pColor + 1].length; i++) {
                 var pos = rookPos[pColor + 1][i];
                 if (complField[pos[M]][pos[N]][PIECE] == PIECE_SYMBOLS[ROOK] &&
@@ -677,6 +698,17 @@ function noCheck(m, n, color) {
     return result;
 }
 
+function promotePawn(sel) {
+    if (promotionPos.length > 0) {
+        complField[promotionPos[M]][promotionPos[N]][PIECE] = PIECE_SYMBOLS[QUEEN + sel];
+        draw(promotionPos[M], promotionPos[N]);
+        promotionPos = [];
+        showPromotionCells(false);
+        printInfoText("Pawn promoted to " + PIECE_SYMBOLS[QUEEN + sel] + ".");
+        return;
+    }
+}
+
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
@@ -732,6 +764,13 @@ function highlight(m, n, color, enable) {
         cell.borderColor = cell.fillColor;
     }
     cell.delay = false;
+}
+
+function showPromotionCells(show) {
+    for (var i = 0; i < 4; i++) {
+        var cell = this.getField("promote" + i);
+        cell.hidden = !show;
+    }
 }
 
 /**
@@ -800,6 +839,17 @@ function printInfoText(text) {
 
         % Game related buttons
         \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} *{4}{X} @{}}%
+                \xintFor* #1 in {\xintSeq{0}{4-1}} \do {%
+                    \begin{tcolorbox}
+                        \TextField[name=promote#1, width=\linewidth, readonly=true]{}
+                    \end{tcolorbox}
+                    % Have the cell divider for all elements
+                    % that are not the last one
+                    \xintifForLast{}{&}%
+                }
+            \end{tabularx}
+
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
