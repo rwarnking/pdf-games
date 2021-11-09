@@ -76,6 +76,8 @@ var lastSelection = [];
 var currentTurn = WHITE;
 %
 var promotionPos = [];
+%
+var enpassant = [-1, -1];
 
 const PIECE_SYMBOLS = new Array(
     "K", "Q", "B", "N", "R", "P"
@@ -270,6 +272,10 @@ function tooltip(on) {
 % Gamelogic %
 %%%%%%%%%%%%%
 
+/**
+ * Threefold repetition is not tracked since the player needs to claim the draw but may continue
+ * playing.
+ */
 function move(m, n) {
     this.getField("tooltiptxt").setFocus();
 
@@ -319,14 +325,30 @@ function move(m, n) {
             draw(m, rookN);
         }
 
-        % Special case: pawn promotion
-        if (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN] && (m == 7 || m == 0)) {
-            showPromotionCells(true);
-            promotionPos = [m, n];
+        if (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN]) {
+            % Special case: en passant
+            % Delete the pawn that was captured by en passant
+            if (m == (enpassant[M] + currentTurn) && n == enpassant[N]) {
+                complField[enpassant[M]][enpassant[N]] = [EMPTY, NONE, UNMOVED];
+                draw(enpassant[M], enpassant[N]);
+            }
+            enpassant = [-1, -1];
+            % Special case: pawn promotion
+            if (m == 7 || m == 0) {
+                showPromotionCells(true);
+                promotionPos = [m, n];
+            }
+            % Special case: en passant - preparation
+            if (Math.abs(lastSelection[M] - m) == 2) {
+                enpassant = [m, n];
+            }
+        } else {
+            % Reset en passant, since it only is allowed for one turn
+            enpassant = [-1, -1];
         }
 
         % TODO
-        % pat (draw)
+        % stalemate (draw)
         % checkmate
 
         highlight(KING_POS[currentTurn + 1][M], KING_POS[currentTurn + 1][N], CHECK_COLOR, false);
@@ -515,7 +537,6 @@ function highlightValidMoves(enable) {
         var cellFree = function(tC, pC) { return tC == NONE };
         var doubStep = function(tC, pC) { return startPos && cellFree(tC, pC) }
 
-        % TODO en passant
         const CONDITION = 2;
         const positions = [
             % If there is an enemy across allow that move (opposite color)
@@ -545,6 +566,14 @@ function highlightValidMoves(enable) {
             if (positions[i][CONDITION](targetColor, pieceColor) && noCheck(m, n, pieceColor)) {
                 highlight(m, n, POSS_MOVE_COLOR, enable);
             }
+        }
+
+        % Check for en passant
+        if (Math.abs(enpassant[N] - lastSelection[N]) == 1 &&
+            enpassant[M] - lastSelection[M] == 0 &&
+            noCheck(enpassant[M] + pieceColor, enpassant[N], pieceColor)
+        ) {
+            highlight(enpassant[M] + pieceColor, enpassant[N], POSS_MOVE_COLOR, enable);
         }
     }
     % Queen
@@ -842,7 +871,7 @@ function printInfoText(text) {
             \begin{tabularx}{\textwidth}{@{} *{4}{X} @{}}%
                 \xintFor* #1 in {\xintSeq{0}{4-1}} \do {%
                     \begin{tcolorbox}
-                        \TextField[name=promote#1, width=\linewidth, readonly=true]{}
+                        \TextField[name=promote#1, width=\linewidth, bordercolor=gray, readonly=true]{}
                     \end{tcolorbox}
                     % Have the cell divider for all elements
                     % that are not the last one
@@ -864,7 +893,7 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \TextField[bordercolor=, name=tooltiptxt, readonly=true, hidden]{}
 
     \end{Form}
 
