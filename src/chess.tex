@@ -5,10 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-% \usepackage[utf8x]{inputenc}
-% \usepackage[T1]{fontenc}
-% \usepackage[ngerman]{babel}
-% \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -67,9 +63,11 @@ const UNMOVED = 0;
 % The game field array
 var complField = new Array();
 %
+var check = false;
+%
 var checkmate = false;
 %
-var check = false;
+var stalemate = false;
 %
 var lastSelection = [];
 %
@@ -85,7 +83,6 @@ const PIECE_SYMBOLS = new Array(
     "K", "Q", "B", "N", "R", "P"
 );
 
-% TODO move up
 const DIRS = [
     [ % King
         [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]
@@ -223,6 +220,7 @@ function restart() {
 
     check = false;
     checkmate = false;
+    stalemate = false;
 
     % Clear the field
     for (var m = 2; m < FIELD_HEIGHT - 2; m++) {
@@ -309,6 +307,11 @@ function move(m, n) {
 
     if (checkmate) {
         printInfoText("It is checkmate, the game is over!");
+        return;
+    }
+
+    if (stalemate) {
+        printInfoText("It is a stalemate, the game is over!");
         return;
     }
 
@@ -405,16 +408,21 @@ function move(m, n) {
 
         lastSelection = [];
 
-        % TODO
-        % stalemate (draw)
-
+        % Test if the player who has to play next, has any moves left.
+        % If not it is either a stalemate or checkmate.
+        var gameover = testGameover();
         if (check) {
             printInfoText("Check!");
-            if (testCheckmate()) {
+            if (gameover) {
+                checkmate = true;
                 printInfoText("Checkmate!");
             }
         } else {
             printInfoText("Piece moved!");
+            if (gameover) {
+                stalemate = true;
+                printInfoText("Stalemate!");
+            }
         }
     }
     else if (lastSelection[M] == m && lastSelection[N] == n) {
@@ -710,13 +718,13 @@ function testCheck(col) {
     return false;
 }
 
-function testCheckmate() {
+function testGameover() {
     highlightCount = 0;
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         for (var n = 0; n < FIELD_WIDTH; n++) {
             if (currentTurn == complField[m][n][COLOR]) {
                 lastSelection = [m, n];
-                % Highlight possible moves
+                % Count possible moves
                 highlightValidMoves(false);
                 if (highlightCount > 0) {
                     lastSelection = [];
@@ -725,8 +733,6 @@ function testCheckmate() {
             }
         }
     }
-    lastSelection = [];
-    checkmate = true;
     return true;
 }
 
