@@ -121,7 +121,12 @@ const DIRS = [
 ];
 
 % Color data
-const COLORS = new Array(
+const CELL_COLORS = new Array(
+    [ "RGB", 0.8431, 0.6549, 0.3803 ],
+    [ "RGB", 0.5686, 0.3058, 0.1098 ]
+);
+
+const TEXT_COLORS = new Array(
     color.white,
     color.black
 );
@@ -926,18 +931,18 @@ function draw(m, n) {
 
     % Adjust piece color dependent on its owner
     if (complField[m][n][COLOR] == WHITE) {
-        cell.textColor = color.green;
+        cell.textColor = TEXT_COLORS[WHITE + 1];
     } else if (complField[m][n][COLOR] == BLACK) {
-        cell.textColor = color.red;
+        cell.textColor = TEXT_COLORS[BLACK];
     }
 
     % Adjust bordcolor
     if ((m + n) \% 2 == 0) {
-        cell.borderColor = COLORS[WHITE + 1];
-        cell.fillColor = COLORS[WHITE + 1];
+        cell.borderColor = CELL_COLORS[WHITE + 1];
+        cell.fillColor = CELL_COLORS[WHITE + 1];
     } else {
-        cell.borderColor = COLORS[BLACK];
-        cell.fillColor = COLORS[BLACK];
+        cell.borderColor = CELL_COLORS[BLACK];
+        cell.fillColor = CELL_COLORS[BLACK];
     }
 
     cell.delay = false;
