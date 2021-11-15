@@ -216,6 +216,11 @@ function initialiseButtons() {
         cell.alignment = "center";
     }
 
+    % Process button setup
+    var callback = "this.getField('process').setFocus();";
+    this.getField("process").setAction("MouseDown", callback);
+    this.getField("process").setAction("MouseUp", "processMoves();");
+
     % Restart button setup
     this.getField("restart").setAction("MouseDown", "restart();");
 
@@ -324,6 +329,150 @@ function tooltip(on) {
 
         field.delay = false;
     }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Process positional input %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+const PLAYBACK_SPEED = 200;
+var movesToProcess = [];
+var playInterval;
+
+var processBool = true;
+var conversion = [];
+
+function processMoves() {
+    this.getField("info").setFocus();
+    % Get the input string
+    var input = this.getField("moves").value;
+    % Remove comments from input
+    input = input.replace(/ *\{[^\}]*\}*/g, "");
+
+    var allTurns = input.split(/\s*\d+\.\s*|,\s*/);
+
+    for (var idx = 1; idx < allTurns.length; idx++) {
+        var parts = allTurns[idx].split(" ");
+        for (var j = 0; j < parts.length; j++) {
+            movesToProcess.push(parts[j]);
+        }
+    }
+
+    printInfoText("Start interval and move processing.");
+    playInterval = app.setInterval("processNextMove();", PLAYBACK_SPEED);
+}
+
+function processNextMove() {
+    if (movesToProcess.length == 0) {
+        printInfoText("All moves were processed.");
+        app.clearInterval(playInterval);
+        return;
+    }
+
+    if (processBool) {
+        conversion = convert(movesToProcess[0]);
+        if (conversion.length != 2) {
+            printInfoText("Could not find a valid move for " + movesToProcess[0] + ".");
+            app.clearInterval(playInterval);
+            return;
+        }
+        move(conversion[0][M], conversion[0][N]);
+    } else {
+        move(conversion[1][M], conversion[1][N]);
+        movesToProcess.splice(0, 1);
+    }
+
+    printInfoText("Moving: " + conversion[0] + " to " + conversion[1] +
+        ". Remaining: " + movesToProcess);
+    processBool = !processBool;
+}
+
+% TODOs:
+% process special cases
+% - castles O-O and O-O-O
+% - captures -> replace all x in the move since it is not parsed anyway
+% - check and checkmate -> replace all + and # -> Bxf7+
+% - additional positioning information -> Nbd7
+% - pawn is identified by adding no piece info -> cxb5
+% - pawn promotion -> e8=Q#
+% - result info -> 1/2-1/2
+
+% https://en.wikipedia.org/wiki/Portable_Game_Notation
+function convert(curTurn) {
+    var result = [];
+    var charPos = 0;
+    var piece = 0;
+    var curTurn2 = curTurn.replace(/x/g, "");
+
+    if (curTurn2.length == 3) {
+        if (curTurn2[2] != " ") {
+            % TODO check if the char is a piece char
+            % Else use it for m or n
+            if (curTurn2.charCodeAt(charPos) < 90) {
+                piece = curTurn2.charAt(charPos++);
+            } else {
+                charPos++;
+            }
+        }
+    }
+    % len = 2 means a pawn needs to move
+    else if (curTurn2.length == 2) {
+        piece = "P";
+    }
+
+    % OBACHT: order is important
+    var tgtN = curTurn2.charCodeAt(charPos++) - 97;
+    var tgtM = 8 - parseInt(curTurn2.charAt(charPos++), 10);
+
+    if (curTurn2 == "O-O") {
+        tgtM = currentTurn == WHITE ? 7 : 0;
+        tgtN = 6;
+        piece = "K";
+    }
+
+    % Only allow letters a-h and only numbers from 1-8
+    if (tgtM < 0 || tgtN < 0 || tgtM >= FIELD_HEIGHT || tgtN >= FIELD_WIDTH) {
+        return [];
+    }
+
+    var todasd = getSourcePosition(tgtM, tgtN, piece);
+    if (todasd.length != 2) {
+        return [];
+    } else {
+        result.push(todasd);
+        result.push([tgtM, tgtN]);
+    }
+
+    return result;
+}
+
+function getSourcePosition(tgtM, tgtN, piecesa=0) {
+    for (var m = 0; m < FIELD_HEIGHT; m++) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            % Select the pieces with the currentTurn color
+
+            if (currentTurn == complField[m][n][COLOR] &&
+                (piecesa == 0 || piecesa == complField[m][n][PIECE])
+            ) {
+
+                lastSelection = [m, n];
+                % Mark all cells that are accessible
+                highlightValidMoves(true);
+
+                if (validMove(tgtM, tgtN)) {
+                    % Disable highlight
+                    highlightValidMoves(false);
+                    lastSelection = [];
+                    return [m, n];
+                }
+
+                % Disable highlight
+                highlightValidMoves(false);
+            }
+        }
+    }
+    % Reset selection
+    lastSelection = [];
+    return [];
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1061,6 +1210,16 @@ function printInfoText(text) {
             \end{tabularx}
 
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \begin{tcolorbox}
+                    \TextField[name=moves, width=\linewidth]{}
+                \end{tcolorbox} &%
+                \PushButton[name=process, bordercolor=white]{
+                    \begin{tcolorbox}
+                        \centering
+                        Process moves
+                        \strut
+                    \end{tcolorbox}
+                }\\
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
