@@ -340,6 +340,7 @@ var playInterval;
 
 var processBool = true;
 var conversion = [];
+var promotionIndex = 0;
 
 function processMoves() {
     this.getField("info").setFocus();
@@ -378,6 +379,11 @@ function processNextMove() {
         move(conversion[0][M], conversion[0][N]);
     } else {
         move(conversion[1][M], conversion[1][N]);
+
+        if (promotionPos.length > 0) {
+            promotePawn(promotionIndex);
+        }
+
         movesToProcess.splice(0, 1);
     }
 
@@ -386,73 +392,114 @@ function processNextMove() {
     processBool = !processBool;
 }
 
-% TODOs:
-% process special cases
-% - castles O-O and O-O-O
-% - captures -> replace all x in the move since it is not parsed anyway
-% - check and checkmate -> replace all + and # -> Bxf7+
-% - additional positioning information -> Nbd7
-% - pawn is identified by adding no piece info -> cxb5
-% - pawn promotion -> e8=Q#
-% - result info -> 1/2-1/2
-
-% https://en.wikipedia.org/wiki/Portable_Game_Notation
+/**
+ * This function is able to parse PGN notation.
+ * These inputs can be processed:
+ * - castles O-O and O-O-O
+ * - pawn movements -> cb5
+ * - other piece movements -> Nbd7
+ * - pawn promotion -> e8=Q#
+ * These move information are ignored by removing the symbols:
+ * - captures -> x
+ * - check -> +
+ * - checkmate -> #
+ * TODOs:
+ * - result info -> 1/2-1/2
+ * - ignore !?
+ */
 function convert(curTurn) {
     var result = [];
-    var charPos = 0;
-    var piece = 0;
-    var curTurn2 = curTurn.replace(/x/g, "");
+    var piece = "P";
 
-    if (curTurn2.length == 3) {
-        if (curTurn2[2] != " ") {
-            % TODO check if the char is a piece char
-            % Else use it for m or n
-            if (curTurn2.charCodeAt(charPos) < 90) {
-                piece = curTurn2.charAt(charPos++);
-            } else {
-                charPos++;
-            }
-        }
-    }
-    % len = 2 means a pawn needs to move
-    else if (curTurn2.length == 2) {
-        piece = "P";
-    }
+    var tgtM = -1;
+    var tgtN = -1;
+    var srcM = -1;
+    var srcN = -1;
 
-    % OBACHT: order is important
-    var tgtN = curTurn2.charCodeAt(charPos++) - 97;
-    var tgtM = 8 - parseInt(curTurn2.charAt(charPos++), 10);
+    var curTurn2 = curTurn.replace(/x|\+|#/g, "");
 
     if (curTurn2 == "O-O") {
         tgtM = currentTurn == WHITE ? 7 : 0;
         tgtN = 6;
         piece = "K";
+    } else if (curTurn2 == "O-O-O") {
+        tgtM = currentTurn == WHITE ? 7 : 0;
+        tgtN = 2;
+        piece = "K";
+    } else {
+        var characters = curTurn2.split("");
+        % Get the piece that should be moved
+        if (characters.length == 2) {
+            % piece = "P";
+        } else if (characters[0].charCodeAt(0) - 90 > 0) {
+            % piece = "P";
+            % Pawn promotion
+            if (characters[characters.length - 2] == "=") {
+                var promotionChar = characters[characters.length - 1];
+                if (promotionChar == "Q") {
+                    promotionIndex = 0;
+                } else if (promotionChar == "B") {
+                    promotionIndex = 1;
+                } else if (promotionChar == "N") {
+                    promotionIndex = 2;
+                } else {
+                    promotionIndex = 3;
+                }
+                characters.splice(characters.length - 2);
+            }
+        } else {
+            piece = characters[0];
+            characters.splice(0, 1);
+        }
+
+        % Get the target position
+        var tgtM = 8 - parseInt(characters[characters.length - 1], 10);
+        var tgtN = characters[characters.length - 2].charCodeAt(0) - 97;
+
+        % Check if there are additional movement information
+        for (var charPos = 0; charPos <= characters.length - 3; charPos++) {
+            var column = characters[charPos].charCodeAt(0) - 97;
+            if (column >= 0) {
+                srcN = column;
+            } else {
+                srcM = 8 - parseInt(characters[charPos], 10);
+            }
+        }
     }
 
     % Only allow letters a-h and only numbers from 1-8
-    if (tgtM < 0 || tgtN < 0 || tgtM >= FIELD_HEIGHT || tgtN >= FIELD_WIDTH) {
+    if (tgtM < 0 || tgtN < 0 || tgtM >= FIELD_HEIGHT || tgtN >= FIELD_WIDTH ||
+        srcM >= FIELD_HEIGHT || srcN >= FIELD_WIDTH
+    ) {
         return [];
     }
 
-    var todasd = getSourcePosition(tgtM, tgtN, piece);
-    if (todasd.length != 2) {
+    var srcPos = getSourcePosition(tgtM, tgtN, srcM, srcN, piece);
+    if (srcPos.length != 2) {
         return [];
     } else {
-        result.push(todasd);
+        result.push(srcPos);
         result.push([tgtM, tgtN]);
     }
 
     return result;
 }
 
-function getSourcePosition(tgtM, tgtN, piecesa=0) {
+function getSourcePosition(tgtM, tgtN, srcM, srcN, piece) {
     for (var m = 0; m < FIELD_HEIGHT; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
-            % Select the pieces with the currentTurn color
+        % If a row is given only check this one row
+        if (srcM > -1 && m != srcM) {
+            continue;
+        }
 
-            if (currentTurn == complField[m][n][COLOR] &&
-                (piecesa == 0 || piecesa == complField[m][n][PIECE])
-            ) {
+        for (var n = 0; n < FIELD_WIDTH; n++) {
+            % If a column is given only check this one column
+            if (srcN > -1 && n != srcN) {
+                continue;
+            }
+
+            % Select the pieces with the currentTurn color
+            if (currentTurn == complField[m][n][COLOR] && piece == complField[m][n][PIECE]) {
 
                 lastSelection = [m, n];
                 % Mark all cells that are accessible
