@@ -342,8 +342,18 @@ var processBool = true;
 var conversion = [];
 var promotionIndex = 0;
 
+/**
+ * Multiple PGN examples where used to validate the correctness of
+ * the function. These can be found here:
+ * https://en.wikipedia.org/wiki/Portable_Game_Notation
+ */
 function processMoves() {
     this.getField("info").setFocus();
+    if (checkmate || stalemate) {
+        printInfoText("Game over, please restart the game!");
+        return;
+    }
+
     % Get the input string
     var input = this.getField("moves").value;
     % Remove comments from input
@@ -351,6 +361,7 @@ function processMoves() {
 
     var allTurns = input.split(/\s*\d+\.\s*|,\s*/);
 
+    movesToProcess = [];
     for (var idx = 1; idx < allTurns.length; idx++) {
         var parts = allTurns[idx].split(" ");
         for (var j = 0; j < parts.length; j++) {
@@ -372,7 +383,11 @@ function processNextMove() {
     if (processBool) {
         conversion = convert(movesToProcess[0]);
         if (conversion.length != 2) {
-            printInfoText("Could not find a valid move for " + movesToProcess[0] + ".");
+            if (conversion.length == 1) {
+                printInfoText("Game over, " + conversion[0] + " won.");
+            } else {
+                printInfoText("Could not find a valid move for " + movesToProcess[0] + ".");
+            }
             app.clearInterval(playInterval);
             return;
         }
@@ -399,13 +414,18 @@ function processNextMove() {
  * - pawn movements -> cb5
  * - other piece movements -> Nbd7
  * - pawn promotion -> e8=Q#
+ * - result info -> 1/2-1/2, 0-1, 1-0
  * These move information are ignored by removing the symbols:
  * - captures -> x
  * - check -> +
  * - checkmate -> #
- * TODOs:
- * - result info -> 1/2-1/2
- * - ignore !?
+ * - moveinfo -> ! and ?
+ *
+ * Using the PGN notation the input is converted into the local coordinate system
+ * with m and n coordinates for the target and the source.
+ *
+ * @param {Array} curTurn A single turn of the input that shall be converted.
+ * @return {Array} The converted position in form of src and tgt position.
  */
 function convert(curTurn) {
     var result = [];
@@ -416,18 +436,37 @@ function convert(curTurn) {
     var srcM = -1;
     var srcN = -1;
 
-    var curTurn2 = curTurn.replace(/x|\+|#/g, "");
+    % Delete all additional symbols that are not necessary to move the piece
+    var turnClean = curTurn.replace(/x|\+|#|!|\?/g, "");
 
-    if (curTurn2 == "O-O") {
+    % Game over, white won
+    if (turnClean == "1-0") {
+        checkmate = true;
+        return ["White"];
+    }
+    % Game over, black won
+    else if (turnClean == "0-1") {
+        checkmate = true;
+        return ["Black"];
+    }
+    % Game over, noone won
+    else if (turnClean == "1\/2-1\/2") {
+        stalemate = true;
+        return ["No one"];
+    }
+    % King side castles
+    else if (turnClean == "O-O") {
         tgtM = currentTurn == WHITE ? 7 : 0;
         tgtN = 6;
         piece = "K";
-    } else if (curTurn2 == "O-O-O") {
+    }
+    % Queen side castles
+    else if (turnClean == "O-O-O") {
         tgtM = currentTurn == WHITE ? 7 : 0;
         tgtN = 2;
         piece = "K";
     } else {
-        var characters = curTurn2.split("");
+        var characters = turnClean.split("");
         % Get the piece that should be moved
         if (characters.length == 2) {
             % piece = "P";
@@ -1258,7 +1297,7 @@ function printInfoText(text) {
 
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \begin{tcolorbox}
-                    \TextField[name=moves, width=\linewidth]{}
+                    \TextField[name=moves, bordercolor=gray, width=\linewidth]{}
                 \end{tcolorbox} &%
                 \PushButton[name=process, bordercolor=white]{
                     \begin{tcolorbox}
