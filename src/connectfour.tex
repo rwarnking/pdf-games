@@ -45,9 +45,17 @@ const WINNING_PIECES = AFMakeNumber(\winningPieces);
 % Constants
 const EMPTY = 0;
 
+% Define directions
+const DIRS = [
+    0, 1,
+    1, 1,
+    1, 0,
+    1, -1
+]
+
 % Globals
 % The game field array
-var complField = new Array();
+var complBoard = new Array();
 var activePlayer = 0;
 var gameover = false;
 
@@ -69,12 +77,12 @@ const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.960, 0.176 ];
  * Initialise the default game state.
  */
 function initialise() {
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            tmp.push(EMPTY);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row.push(EMPTY);
         }
-        complField.push(tmp);
+        complBoard.push(row);
     }
 
     this.getField("info").fillColor = color.transparent;
@@ -99,11 +107,11 @@ function initialiseButtons() {
 
     % Each field needs to be connected to an input function
     var funcName = "addToColumn";
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        var callbackName = funcName + "(" + x.toString() + ");";
-        this.getField("col" + x).setAction("MouseDown", callbackName);
-        this.getField("col" + x).highlight="none";
-        this.getField("col" + x).borderColor = color.transparent;
+    for (var n = 0; n < BOARD_WIDTH; n++) {
+        var callbackName = funcName + "(" + n.toString() + ");";
+        this.getField("col" + n).setAction("MouseDown", callbackName);
+        this.getField("col" + n).highlight="none";
+        this.getField("col" + n).borderColor = color.transparent;
     }
 
     % Tooltip setup
@@ -116,13 +124,13 @@ function initialiseButtons() {
  * Restarts the game by clearing the field array.
  */
 function restart() {
-    % Clear complField and redraw
+    % Clear complBoard and redraw
     var field;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            complField[y][x] = EMPTY;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
 
-            draw(x, y);
+            draw(m, n);
         }
     }
 
@@ -170,25 +178,25 @@ function tooltip(on) {
 % Gamelogic %
 %%%%%%%%%%%%%
 /**
- * Add a stone to the selected column (x).
+ * Add a stone to the selected column (n).
  * Also selects new player and redraws.
  *
- * @param {Number} x The column to place the stone in.
+ * @param {Number} n The column to place the stone in.
  */
-function addToColumn(x) {
+function addToColumn(n) {
     if (gameover) {
         return;
     }
 
-    var y = getYFromX(x);
+    var m = getMFromN(n);
     % Column is full
-    if (y == -1) {
+    if (m == -1) {
         printInfoText("Column is full. Player " + (activePlayer + 1) + ": Select a valid column.");
         return;
     }
-    complField[y][x] = activePlayer + 1;
+    complBoard[m][n] = activePlayer + 1;
 
-    checkGameover(x, y);
+    checkGameover(m, n);
 
     activePlayer++;
     % Reset player count
@@ -200,18 +208,18 @@ function addToColumn(x) {
         printInfoText("Player " + (activePlayer + 1) + ": Please select a column.");
     }
 
-    draw(x, y);
+    draw(m, n);
 }
 
 /**
- * Returns the first empty spot for the given column (x).
+ * Returns the first empty spot for the given column (n).
  *
- * @param {Number} x The column for which the y should be returned.
+ * @param {Number} n The column for which the m should be returned.
  */
-function getYFromX(x) {
-    for (var y = 0; y < BOARD_HEIGHT; y++) {
-        if (complField[y][x] != EMPTY) {
-            return y - 1;
+function getMFromN(n) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        if (complBoard[m][n] != EMPTY) {
+            return m - 1;
         }
     }
     return BOARD_HEIGHT - 1;
@@ -223,30 +231,23 @@ function getYFromX(x) {
  * potential lines in all possible directions. Sets gameover if
  * a line was found.
  *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  */
-function checkGameover(x, y) {
+function checkGameover(m, n) {
     var count = 0;
     var maxCount = 0;
-    % Define directions
-    var directions = [
-        0, 1,
-        1, 1,
-        1, 0,
-        1, -1
-    ]
     % Iterate directions
-    for (var dirIdx = 0; dirIdx < directions.length; dirIdx += 2) {
+    for (var dirIdx = 0; dirIdx < DIRS.length; dirIdx += 2) {
         count = 0;
         maxCount = 0;
         % Count succeeding stones
         for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
-            var nx = x + directions[dirIdx] * wp;
-            var ny = y + directions[dirIdx + 1] * wp;
-            if (nx < 0 || nx >= BOARD_WIDTH ||
-                ny < 0 || ny >= BOARD_HEIGHT ||
-                complField[ny][nx] != activePlayer + 1
+            var mm = m + DIRS[dirIdx] * wp;
+            var nn = n + DIRS[dirIdx + 1] * wp;
+            if (mm < 0 || mm >= BOARD_HEIGHT ||
+                nn < 0 || nn >= BOARD_WIDTH ||
+                complBoard[mm][nn] != activePlayer + 1
             ) {
                 count = 0;
             } else {
@@ -259,7 +260,7 @@ function checkGameover(x, y) {
         % If there are enough pieces found, color the winning pieces and set gameover
         if (maxCount >= WINNING_PIECES) {
             gameover = true;
-            colorWinner(x, y, dirIdx);
+            colorWinner(m, n, dirIdx);
             printInfoText("The winner is: Player " + (activePlayer + 1));
         }
     }
@@ -272,23 +273,23 @@ function checkGameover(x, y) {
  * Draws the complete field.
  */
 function drawAll() {
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
 
 /**
- * Draw the field at the coordinates x, y.
+ * Draw the field at the coordinates m, n.
  *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  */
-function draw(x, y) {
-    field = this.getField("pos" + x + "-" + y);
+function draw(m, n) {
+    field = this.getField("cell" + m + "-" + n);
     field.delay = true;
-    var value = complField[y][x];
+    var value = complBoard[m][n];
     if (value > EMPTY) {
         field.fillColor = COLORS[value - 1];
     } else {
@@ -299,32 +300,26 @@ function draw(x, y) {
 }
 
 /**
- * Marks all stones in a line with x, y and the given direction (dirIdx),
- * given the stone has the same player index as the stone at x, y.
+ * Marks all stones in a line with m, n and the given direction (dirIdx),
+ * given the stone has the same player index as the stone at m, n.
  *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  * @param {Number} dirIdx The direction index
  */
-function colorWinner(x, y, dirIdx) {
-    var directions = [
-        0, 1,
-        1, 1,
-        1, 0,
-        1, -1
-    ]
-    % Allows for highlighting all stones left and right from the x, y
+function colorWinner(m, n, dirIdx) {
+    % Allows for highlighting all stones left and right from the m, n
     for (var mul = -1; mul < 2; mul += 2) {
         for (var wp = 0; wp < WINNING_PIECES; wp++) {
-            var nx = x + directions[dirIdx] * wp * mul;
-            var ny = y + directions[dirIdx + 1] * wp * mul;
-            if (nx < 0 || nx >= BOARD_WIDTH ||
-                ny < 0 || ny >= BOARD_HEIGHT ||
-                complField[ny][nx] != activePlayer + 1
+            var mm = m + DIRS[dirIdx] * wp * mul;
+            var nn = n + DIRS[dirIdx + 1] * wp * mul;
+            if (mm < 0 || mm >= BOARD_HEIGHT ||
+                nn < 0 || nn >= BOARD_WIDTH ||
+                complBoard[mm][nn] != activePlayer + 1
             ) {
                 wp = WINNING_PIECES;
             } else {
-                var field = this.getField("pos" + nx + "-" + ny);
+                var field = this.getField("cell" + mm + "-" + nn);
                 field.delay = true;
                 field.borderColor = HIGHLIGHT_COLOR;
                 field.delay = false;
@@ -391,11 +386,11 @@ function printInfoText(text) {
             \end{tabularx}%
             % The gamefield
             \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
+                            bordercolor=white, name=cell#1-#2, readonly=true]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline
                 }
