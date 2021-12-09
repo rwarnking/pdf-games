@@ -90,12 +90,12 @@ function getRandomInt(max) {
  */
 function initialise() {
     % Fill the array with the default content and infos
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            tmp.push([HIDDEN, EMPTY, !LOCK]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row.push([HIDDEN, EMPTY, !LOCK]);
         }
-        complBoard.push(tmp);
+        complBoard.push(row);
     }
 
     % Init the GUI
