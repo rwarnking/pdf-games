@@ -247,7 +247,7 @@ function fillMines() {
  */
 function restart() {
     % Remove focus so the cursor is not shown
-    this.getField("info").setFocus();
+    this.getField("cell" + 0 + "-" + 0).setFocus();
 
     gameover = false;
 
@@ -294,7 +294,7 @@ function changeMode() {
  */
 function reveal(m, n) {
     % Remove focus so the cursor is not shown
-    this.getField("percentage").setFocus();
+    this.getField("cell" + 0 + "-" + 0).setFocus();
 
     % Clear output
     printInfoText("Clicked on cell.");
@@ -315,7 +315,6 @@ function reveal(m, n) {
             complBoard[m][n][2] = !LOCK
         }
         draw(m, n);
-        this.getField("restart").setFocus();
         return;
     }
 
@@ -417,6 +416,7 @@ function draw(m, n) {
     } else if (complBoard[m][n][2] == LOCK) {
         cell.fillColor = color.transparent;
         cell.borderColor = color.black;
+        cell.textColor = COLORS[1];
         % Fancy x for marking mines
         cell.value = String.fromCharCode(0x2717);
     } else {
