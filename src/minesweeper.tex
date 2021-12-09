@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -292,6 +290,9 @@ function changeMode() {
  * @param {Number} y The y coordinate
  */
 function reveal(x, y) {
+    % Remove focus so the cursor is not shown
+    this.getField("percentage").setFocus();
+
     % Clear output
     printInfoText("Clicked on cell.");
     if (gameover) {
