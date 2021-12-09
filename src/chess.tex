@@ -1,4 +1,4 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
@@ -20,9 +20,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Field width and height (should not be changed)
-\def\fieldWidth{8}
-\def\fieldHeight{8}
+% Board width and height (should not be changed)
+\def\boardWidth{8}
+\def\boardHeight{8}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -34,8 +34,8 @@ while not leaving him an escape option. Each piece has a specific move pattern,\
 leaving a lot of room for different combinations and play styles.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const SCREEN_TEXT_SIZE = 500;
 const PLAYBACK_SPEED = 200;
 
@@ -62,8 +62,8 @@ const MOVES = 2;
 const UNMOVED = 0;
 
 % Globals
-% The game field array
-var complField = new Array();
+% The game board array
+var complBoard = new Array();
 % Indicates whether one player is checked
 var check = false;
 % Indicates whether the game is over and one player lost
@@ -72,11 +72,11 @@ var checkmate = false;
 var stalemate = false;
 % Saves the last made selection by any player (each turn is a two step process).
 var lastSelection = [];
-%  Keeps track whos turn it is
+% Keeps track whos turn it is
 var currentTurn = WHITE;
 % If this is non empty there is a pawn at these coords that needs to be promoted
 var promotionPos = [];
-% If this is non -1 there is a pawn at these coords that might be taken via en passant (for one turn)
+% If this is non -1 there is a pawn at these coords that might be taken via en passant (one turn)
 var enpassant = [-1, -1];
 % Indicates how many cells were highlighted in the last turn, used for checkmate
 var highlightCount = 0;
@@ -181,12 +181,12 @@ function sign(x) {
  */
 function initialise() {
     % Fill the array with the default content and infos
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
         var row = new Array();
-        for (var n = 0; n < FIELD_WIDTH; n++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             row.push([EMPTY, NONE, UNMOVED]);
         }
-        complField.push(row);
+        complBoard.push(row);
     }
 
     % Add the pieces for both players
@@ -209,13 +209,13 @@ function initialiseButtons() {
 
     % Set the callbacks and attributes of each selectable cell
     var funcName = "move";
-    for (var m = 0; m < FIELD_WIDTH; m++) {
-        for (var n = 0; n < FIELD_HEIGHT; n++) {
+    for (var m = 0; m < BOARD_WIDTH; m++) {
+        for (var n = 0; n < BOARD_HEIGHT; n++) {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
             var c = this.getField("cell" + m + "-" + n);
             c.setAction("MouseDown", callbackName);
             c.alignment = "center";
-            c.textSize = SCREEN_TEXT_SIZE / (FIELD_WIDTH * 3);
+            c.textSize = SCREEN_TEXT_SIZE / (BOARD_WIDTH * 3);
             c.borderWidth = 4;
         }
     }
@@ -253,6 +253,11 @@ function restart() {
     % Remove focus so the cursor is not shown
     this.getField("info").setFocus();
 
+    if (movesToProcess.length != 0) {
+        printInfoText("Can not restart! Wait for animation to finish!");
+        return;
+    }
+
     % Reset game state
     check = false;
     checkmate = false;
@@ -266,10 +271,10 @@ function restart() {
     enpassant = [-1, -1];
     kingPos = [[7, 4], [-1, -1], [0, 4]];
 
-    % Clear the field
-    for (var m = 2; m < FIELD_HEIGHT - 2; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
-             complField[m][n] = [EMPTY, NONE, UNMOVED];
+    % Clear the board
+    for (var m = 2; m < BOARD_HEIGHT - 2; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+             complBoard[m][n] = [EMPTY, NONE, UNMOVED];
         }
     }
 
@@ -286,25 +291,25 @@ function restart() {
  */
 function addPieces() {
     % Init PAWNs
-    for (var n = 0; n < FIELD_WIDTH; n++) {
-        complField[1][n] = [PIECE_SYMBOLS[PAWN], BLACK, UNMOVED];
-        complField[FIELD_HEIGHT - 2][n] = [PIECE_SYMBOLS[PAWN], WHITE, UNMOVED];
+    for (var n = 0; n < BOARD_WIDTH; n++) {
+        complBoard[1][n] = [PIECE_SYMBOLS[PAWN], BLACK, UNMOVED];
+        complBoard[BOARD_HEIGHT - 2][n] = [PIECE_SYMBOLS[PAWN], WHITE, UNMOVED];
     }
 
     % Init ROOKs, KNIGHTs, BISHOPs
     const PIECES = [PIECE_SYMBOLS[ROOK], PIECE_SYMBOLS[KNIGHT], PIECE_SYMBOLS[BISHOP]];
     for (var n = 0; n < PIECES.length; n++) {
-        complField[0][n] = [PIECES[n], BLACK, UNMOVED];
-        complField[0][FIELD_WIDTH - n - 1] = [PIECES[n], BLACK, UNMOVED];
-        complField[FIELD_HEIGHT - 1][n] = [PIECES[n], WHITE, UNMOVED];
-        complField[FIELD_HEIGHT - 1][FIELD_WIDTH - n - 1] = [PIECES[n], WHITE, UNMOVED];
+        complBoard[0][n] = [PIECES[n], BLACK, UNMOVED];
+        complBoard[0][BOARD_WIDTH - n - 1] = [PIECES[n], BLACK, UNMOVED];
+        complBoard[BOARD_HEIGHT - 1][n] = [PIECES[n], WHITE, UNMOVED];
+        complBoard[BOARD_HEIGHT - 1][BOARD_WIDTH - n - 1] = [PIECES[n], WHITE, UNMOVED];
     }
 
     % Init KINGs and QUEENs
-    complField[0][3] = [PIECE_SYMBOLS[QUEEN], BLACK, UNMOVED];
-    complField[0][4] = [PIECE_SYMBOLS[KING], BLACK, UNMOVED];
-    complField[FIELD_HEIGHT - 1][3] = [PIECE_SYMBOLS[QUEEN], WHITE, UNMOVED];
-    complField[FIELD_HEIGHT - 1][4] = [PIECE_SYMBOLS[KING], WHITE, UNMOVED];
+    complBoard[0][3] = [PIECE_SYMBOLS[QUEEN], BLACK, UNMOVED];
+    complBoard[0][4] = [PIECE_SYMBOLS[KING], BLACK, UNMOVED];
+    complBoard[BOARD_HEIGHT - 1][3] = [PIECE_SYMBOLS[QUEEN], WHITE, UNMOVED];
+    complBoard[BOARD_HEIGHT - 1][4] = [PIECE_SYMBOLS[KING], WHITE, UNMOVED];
 }
 
 /**
@@ -361,7 +366,8 @@ function tooltip(on) {
  * en passant, pawn promotion or castling in which another cells content must be adjusted.
  * At the end of the move execution it is tested whether the enemy king is checked and/or the game
  * is over due to checkmate or stalemate.
- * 3. If the player selects the same cell twice the highlight is reversed after the second selection.
+ * 3. If the player selects the same cell twice the highlight is reversed
+ * after the second selection.
  *
  * OBACHT: Threefold repetition is not tracked since the player needs to claim
  * the draw but may continue playing.
@@ -406,15 +412,15 @@ function move(m, n) {
         highlightValidMoves(false);
 
         % Move piece
-        complField[m][n] = complField[lastSelection[M]][lastSelection[N]];
+        complBoard[m][n] = complBoard[lastSelection[M]][lastSelection[N]];
         % The piece was moved, mark it as such
-        complField[m][n][MOVES] = complField[lastSelection[M]][lastSelection[N]][MOVES] + 1;
-        complField[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE, UNMOVED];
+        complBoard[m][n][MOVES] = complBoard[lastSelection[M]][lastSelection[N]][MOVES] + 1;
+        complBoard[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE, UNMOVED];
         % Redraw
         draw(m, n);
         draw(lastSelection[M], lastSelection[N]);
 
-        if (complField[m][n][PIECE] == PIECE_SYMBOLS[KING]) {
+        if (complBoard[m][n][PIECE] == PIECE_SYMBOLS[KING]) {
             % King was moved upate his position
             kingPos[currentTurn + 1] = [m, n];
 
@@ -426,20 +432,20 @@ function move(m, n) {
                 var rookN = direction == 1 ? 0 : 7;
                 % Calc new rook position
                 var newN = lastSelection[N] - direction;
-                complField[m][newN] = complField[m][rookN];
+                complBoard[m][newN] = complBoard[m][rookN];
                 % The rook was moved the first time
-                complField[m][newN][MOVES] = 1;
-                complField[m][rookN] = [EMPTY, NONE, UNMOVED];
+                complBoard[m][newN][MOVES] = 1;
+                complBoard[m][rookN] = [EMPTY, NONE, UNMOVED];
                 draw(m, newN);
                 draw(m, rookN);
             }
         }
 
-        if (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN]) {
+        if (complBoard[m][n][PIECE] == PIECE_SYMBOLS[PAWN]) {
             % Special case: en passant
             % Delete the pawn that was captured by en passant
             if (m == (enpassant[M] + currentTurn) && n == enpassant[N]) {
-                complField[enpassant[M]][enpassant[N]] = [EMPTY, NONE, UNMOVED];
+                complBoard[enpassant[M]][enpassant[N]] = [EMPTY, NONE, UNMOVED];
                 draw(enpassant[M], enpassant[N]);
             }
             enpassant = [-1, -1];
@@ -504,7 +510,9 @@ function move(m, n) {
 
         % Rehighlight the king is he is checked -> no move, so nothing has changed
         if (check) {
-            highlight(kingPos[currentTurn + 1][M], kingPos[currentTurn + 1][N], CHECK_COLOR, check);
+            highlight(
+                kingPos[currentTurn + 1][M], kingPos[currentTurn + 1][N], CHECK_COLOR, check
+            );
         }
     }
 }
@@ -516,12 +524,12 @@ function move(m, n) {
  */
 function validSelection(m, n) {
     % Empty cell
-    if (complField[m][n][PIECE] == EMPTY) {
+    if (complBoard[m][n][PIECE] == EMPTY) {
         printInfoText("Field empty, could not select!");
         return false;
     }
     % Enemy piece
-    else if (currentTurn != complField[m][n][COLOR]) {
+    else if (currentTurn != complBoard[m][n][COLOR]) {
         printInfoText("Thats an enemy piece, could not select!");
         return false;
     }
@@ -530,7 +538,7 @@ function validSelection(m, n) {
 }
 
 /**
- * To check if a move is valid the bordercolor of the target field that was selected is
+ * To check if a move is valid the bordercolor of the target cell that was selected is
  * checked, since it should be marked with POSS_MOVE_COLOR if the move would be valid.
  * It is not totally clear whether that is faster than just using math to check the
  * validity but since it also would be necessary to check if there is a piece between
@@ -541,7 +549,7 @@ function validSelection(m, n) {
  */
 function validMove(m, n) {
     % If the player selects one of his own pieces the move can not be valid
-    if (currentTurn == complField[m][n][COLOR]) {
+    if (currentTurn == complBoard[m][n][COLOR]) {
         printInfoText("Move not valid, thats your own piece!");
         return false;
     }
@@ -555,13 +563,15 @@ function validMove(m, n) {
             col1[3] - col2[3] < EPSILON;
     }
 
-    % Retrieve the field data
+    % Retrieve the cell data
     % Just check if the cell is marked from the last selection
     var cell = this.getField("cell" + m + "-" + n);
     if (equal(cell.borderColor, POSS_MOVE_COLOR)) {
         return true;
     } else {
-        printInfoText(complField[lastSelection[M]][lastSelection[N]][PIECE] + " can not move there.");
+        printInfoText(
+            complBoard[lastSelection[M]][lastSelection[N]][PIECE] + " can not move there."
+        );
         return false;
     }
 
@@ -581,10 +591,10 @@ function validMove(m, n) {
  */
 function highlightValidMoves(enable) {
     % Pawn
-    if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[PAWN]) {
-        var pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+    if (complBoard[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[PAWN]) {
+        var pieceColor = complBoard[lastSelection[M]][lastSelection[N]][COLOR];
         % Was the pawn already moved?
-        const startPos = complField[lastSelection[M]][lastSelection[N]][MOVES] == UNMOVED;
+        const startPos = complBoard[lastSelection[M]][lastSelection[N]][MOVES] == UNMOVED;
 
         % Since black and white have the values 1 and -1 this calculation works
         var diffCol = function(tC, pC) { return sign(tC) == sign(pC) * -1 };
@@ -596,7 +606,7 @@ function highlightValidMoves(enable) {
             % If there is an enemy across allow that move (opposite color)
             [pieceColor, -1, diffCol],
             [pieceColor, 1, diffCol],
-            % Allow moving forward when the field is empty
+            % Allow moving forward when the cell is empty
             [pieceColor, 0, cellFree],
             [pieceColor * 2, 0, doubStep]
         ];
@@ -608,13 +618,13 @@ function highlightValidMoves(enable) {
             var n = lastSelection[N] + positions[i][N];
 
             % Out of bounds check
-            if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH) {
+            if (m < 0 || n < 0 || m >= BOARD_HEIGHT || n >= BOARD_WIDTH) {
                 continue;
             }
-            var targetColor = complField[m][n][COLOR];
+            var targetColor = complBoard[m][n][COLOR];
             % Test if the jumped cell is free in case of a two cell movement
             if (Math.abs(positions[i][M]) == 2) {
-                targetColor += complField[lastSelection[M] + pieceColor][n][COLOR];
+                targetColor += complBoard[lastSelection[M] + pieceColor][n][COLOR];
             }
 
             % Test the different conditions
@@ -633,25 +643,25 @@ function highlightValidMoves(enable) {
         }
     }
     % Queen
-    else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[QUEEN]) {
-        loopPositions(DIRS[QUEEN], Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
+    else if (complBoard[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[QUEEN]) {
+        loopPositions(DIRS[QUEEN], Math.max(BOARD_WIDTH, BOARD_HEIGHT), enable);
     }
     % Knight
-    else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KNIGHT]) {
+    else if (complBoard[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KNIGHT]) {
         loopPositions(DIRS[KNIGHT], 2, enable);
     }
     % Rook
-    else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[ROOK]) {
-        loopPositions(DIRS[ROOK], Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
+    else if (complBoard[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[ROOK]) {
+        loopPositions(DIRS[ROOK], Math.max(BOARD_WIDTH, BOARD_HEIGHT), enable);
     }
     % Bishop
-    else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[BISHOP]) {
-        loopPositions(DIRS[BISHOP], Math.max(FIELD_WIDTH, FIELD_HEIGHT), enable);
+    else if (complBoard[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[BISHOP]) {
+        loopPositions(DIRS[BISHOP], Math.max(BOARD_WIDTH, BOARD_HEIGHT), enable);
     }
     % King
-    else if (complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KING]) {
+    else if (complBoard[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KING]) {
         % The color of the currently selected piece
-        var pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+        var pieceColor = complBoard[lastSelection[M]][lastSelection[N]][COLOR];
 
         % Iterate all directions of this piece
         for (var i = 0; i < DIRS[KING].length; i++) {
@@ -661,23 +671,23 @@ function highlightValidMoves(enable) {
             % If the piece has the same color do not mark the position (and continue),
             % otherwise the piece can be captured and therefore the position must be marked
             % Out of bounds
-            if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
-                pieceColor == complField[m][n][COLOR]
+            if (m < 0 || n < 0 || m >= BOARD_HEIGHT || n >= BOARD_WIDTH ||
+                pieceColor == complBoard[m][n][COLOR]
             ) {
                 continue;
             }
 
-            % Unless there is an enemy king in the neighborhood of that field
+            % Unless there is an enemy king in the neighborhood of that cell
             var result = true;
             for (var m2 = m - 1; m2 < m + 2; m2++) {
                 for (var n2 = n - 1; n2 < n + 2; n2++) {
                     % Out of bounds check
-                    if (m2 < 0 || n2 < 0 || m2 >= FIELD_HEIGHT || n2 >= FIELD_WIDTH) {
+                    if (m2 < 0 || n2 < 0 || m2 >= BOARD_HEIGHT || n2 >= BOARD_WIDTH) {
                         continue;
                     }
                     % Check for enemy king
-                    if (complField[m2][n2][PIECE] == PIECE_SYMBOLS[KING] &&
-                        complField[m2][n2][COLOR] != pieceColor
+                    if (complBoard[m2][n2][PIECE] == PIECE_SYMBOLS[KING] &&
+                        complBoard[m2][n2][COLOR] != pieceColor
                     ) {
                          result = false;
                     }
@@ -690,7 +700,7 @@ function highlightValidMoves(enable) {
         }
 
         % Special case: castling
-        var pColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+        var pColor = complBoard[lastSelection[M]][lastSelection[N]][COLOR];
         var rookPos = [
             [[7, 0, +1], [7, 7, -1]], % white
             [[], []], % padding
@@ -698,21 +708,21 @@ function highlightValidMoves(enable) {
         ];
         % If the king was not moved yet test all his rooks if they are available
         % for castling
-        if (complField[lastSelection[M]][lastSelection[N]][MOVES] == 0 && !check) {
+        if (complBoard[lastSelection[M]][lastSelection[N]][MOVES] == 0 && !check) {
             % Iterate rook positions
             for (var i = 0; i < rookPos[pColor + 1].length; i++) {
                 var pos = rookPos[pColor + 1][i];
                 % If the rook is of the right color and also was not yet moved
-                if (complField[pos[M]][pos[N]][PIECE] == PIECE_SYMBOLS[ROOK] &&
-                    complField[pos[M]][pos[N]][MOVES] == 0
+                if (complBoard[pos[M]][pos[N]][PIECE] == PIECE_SYMBOLS[ROOK] &&
+                    complBoard[pos[M]][pos[N]][MOVES] == 0
                 ) {
                     var res = true;
                     var nHPos = Math.round((pos[N] + lastSelection[N]) * 0.5);
-                    % Check if fields in between are empty
+                    % Check if cells in between are empty
                     for (var n = pos[N] + pos[2]; n != lastSelection[N]; n += pos[2]) {
-                        res &= complField[pos[M]][n][PIECE] == EMPTY;
+                        res &= complBoard[pos[M]][n][PIECE] == EMPTY;
                     }
-                    % Check if field are in check
+                    % Check if cells are in check
                     for (var n = nHPos; n != lastSelection[N]; n += pos[2]) {
                         res &= noCheck(pos[M], n, pColor);
                     }
@@ -727,7 +737,7 @@ function highlightValidMoves(enable) {
 }
 
 /**
- * Loops over in all given directions for the specified number of steps.
+ * Loops over the cells in all given directions for the specified number of steps.
  * The highlight state of all processed cells is adjusted.
  * A cell is not highlighted when the own king would be checked as a result of this move.
  * Furthermore a direction is only processed as long as there was no piece on its path.
@@ -738,7 +748,7 @@ function highlightValidMoves(enable) {
  */
 function loopPositions(dirs, len, enable) {
     % The color of the currently selected piece
-    var pieceColor = complField[lastSelection[M]][lastSelection[N]][COLOR];
+    var pieceColor = complBoard[lastSelection[M]][lastSelection[N]][COLOR];
 
     % Iterate all directions of this piece
     for (var i = 0; i < dirs.length; i++) {
@@ -750,8 +760,8 @@ function loopPositions(dirs, len, enable) {
             % If the piece has the same color do not mark the position (and break),
             % otherwise the piece can be captured and therefore the position must be marked
             % Out of bounds check
-            if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
-                pieceColor == complField[m][n][COLOR]
+            if (m < 0 || n < 0 || m >= BOARD_HEIGHT || n >= BOARD_WIDTH ||
+                pieceColor == complBoard[m][n][COLOR]
             ) {
                 break;
             }
@@ -760,7 +770,7 @@ function loopPositions(dirs, len, enable) {
                 highlight(m, n, POSS_MOVE_COLOR, enable);
             }
             % Break when the way is shut
-            if (complField[m][n][PIECE] != EMPTY) {
+            if (complBoard[m][n][PIECE] != EMPTY) {
                 break;
             }
         }
@@ -781,28 +791,28 @@ function loopPositions(dirs, len, enable) {
  */
 function testCheck(col) {
     % Check in all directions if there is an enemy piece
-    % if there is one check whether it would be able to capture the king
+    % in that case check whether it would be able to capture the king
     for (var i = 0; i < DIRS[KING].length; i++) {
         % Iterate as far as possible
-        for (var o = 1; o < Math.max(FIELD_WIDTH, FIELD_HEIGHT); o++) {
+        for (var o = 1; o < Math.max(BOARD_WIDTH, BOARD_HEIGHT); o++) {
             % Get the king position + the direction vector
             var m = kingPos[col + 1][M] + o * DIRS[KING][i][M];
             var n = kingPos[col + 1][N] + o * DIRS[KING][i][N];
 
             % If the piece has the same color do nothing
             % Out of bounds check
-            if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
-                col == complField[m][n][COLOR]
+            if (m < 0 || n < 0 || m >= BOARD_HEIGHT || n >= BOARD_WIDTH ||
+                col == complBoard[m][n][COLOR]
             ) {
                 break;
             }
             % Otherwise the king might be attacked
-            if (complField[m][n][PIECE] != EMPTY) {
+            if (complBoard[m][n][PIECE] != EMPTY) {
                 % If indeed the king is attacked mark his position
-                if (complField[m][n][PIECE] == PIECE_SYMBOLS[QUEEN] ||
-                    (complField[m][n][PIECE] == PIECE_SYMBOLS[BISHOP] && (i \% 2 == 1)) ||
-                    (complField[m][n][PIECE] == PIECE_SYMBOLS[ROOK] && (i \% 2 == 0)) ||
-                    (complField[m][n][PIECE] == PIECE_SYMBOLS[PAWN] &&
+                if (complBoard[m][n][PIECE] == PIECE_SYMBOLS[QUEEN] ||
+                    (complBoard[m][n][PIECE] == PIECE_SYMBOLS[BISHOP] && (i \% 2 == 1)) ||
+                    (complBoard[m][n][PIECE] == PIECE_SYMBOLS[ROOK] && (i \% 2 == 0)) ||
+                    (complBoard[m][n][PIECE] == PIECE_SYMBOLS[PAWN] &&
                         o == 1 && m + col * -1 == kingPos[col + 1][M] && (i \% 2 == 1))
                 ) {
                     return true;
@@ -819,14 +829,14 @@ function testCheck(col) {
 
         % If the piece has the same color do nothing
         % Out of bounds check
-        if (m < 0 || n < 0 || m >= FIELD_HEIGHT || n >= FIELD_WIDTH ||
-            col == complField[m][n][COLOR]
+        if (m < 0 || n < 0 || m >= BOARD_HEIGHT || n >= BOARD_WIDTH ||
+            col == complBoard[m][n][COLOR]
         ) {
             continue;
         }
 
         % Otherwise the king is attacked
-        if (complField[m][n][PIECE] == PIECE_SYMBOLS[KNIGHT]) {
+        if (complBoard[m][n][PIECE] == PIECE_SYMBOLS[KNIGHT]) {
             return true;
         }
     }
@@ -845,10 +855,10 @@ function testGameover() {
     % Reset count
     highlightCount = 0;
     % Since it is unknown where the pieces are iterate all cells
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             % Select the pieces with the currentTurn color
-            if (currentTurn == complField[m][n][COLOR]) {
+            if (currentTurn == complBoard[m][n][COLOR]) {
                 lastSelection = [m, n];
                 % Count possible moves
                 highlightValidMoves(false);
@@ -877,15 +887,15 @@ function noCheck(m, n, color) {
     var result = true;
 
     % If the selected piece is the king adjust his position
-    var isKing = complField[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KING];
+    var isKing = complBoard[lastSelection[M]][lastSelection[N]][PIECE] == PIECE_SYMBOLS[KING];
     if (isKing) {
         kingPos[color + 1] = [m, n];
     }
 
     % Set the piece to the given position
-    var tmp = complField[m][n];
-    complField[m][n] = complField[lastSelection[M]][lastSelection[N]];
-    complField[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE, UNMOVED];
+    var tmp = complBoard[m][n];
+    complBoard[m][n] = complBoard[lastSelection[M]][lastSelection[N]];
+    complBoard[lastSelection[M]][lastSelection[N]] = [EMPTY, NONE, UNMOVED];
 
     % If the players king does not end up checked allow move
     result = !testCheck(color);
@@ -896,8 +906,8 @@ function noCheck(m, n, color) {
     }
 
     % Reset the piece to its origin
-    complField[lastSelection[M]][lastSelection[N]] = complField[m][n];
-    complField[m][n] = tmp;
+    complBoard[lastSelection[M]][lastSelection[N]] = complBoard[m][n];
+    complBoard[m][n] = tmp;
 
     return result;
 }
@@ -911,7 +921,7 @@ function promotePawn(sel) {
     % Check if there is something to promote
     if (promotionPos.length > 0) {
         % Change the piece to the selection
-        complField[promotionPos[M]][promotionPos[N]][PIECE] = PIECE_SYMBOLS[QUEEN + sel];
+        complBoard[promotionPos[M]][promotionPos[N]][PIECE] = PIECE_SYMBOLS[QUEEN + sel];
         draw(promotionPos[M], promotionPos[N]);
         promotionPos = [];
         % Hide the buttons
@@ -965,8 +975,8 @@ function processMoves() {
 
 /**
  * Processes the move at position 0 from the movesToProcess array until the array is empty.
- * Each move has two states, first being shown on the field and then being executed.
- * The the 0 element of the array is removed after the processing finishes.
+ * Each move has two states, first being shown on the board and then being executed.
+ * The 0 element of the array is removed after the processing finishes.
  */
 function processNextMove() {
     if (movesToProcess.length == 0) {
@@ -987,6 +997,8 @@ function processNextMove() {
             } else {
                 printInfoText("Could not find a valid move for " + movesToProcess[0] + ".");
             }
+            % Remove unprocessed elements
+            movesToProcess.length = 0
             app.clearInterval(playInterval);
             return;
         }
@@ -1106,8 +1118,8 @@ function convert(curTurn) {
     }
 
     % Only allow letters a-h and only numbers from 1-8
-    if (tgtM < 0 || tgtN < 0 || tgtM >= FIELD_HEIGHT || tgtN >= FIELD_WIDTH ||
-        srcM >= FIELD_HEIGHT || srcN >= FIELD_WIDTH
+    if (tgtM < 0 || tgtN < 0 || tgtM >= BOARD_HEIGHT || tgtN >= BOARD_WIDTH ||
+        srcM >= BOARD_HEIGHT || srcN >= BOARD_WIDTH
     ) {
         return [];
     }
@@ -1141,20 +1153,20 @@ function convert(curTurn) {
  * @param {String} piece The search piece character.
  */
 function getSourcePosition(tgtM, tgtN, srcM, srcN, piece) {
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
         % If a row is given only check this one row
         if (srcM > -1 && m != srcM) {
             continue;
         }
 
-        for (var n = 0; n < FIELD_WIDTH; n++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             % If a column is given only check this one column
             if (srcN > -1 && n != srcN) {
                 continue;
             }
 
             % Select the pieces with the currentTurn color
-            if (currentTurn == complField[m][n][COLOR] && piece == complField[m][n][PIECE]) {
+            if (currentTurn == complBoard[m][n][COLOR] && piece == complBoard[m][n][PIECE]) {
 
                 lastSelection = [m, n];
                 % Mark all cells that are accessible
@@ -1181,11 +1193,11 @@ function getSourcePosition(tgtM, tgtN, srcM, srcN, piece) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draws the complete field.
+ * Draws the complete board.
  */
 function drawAll() {
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             draw(m, n);
         }
     }
@@ -1198,16 +1210,16 @@ function drawAll() {
  * @param {Number} n The n position (width).
  */
 function draw(m, n) {
-    % Retrieve the field data
+    % Retrieve the cell data
     var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
 
-    cell.value = complField[m][n][PIECE];
+    cell.value = complBoard[m][n][PIECE];
 
     % Adjust piece color dependent on its owner
-    if (complField[m][n][COLOR] == WHITE) {
+    if (complBoard[m][n][COLOR] == WHITE) {
         cell.textColor = TEXT_COLORS[WHITE + 1];
-    } else if (complField[m][n][COLOR] == BLACK) {
+    } else if (complBoard[m][n][COLOR] == BLACK) {
         cell.textColor = TEXT_COLORS[BLACK];
     }
 
@@ -1294,11 +1306,11 @@ function printInfoText(text) {
         \end{multicols}
 
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        \FPeval{\resultW}{(\boardWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{(\boardHeight * 4 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
 
         % Define the blocksize via the smaller amount
         \ifnum\blocksizeW<\blocksizeH
@@ -1307,11 +1319,11 @@ function printInfoText(text) {
             \def\blocksize{\blocksizeH}
         \fi
 
-        % The gamefield
+        % The game board
         \begin{tcolorbox}
             \begin{flushright}
-                \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #2 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
                             bordercolor=white, name=cell#1-#2, readonly=true]{}\hspace{3pt}%
@@ -1327,7 +1339,9 @@ function printInfoText(text) {
             \begin{tabularx}{\textwidth}{@{} *{4}{X} @{}}%
                 \xintFor* #1 in {\xintSeq{0}{3}} \do {%
                     \begin{tcolorbox}
-                        \TextField[name=promote#1, width=\linewidth, bordercolor=gray, readonly=true]{}
+                        \TextField[
+                            name=promote#1, width=\linewidth, bordercolor=gray, readonly=true
+                        ]{}
                     \end{tcolorbox}
                     % Have the cell divider for all elements
                     % that are not the last one
