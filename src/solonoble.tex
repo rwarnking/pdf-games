@@ -1,4 +1,4 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
@@ -1098,15 +1098,21 @@ function printInfoText(text) {
         %%%%%%%%%%%%%%%%
         % GUI elements %
         %%%%%%%%%%%%%%%%
-        \begin{multicols}{2}
-
+        \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
             \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
                     Restart game\strut{}
                 \end{tcolorbox}
-            }\vspace{0.1cm}
-
+            }
+            &
+            \PushButton[name=showSol, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Restart and show full solution\strut{}
+                \end{tcolorbox}
+            }
+            \\
             \PushButton[name=exmoves, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
@@ -1114,8 +1120,13 @@ function printInfoText(text) {
                     \TextField[name=exmovestxt, bordercolor=gray, borderwidth=2pt,
                         backgroundcolor=white]{\strut}
                 \end{tcolorbox}
-            }\vspace{0.1cm}
-
+            }
+            &
+            \begin{tcolorbox}
+                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]
+                    {\strut}
+            \end{tcolorbox}
+            \\
             \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
@@ -1124,28 +1135,7 @@ function printInfoText(text) {
                         backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }%
-
-            \begin{tcolorbox}
-                \centering
-                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{
-                    English (33), European (37), German (45), Asymmetrical (39), Hermary (39)
-                }
-            \end{tcolorbox}
-
-            \columnbreak%
-
-            \PushButton[name=showSol, bordercolor=, backgroundcolor=, borderwidth=0]{
-                \begin{tcolorbox}
-                    \centering
-                    Restart and show full solution\strut{}
-                \end{tcolorbox}
-            }
-
-            \begin{tcolorbox}
-                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]
-                    {\strut}
-            \end{tcolorbox}
-
+            &
             \PushButton[name=export, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
@@ -1154,12 +1144,18 @@ function printInfoText(text) {
                         bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }
-
+            \\
+            \begin{tcolorbox}%
+                \centering%
+                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
+                    English (33), European (37), German (45), Asymmetrical (39), Hermary (39)%
+                }%
+            \end{tcolorbox}%
+            &
             \begin{tcolorbox}
                 \CheckBox[name=cbColor, bordercolor=gray, checkboxsymbol=5]{Color}
             \end{tcolorbox}
-
-        \end{multicols}
+        \end{tabularx}
 
         \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
     \end{Form}
