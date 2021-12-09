@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,8 +20,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{8}
-\def\fieldHeight{8}
+\def\boardWidth{8}
+\def\boardHeight{8}
 % TODO make these selectable in the gui
 \def\playerCount{3}
 \def\winningPieces{4}
@@ -39,8 +37,8 @@ Each turn a player can choose a column in which his stone should be placed.\
 The stones will be placed at the bottom of the column or on top of the current top stone.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const PLAYER_COUNT = AFMakeNumber(\playerCount);
 const WINNING_PIECES = AFMakeNumber(\winningPieces);
 
@@ -71,9 +69,9 @@ const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.960, 0.176 ];
  * Initialise the default game state.
  */
 function initialise() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
         var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             tmp.push(EMPTY);
         }
         complField.push(tmp);
@@ -101,7 +99,7 @@ function initialiseButtons() {
 
     % Each field needs to be connected to an input function
     var funcName = "addToColumn";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
         var callbackName = funcName + "(" + x.toString() + ");";
         this.getField("col" + x).setAction("MouseDown", callbackName);
         this.getField("col" + x).highlight="none";
@@ -120,8 +118,8 @@ function initialiseButtons() {
 function restart() {
     % Clear complField and redraw
     var field;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             complField[y][x] = EMPTY;
 
             draw(x, y);
@@ -211,12 +209,12 @@ function addToColumn(x) {
  * @param {Number} x The column for which the y should be returned.
  */
 function getYFromX(x) {
-    for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var y = 0; y < BOARD_HEIGHT; y++) {
         if (complField[y][x] != EMPTY) {
             return y - 1;
         }
     }
-    return FIELD_HEIGHT - 1;
+    return BOARD_HEIGHT - 1;
 }
 
 /**
@@ -246,14 +244,16 @@ function checkGameover(x, y) {
         for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
             var nx = x + directions[dirIdx] * wp;
             var ny = y + directions[dirIdx + 1] * wp;
-            if (nx < 0 || nx >= FIELD_WIDTH ||
-                ny < 0 || ny >= FIELD_HEIGHT ||
+            if (nx < 0 || nx >= BOARD_WIDTH ||
+                ny < 0 || ny >= BOARD_HEIGHT ||
                 complField[ny][nx] != activePlayer + 1
             ) {
                 count = 0;
             } else {
                 count++;
-                maxCount = count;
+                if (count > maxCount) {
+                    maxCount = count;
+                }
             }
         }
         % If there are enough pieces found, color the winning pieces and set gameover
@@ -272,8 +272,8 @@ function checkGameover(x, y) {
  * Draws the complete field.
  */
 function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             draw(x, y);
         }
     }
@@ -318,8 +318,8 @@ function colorWinner(x, y, dirIdx) {
         for (var wp = 0; wp < WINNING_PIECES; wp++) {
             var nx = x + directions[dirIdx] * wp * mul;
             var ny = y + directions[dirIdx + 1] * wp * mul;
-            if (nx < 0 || nx >= FIELD_WIDTH ||
-                ny < 0 || ny >= FIELD_HEIGHT ||
+            if (nx < 0 || nx >= BOARD_WIDTH ||
+                ny < 0 || ny >= BOARD_HEIGHT ||
                 complField[ny][nx] != activePlayer + 1
             ) {
                 wp = WINNING_PIECES;
@@ -371,13 +371,13 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        \FPeval{\result}{(\fieldWidth * 3 + 3)}
-        \def\blocksize{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
+        \FPeval{\result}{(\boardWidth * 3 + 3)}
+        \def\blocksize{\dimexpr (\linewidth-\result pt)/\boardWidth \relax}
 
         \begin{tcolorbox}
             % Column selection buttons
-            \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
-                \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            \begin{tabularx}{\textwidth}{@{} *{\boardWidth}{X} @{}}%
+                \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
                     \PushButton[name=col#1, bordercolor=black]{
                         \begin{tcolorbox}
                             \centering
@@ -391,8 +391,8 @@ function printInfoText(text) {
             \end{tabularx}%
             % The gamefield
             \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
                             bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
