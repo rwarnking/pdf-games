@@ -22,9 +22,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \def\boardWidth{8}
 \def\boardHeight{8}
-% TODO make these selectable in the gui
-\def\playerCount{3}
-\def\winningPieces{4}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -39,8 +36,6 @@ The stones will be placed at the bottom of the column or on top of the current t
 % Outside variables
 const BOARD_WIDTH = AFMakeNumber(\boardWidth);
 const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
-const PLAYER_COUNT = AFMakeNumber(\playerCount);
-const WINNING_PIECES = AFMakeNumber(\winningPieces);
 
 % Constants
 const EMPTY = 0;
@@ -54,7 +49,9 @@ const DIRS = [
 ]
 
 % Globals
-% The game field array
+var playerCount;
+var winningPieces;
+% The game board array
 var complBoard = new Array();
 var activePlayer = 0;
 var gameover = false;
@@ -65,7 +62,9 @@ const COLORS = new Array(
     [ "RGB", 0.843, 0.078, 0.058 ],
     [ "RGB", 0.203, 0.603, 0.054 ],
     [ "RGB", 0.078, 0.305, 0.560 ],
-    [ "RGB", 0.560, 0.078, 0.533 ]
+    [ "RGB", 0.560, 0.078, 0.533 ],
+    [ "RGB", 1.000, 0.650, 0.000 ],
+    [ "RGB", 0.999, 0.004, 0.600 ]
 );
 
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.960, 0.176 ];
@@ -114,6 +113,13 @@ function initialiseButtons() {
         this.getField("col" + n).borderColor = color.transparent;
     }
 
+    this.getField("cmPlayer").currentValueIndices = 1;
+    this.getField("cmWin").currentValueIndices = 1;
+    % Get the number of players and the number of pieces to win
+    % from the choise menus
+    playerCount = this.getField("cmPlayer").value;
+    winningPieces = this.getField("cmWin").value;
+
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
@@ -121,11 +127,15 @@ function initialiseButtons() {
 }
 
 /**
- * Restarts the game by clearing the field array.
+ * Restarts the game by clearing the board array.
  */
 function restart() {
+    % Get the number of players and the number of pieces to win
+    % from the choise menus
+    playerCount = this.getField("cmPlayer").value;
+    winningPieces = this.getField("cmWin").value;
+
     % Clear complBoard and redraw
-    var field;
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         for (var n = 0; n < BOARD_WIDTH; n++) {
             complBoard[m][n] = EMPTY;
@@ -200,8 +210,8 @@ function addToColumn(n) {
 
     activePlayer++;
     % Reset player count
-    if (activePlayer >= PLAYER_COUNT) {
-        activePlayer -= PLAYER_COUNT;
+    if (activePlayer >= playerCount) {
+        activePlayer -= playerCount;
     }
 
     if (!gameover) {
@@ -242,7 +252,7 @@ function checkGameover(m, n) {
         count = 0;
         maxCount = 0;
         % Count succeeding stones
-        for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
+        for (var wp = -winningPieces + 1; wp < winningPieces; wp++) {
             var mm = m + DIRS[dirIdx] * wp;
             var nn = n + DIRS[dirIdx + 1] * wp;
             if (mm < 0 || mm >= BOARD_HEIGHT ||
@@ -258,7 +268,7 @@ function checkGameover(m, n) {
             }
         }
         % If there are enough pieces found, color the winning pieces and set gameover
-        if (maxCount >= WINNING_PIECES) {
+        if (maxCount >= winningPieces) {
             gameover = true;
             colorWinner(m, n, dirIdx);
             printInfoText("The winner is: Player " + (activePlayer + 1));
@@ -270,7 +280,7 @@ function checkGameover(m, n) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draws the complete field.
+ * Draws the complete board.
  */
 function drawAll() {
     for (var m = 0; m < BOARD_HEIGHT; m++) {
@@ -281,22 +291,22 @@ function drawAll() {
 }
 
 /**
- * Draw the field at the coordinates m, n.
+ * Draw the cell at the coordinates m, n.
  *
  * @param {Number} m The m coordinate
  * @param {Number} n The n coordinate
  */
 function draw(m, n) {
-    field = this.getField("cell" + m + "-" + n);
-    field.delay = true;
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
     var value = complBoard[m][n];
     if (value > EMPTY) {
-        field.fillColor = COLORS[value - 1];
+        cell.fillColor = COLORS[value - 1];
     } else {
-        field.fillColor = color.white;
-        field.borderColor = color.transparent;
+        cell.fillColor = color.white;
+        cell.borderColor = color.transparent;
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
@@ -310,19 +320,19 @@ function draw(m, n) {
 function colorWinner(m, n, dirIdx) {
     % Allows for highlighting all stones left and right from the m, n
     for (var mul = -1; mul < 2; mul += 2) {
-        for (var wp = 0; wp < WINNING_PIECES; wp++) {
+        for (var wp = 0; wp < winningPieces; wp++) {
             var mm = m + DIRS[dirIdx] * wp * mul;
             var nn = n + DIRS[dirIdx + 1] * wp * mul;
             if (mm < 0 || mm >= BOARD_HEIGHT ||
                 nn < 0 || nn >= BOARD_WIDTH ||
                 complBoard[mm][nn] != activePlayer + 1
             ) {
-                wp = WINNING_PIECES;
+                wp = winningPieces;
             } else {
-                var field = this.getField("cell" + mm + "-" + nn);
-                field.delay = true;
-                field.borderColor = HIGHLIGHT_COLOR;
-                field.delay = false;
+                var cell = this.getField("cell" + mm + "-" + nn);
+                cell.delay = true;
+                cell.borderColor = HIGHLIGHT_COLOR;
+                cell.delay = false;
             }
         }
     }
@@ -384,7 +394,7 @@ function printInfoText(text) {
                     \xintifForLast{}{&}%
                 }%
             \end{tabularx}%
-            % The gamefield
+            % The game board
             \begin{flushright}
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
@@ -397,6 +407,16 @@ function printInfoText(text) {
             \end{flushright}
         \end{tcolorbox}
 
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
@@ -408,7 +428,19 @@ function printInfoText(text) {
                 } &
                 \begin{tcolorbox}
                     \TextField[name=info, width=\linewidth, readonly=true]{}
-                \end{tcolorbox}
+                \end{tcolorbox}\\
+                \begin{tcolorbox}%
+                    \centering%
+                    \ChoiceMenu[name=cmPlayer, bordercolor=gray, width=2cm, combo]{Playercount: }{%
+                        2, 3, 4, 5, 6%
+                    }%
+                \end{tcolorbox} &
+                \begin{tcolorbox}%
+                    \centering%
+                    \ChoiceMenu[name=cmWin, bordercolor=gray, width=2cm, combo]{Winning Pieces: }{%
+                        3, 4, 5, 6%
+                    }%
+                \end{tcolorbox}%
             \end{tabularx}
         \end{center}
 
