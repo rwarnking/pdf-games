@@ -113,10 +113,10 @@ function initialise() {
 function initialiseButtons() {
     % Set the callbacks and attributes of each cell
     var funcName = "reveal";
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            var c = this.getField("pos" + x + "-" + y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            var c = this.getField("cell" + m + "-" + n);
             c.setAction("MouseDown", callbackName);
             c.borderColor = color.black;
             c.fillColor = color.white;
@@ -199,37 +199,42 @@ function tooltip(on) {
  */
 function fillMines() {
     % Get the amount of mines using the gui-percentage
-    mines = (BOARD_WIDTH * BOARD_HEIGHT) / 100 * this.getField("percentage").value;
+    mines = Math.floor((BOARD_WIDTH * BOARD_HEIGHT) / 100 * this.getField("percentage").value);
     % Reduce the count of cells to reveal
     cellsToReveal -= mines;
     % Distribute the mines onto the board
     % OBACHT: In this loop a mine might be placed at an already taken position.
-    var x = 0;
-    var y = 0;
+    var m = 0;
+    var n = 0;
     for (var i = 0; i < mines; i++) {
-        x = getRandomInt(BOARD_WIDTH);
-        y = getRandomInt(BOARD_HEIGHT);
-        complBoard[y][x][1] = MINE;
+        m = getRandomInt(BOARD_HEIGHT);
+        n = getRandomInt(BOARD_WIDTH);
+        % Make sure that a cell is not mined twice
+        if (complBoard[m][n][1] == MINE) {
+            i--;
+        } else {
+            complBoard[m][n][1] = MINE;
+        }
     }
 
     % For each cell that is not a mine calc the mine count
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             % Ignore cells with mine on it
-            if (complBoard[y][x][1] == MINE) {
+            if (complBoard[m][n][1] == MINE) {
                 continue;
             }
             % Check the neighbourhood
-            for (var xx = x - 1; xx <= x + 1; xx++) {
-                for (var yy = y - 1; yy <= y + 1; yy++) {
-                    if (xx < 0 || yy < 0 || xx >= BOARD_WIDTH ||
-                        yy >= BOARD_HEIGHT || (xx == x && yy == y)
+            for (var mm = m - 1; mm <= m + 1; mm++) {
+                for (var nn = n - 1; nn <= n + 1; nn++) {
+                    if (nn < 0 || mm < 0 || nn >= BOARD_WIDTH ||
+                        mm >= BOARD_HEIGHT || (nn == n && mm == m)
                     ) {
                         continue;
                     }
                     % Adjust count
-                    if (complBoard[yy][xx][1] == MINE) {
-                        complBoard[y][x][1]++;
+                    if (complBoard[mm][nn][1] == MINE) {
+                        complBoard[m][n][1]++;
                     }
                 }
             }
@@ -247,9 +252,9 @@ function restart() {
     gameover = false;
 
     % Clear the board
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-             complBoard[y][x] = [HIDDEN, EMPTY, !LOCK];
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = [HIDDEN, EMPTY, !LOCK];
         }
     }
 
@@ -277,17 +282,17 @@ function changeMode() {
 }
 
 /**
- * Reveal the cell x, y.
+ * Reveal the cell m, n.
  * If the Lockmode is activated the cell will be marked and
  * can not be reveal unless the lock is lifted.
  * If the revealmode is activated the cell is revealed and
  * either shows a number, an area of numbers or a mine.
  * If the game is over nothing will happen.
  *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  */
-function reveal(x, y) {
+function reveal(m, n) {
     % Remove focus so the cursor is not shown
     this.getField("percentage").setFocus();
 
@@ -297,73 +302,76 @@ function reveal(x, y) {
         return;
     }
 
+    if (complBoard[m][n][0] == VISIBLE) {
+        printInfoText("Cell already visible!");
+        retrun;
+    }
+
     % Lock the cell or lift it depending on current state
     if (gameMode == LOCK) {
-        if (complBoard[y][x][2] != LOCK) {
-            complBoard[y][x][2] = LOCK;
+        if (complBoard[m][n][2] != LOCK) {
+            complBoard[m][n][2] = LOCK;
         } else {
-            complBoard[y][x][2] = !LOCK
+            complBoard[m][n][2] = !LOCK
         }
-        draw(x, y);
+        draw(m, n);
         this.getField("restart").setFocus();
         return;
     }
 
     % Ignore click if locked
-    if (complBoard[y][x][2] == LOCK) {
+    if (complBoard[m][n][2] == LOCK) {
         return;
     }
 
     % Make visible
-    complBoard[y][x][0] = VISIBLE;
+    complBoard[m][n][0] = VISIBLE;
 
     % If the cell is a mine the game is over
-    if (complBoard[y][x][1] == MINE) {
+    if (complBoard[m][n][1] == MINE) {
         gameover = true;
         printInfoText("You hit a mine and lost!");
     }
 
     % Reveal all empty cells in the neighborhood
     % This happens if there are no mines near by.
-    if (complBoard[y][x][1] == EMPTY) {
-        var stack = [[x, y]];
+    if (complBoard[m][n][1] == EMPTY) {
+        var stack = [[m, n]];
         % For each neighbor-cell put it on a stack unless it is already visible.
         % Iterate the stack and reveal the cells.
         while (stack.length > 0) {
             var elem = stack.pop();
-            for (var xx = elem[0] - 1; xx <= elem[0] + 1; xx++) {
-                for (var yy = elem[1] - 1; yy <= elem[1] + 1; yy++) {
+            for (var mm = elem[0] - 1; mm <= elem[0] + 1; mm++) {
+                for (var nn = elem[1] - 1; nn <= elem[1] + 1; nn++) {
                     % Ignore out of bounds, same cells and already visible
-                    if (xx < 0 || yy < 0 || xx >= BOARD_WIDTH || yy >= BOARD_HEIGHT ||
-                        (xx == elem[0] && yy == elem[1]) || complBoard[yy][xx][0] == VISIBLE) {
+                    if (nn < 0 || mm < 0 || nn >= BOARD_WIDTH || mm >= BOARD_HEIGHT ||
+                        (mm == elem[0] && nn == elem[1]) || complBoard[mm][nn][0] == VISIBLE) {
                         continue;
                     }
                     % Reveal the cell
-                    complBoard[yy][xx][0] = VISIBLE;
+                    complBoard[mm][nn][0] = VISIBLE;
                     % Adjust counter for each cell
                     revealed++;
-                    draw(xx, yy);
+                    draw(mm, nn);
                     % If it is a number then do not add it to the stack
-                    if (complBoard[yy][xx][1] != EMPTY) {
+                    if (complBoard[mm][nn][1] != EMPTY) {
                         continue;
                     }
-                    stack.push([xx, yy]);
-
+                    stack.push([mm, nn]);
                 }
             }
         }
-    } else {
-        % Add one if there was one cell revealed
-        revealed++;
     }
+    % Add one for the first cell revealed
+    revealed++;
 
     % Win condition
-    if (revealed == cellsToReveal) {
+    if (revealed >= cellsToReveal) {
         gameover = true;
         printInfoText("You found all mines and won!");
     }
 
-    draw(x, y);
+    draw(m, n);
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -373,26 +381,26 @@ function reveal(x, y) {
  * Draws the complete board.
  */
 function drawAll() {
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
 
 /**
- * Draw the cell at the coordinates x, y.
+ * Draw the cell at the coordinates m, n.
  *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  */
-function draw(x, y) {
+function draw(m, n) {
     % Retrieve the cell data
-    var cell = this.getField("pos" + x + "-" + y);
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
 
-    if (complBoard[y][x][0] == VISIBLE) {
-        var val = complBoard[y][x][1];
+    if (complBoard[m][n][0] == VISIBLE) {
+        var val = complBoard[m][n][1];
         % Is the cell a mine, a number or empty
         if (val == MINE) {
             cell.fillColor = color.black;
@@ -406,7 +414,7 @@ function draw(x, y) {
             cell.fillColor = color.transparent;
             cell.borderColor = color.transparent;
         }
-    } else if (complBoard[y][x][2] == LOCK) {
+    } else if (complBoard[m][n][2] == LOCK) {
         cell.fillColor = color.transparent;
         cell.borderColor = color.black;
         % Fancy x for marking mines
@@ -473,11 +481,11 @@ function printInfoText(text) {
         % The game board
         \begin{tcolorbox}
             \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
+                            bordercolor=white, name=cell#1-#2, readonly=true]{}\hspace{3pt}%
                     }\vspace{3pt}
                     \newline%
                 }%
