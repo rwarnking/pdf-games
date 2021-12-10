@@ -321,7 +321,7 @@ function draw() {
         \end{multicols}
 
         % Dynamically adjust the cell width to the number of cells per column
-        \FPeval{\resultW}{(\canvasWidth*3-2)}
+        \FPeval{\resultW}{(\canvasWidth * 3 - 2)} % chktex 8
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\canvasWidth \relax}
 
         % The canvas (pixelarray)

@@ -99,16 +99,17 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
 
     % Each field needs to be connected to an input function
     var funcName = "addToColumn";
     for (var n = 0; n < BOARD_WIDTH; n++) {
         var callbackName = funcName + "(" + n.toString() + ");";
         this.getField("col" + n).setAction("MouseDown", callbackName);
-        this.getField("col" + n).highlight="none";
     }
 
     this.getField("cmPlayer").currentValueIndices = 1;
@@ -121,7 +122,6 @@ function initialiseButtons() {
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 }
 
 /**
@@ -372,8 +372,8 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        \FPeval{\result}{(\boardWidth * 3 - 2)}
-        \def\width{\dimexpr (\linewidth-\result pt) \relax}
+        % Dynamically adjust the cell width to the number of cells per column
+        \FPeval{\result}{(\boardWidth * 3 - 2)} % chktex 8
         \def\blocksize{\dimexpr (\linewidth-\result pt)/\boardWidth \relax}
 
         \begin{tcolorbox}
