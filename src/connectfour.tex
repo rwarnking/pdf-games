@@ -20,8 +20,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% The board width can be adjusted, but the height should always be the same as the board width
+% width should not be greater than 20 and should at least be 4.
 \def\boardWidth{8}
-\def\boardHeight{8}
+\def\boardHeight{\boardWidth}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -84,9 +86,6 @@ function initialise() {
         complBoard.push(row);
     }
 
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
-
     printInfoText("Player " + (activePlayer + 1) + ": Please select a column.");
 
     % Init the GUI
@@ -110,7 +109,6 @@ function initialiseButtons() {
         var callbackName = funcName + "(" + n.toString() + ");";
         this.getField("col" + n).setAction("MouseDown", callbackName);
         this.getField("col" + n).highlight="none";
-        this.getField("col" + n).borderColor = color.transparent;
     }
 
     this.getField("cmPlayer").currentValueIndices = 1;
@@ -150,9 +148,9 @@ function restart() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -160,26 +158,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -219,6 +214,7 @@ function addToColumn(n) {
     }
 
     draw(m, n);
+    this.getField("cell" + m + "-" + n).setFocus();
 }
 
 /**
@@ -368,7 +364,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -376,19 +372,32 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        \FPeval{\result}{(\boardWidth * 3 + 3)}
+        \FPeval{\result}{(\boardWidth * 3 - 2)}
+        \def\width{\dimexpr (\linewidth-\result pt) \relax}
         \def\blocksize{\dimexpr (\linewidth-\result pt)/\boardWidth \relax}
 
         \begin{tcolorbox}
             % Column selection buttons
-            \begin{tabularx}{\textwidth}{@{} *{\boardWidth}{X} @{}}%
+            \begin{tabularx}{\linewidth}{*{\boardWidth}{@{\,}X@{\,}}}%
                 \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
-                    \PushButton[name=col#1, bordercolor=black]{
-                        \begin{tcolorbox}
-                            \centering
-                            Col#1
+                    \PushButton[name=col#1, bordercolor=, borderwidth=0]{
+                        \begin{tcolorbox}[left=0pt, right=0pt, halign=center]
+                            % https://tex.stackexchange.com/questions/131873/
+                            \ifdim\linewidth>20pt
+                                C%
+                            \fi%
+                            \ifdim\linewidth>30pt
+                                ol%
+                            \fi%
+                            \ifdim\linewidth>45pt
+                                umn%
+                            \fi%
+                            \ifdim\linewidth>25pt
+                                \;%
+                            \fi%
+                            #1%
                         \end{tcolorbox}
-                    }
+                    }%
                     % Have the cell divider for all elements
                     % that are not the last one
                     \xintifForLast{}{&}%
@@ -400,7 +409,9 @@ function printInfoText(text) {
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=cell#1-#2, readonly=true]{}\hspace{3pt}%
+                            bordercolor=white, name=cell#1-#2, readonly=true]{}%
+                        % Have space between all cells that are not the last one
+                        \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}
                     \newline
                 }
@@ -420,31 +431,34 @@ function printInfoText(text) {
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=restart, bordercolor=white]{
+                \PushButton[name=restart, bordercolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, bordercolor=, backgroundcolor=,
+                        width=\linewidth, readonly]{}
                 \end{tcolorbox}\\
                 \begin{tcolorbox}%
                     \centering%
-                    \ChoiceMenu[name=cmPlayer, bordercolor=gray, width=2cm, combo]{Playercount: }{%
+                    \ChoiceMenu[name=cmPlayer, bordercolor=gray,
+                        width=2cm, combo, edit=false]{Playercount: }{%
                         2, 3, 4, 5, 6%
                     }%
                 \end{tcolorbox} &
                 \begin{tcolorbox}%
                     \centering%
-                    \ChoiceMenu[name=cmWin, bordercolor=gray, width=2cm, combo]{Winning Pieces: }{%
+                    \ChoiceMenu[name=cmWin, bordercolor=gray,
+                        width=2cm, combo, edit=false]{Winning Pieces: }{%
                         3, 4, 5, 6%
                     }%
                 \end{tcolorbox}%
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 
