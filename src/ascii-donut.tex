@@ -20,15 +20,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Can be changed but 20-30 seem to be a good values
 \def\canvasWidth{20}
-\def\canvasHeight{20}
+\def\canvasHeight{\canvasWidth}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{ascii-donut}
 
-const GAME_DESC = "This application uses ascii characters to visualise\
+const GAME_DESC = "This application uses ASCII characters to visualize\
 a rotating donut. The idea is to use the different symbols to simulate\
 the different orientations and lighting states.";
 
@@ -38,13 +39,13 @@ const CANVAS_HEIGHT = AFMakeNumber(\canvasHeight);
 
 % Constants
 const SCALE = 10;
-const INTERVAL = 300;
+const ANIMATION_SPEED = 300;
 
 const CHAR_SET = ".,-~:;=!*#S@";
 
 % Globals
 % Animation interval variable
-var run;
+var animInterval;
 % The display arrays
 var output = new Array();
 var zbuffer = new Array();
@@ -61,33 +62,31 @@ var B = 0;
  */
 function initialise() {
     var cell;
-    for (var x = 0; x < CANVAS_WIDTH; x++) {
-        for (var y = 0; y < CANVAS_HEIGHT; y++) {
-            cell = this.getField("cell" + x + "-" + y);
+    for (var m = 0; m < CANVAS_HEIGHT; m++) {
+        for (var n = 0; n < CANVAS_WIDTH; n++) {
+            cell = this.getField("cell" + m + "-" + n);
             cell.delay = true;
-            cell.fillColor = color.transparent;
-            cell.borderColor = color.transparent;
             cell.textColor = color.white
             cell.delay = false;
         }
     }
 
-    for (var row = 0; row < CANVAS_HEIGHT; row++) {
-        var tmp = new Array();
-        var tmp2 = new Array();
-        for (var column = 0; column < CANVAS_WIDTH; column++) {
-            tmp.push(" ");
-            tmp2.push(0);
+    for (var m = 0; m < CANVAS_HEIGHT; m++) {
+        var oRow = new Array();
+        var zRow = new Array();
+        for (var n = 0; n < CANVAS_WIDTH; n++) {
+            oRow.push(" ");
+            zRow.push(0);
         }
-        output.push(tmp);
-        zbuffer.push(tmp2);
+        output.push(oRow);
+        zbuffer.push(zRow);
     }
 
     % Init the GUI
     initialiseButtons();
 
     % Start the animation interval
-    run = app.setInterval("runAll()", INTERVAL);
+    animInterval = app.setInterval("runAll()", ANIMATION_SPEED);
 }
 
 /**
@@ -95,10 +94,43 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the coresponding function
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("pause").setAction("MouseUp", "pause();");
+    this.getField("resume").setAction("MouseUp", "resume();");
+
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
+}
+
+/**
+ * Restarts the application by resetting the donut state.
+ */
+function restart() {
+    A = 0;
+    B = 0;
+    resume();
+}
+
+/**
+ * Pause the interval.
+ */
+function pause() {
+    app.clearInterval(animInterval);
+    animInterval = -1;
+}
+
+/**
+ * Continue the interval.
+ */
+function resume() {
+    if (animInterval == -1) {
+        animInterval = app.setInterval("runAll()", ANIMATION_SPEED);
+    }
 }
 
 /**
@@ -142,7 +174,7 @@ function tooltip(on) {
 function runAll() {
     clearBuffer();
     % Create the data for the current frame
-    render_frame(A, B);
+    renderFrame(A, B);
     % Since the canvas changes each frame everything needs to be redrawn
     draw();
     A += 0.04 * SCALE;
@@ -153,10 +185,10 @@ function runAll() {
  * Clear the output and the zbuffer before rendering to it.
  */
 function clearBuffer() {
-    for (var x = 0; x < CANVAS_WIDTH; x++) {
-        for (var y = 0; y < CANVAS_HEIGHT; y++) {
-            output[y][x] = " ";
-            zbuffer[y][x] = 0;
+    for (var m = 0; m < CANVAS_HEIGHT; m++) {
+        for (var n = 0; n < CANVAS_WIDTH; n++) {
+            output[m][n] = " ";
+            zbuffer[m][n] = 0;
         }
     }
 }
@@ -184,7 +216,7 @@ const K1 = CANVAS_WIDTH * K2 * 3 / (8 * (R1 + R2));
  * @param {Number} A
  * @param {Number} B
  */
-function render_frame(A, B) {
+function renderFrame(A, B) {
     % Precompute sines and cosines of A and B
     var cosA = Math.cos(A);
     var sinA = Math.sin(A);
@@ -229,13 +261,13 @@ function render_frame(A, B) {
             if (L > 0) {
                 % Test against the z-buffer. Larger 1/z means the pixel is
                 % closer to the viewer than what's already plotted.
-                if (ooz > zbuffer[yp][xp]) {
-                    zbuffer[yp][xp] = ooz;
+                if (ooz > zbuffer[xp][yp]) {
+                    zbuffer[xp][yp] = ooz;
                     var luminanceIndex = L * 8;
                     % luminanceIndex is now in the range 0..11 (8*sqrt(2) = 11.3)
                     % now we lookup the character corresponding to the
                     % luminance and plot it in our output:
-                    output[yp][xp] = CHAR_SET.charAt(luminanceIndex);
+                    output[xp][yp] = CHAR_SET.charAt(luminanceIndex);
                 }
             }
         }
@@ -252,13 +284,11 @@ function render_frame(A, B) {
 function draw() {
     % Now, dump output[] to the screen.
     var cell;
-    for (var x = 0; x < CANVAS_WIDTH; x++) {
-        for (var y = 0; y < CANVAS_HEIGHT; y++) {
-            cell = this.getField("cell" + x + "-" + y);
+    for (var m = 0; m < CANVAS_HEIGHT; m++) {
+        for (var n = 0; n < CANVAS_WIDTH; n++) {
+            cell = this.getField("cell" + m + "-" + n);
             cell.delay = true;
-            cell.fillColor = color.transparent;
-            cell.borderColor = color.transparent;
-            cell.value = output[y][x];
+            cell.value = output[m][n];
             cell.delay = false;
         }
     }
@@ -282,7 +312,7 @@ function draw() {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -290,24 +320,50 @@ function draw() {
             \end{flushright}%
         \end{multicols}
 
-        % TODO use dynamic dimension for textfield
-        \FPeval{\resultW}{(\canvasWidth * 4 + 3)}
+        % Dynamically adjust the cell width to the number of cells per column
+        \FPeval{\resultW}{(\canvasWidth*3-2)}
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\canvasWidth \relax}
 
         % The canvas (pixelarray)
         \begin{tcolorbox}[colback=black]
-            %\centering
             \begin{flushright}
-            \xintFor* #2 in {\xintSeq{0}{\canvasHeight-1}} \do {%
-                \xintFor* #1 in {\xintSeq{0}{\canvasWidth-1}} \do {%
-                    \TextField[%
-                        width=10pt, height=10pt, bordercolor=white, name=cell#1-#2, readonly=true%
-                    ]{}\hspace{3pt}%
-                }\vspace{3pt}
-                \newline
-            }
+                \xintFor* #1 in {\xintSeq{0}{\canvasHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\canvasWidth-1}} \do {%
+                        \TextField[name=cell#1-#2, bordercolor=, backgroundcolor=,%
+                            width=\blocksizeW, height=\blocksizeW, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\newline{}%
+                }%
             \end{flushright}
         \end{tcolorbox}
+
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        % Game related buttons
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} *{3}{X} @{}}%
+                \PushButton[name=restart, bordercolor=, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=pause, bordercolor=, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Pause\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=resume, bordercolor=, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Resume\strut
+                    \end{tcolorbox}
+                }
+            \end{tabularx}
+        \end{center}
 
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
