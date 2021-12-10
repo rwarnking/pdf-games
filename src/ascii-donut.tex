@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,21 +20,21 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{20}
-\def\fieldHeight{20}
+\def\canvasWidth{20}
+\def\canvasHeight{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{ascii_donut}
+\begin{insDLJS}[]{JSDateiname}{ascii-donut}
 
 const GAME_DESC = "This application uses ascii characters to visualise\
 a rotating donut. The idea is to use the different symbols to simulate\
 the different orientations and lighting states.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const CANVAS_WIDTH = AFMakeNumber(\canvasWidth);
+const CANVAS_HEIGHT = AFMakeNumber(\canvasHeight);
 
 % Constants
 const SCALE = 10;
@@ -62,21 +60,22 @@ var B = 0;
  * Initialise the default donut state.
  */
 function initialise() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
-            field.fillColor = color.transparent;
-            field.borderColor = color.transparent;
-            field.textColor = color.white
-            field.delay = false;
+    var cell;
+    for (var x = 0; x < CANVAS_WIDTH; x++) {
+        for (var y = 0; y < CANVAS_HEIGHT; y++) {
+            cell = this.getField("cell" + x + "-" + y);
+            cell.delay = true;
+            cell.fillColor = color.transparent;
+            cell.borderColor = color.transparent;
+            cell.textColor = color.white
+            cell.delay = false;
         }
     }
 
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    for (var row = 0; row < CANVAS_HEIGHT; row++) {
         var tmp = new Array();
         var tmp2 = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+        for (var column = 0; column < CANVAS_WIDTH; column++) {
             tmp.push(" ");
             tmp2.push(0);
         }
@@ -103,9 +102,9 @@ function initialiseButtons() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -113,26 +112,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -147,8 +143,7 @@ function runAll() {
     clearBuffer();
     % Create the data for the current frame
     render_frame(A, B);
-    % Since the complete field changes each frame everyting needs
-    % to be redrawn
+    % Since the canvas changes each frame everything needs to be redrawn
     draw();
     A += 0.04 * SCALE;
     B += 0.02 * SCALE;
@@ -158,8 +153,8 @@ function runAll() {
  * Clear the output and the zbuffer before rendering to it.
  */
 function clearBuffer() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < CANVAS_WIDTH; x++) {
+        for (var y = 0; y < CANVAS_HEIGHT; y++) {
             output[y][x] = " ";
             zbuffer[y][x] = 0;
         }
@@ -178,9 +173,9 @@ const K2 = 5;
 % which is at x = R1 + R2, z = 0.
 % We want that to be displaced 3/8ths of the width of the screen,
 % which is 3/4th of the way from the center to the side of the screen.
-% fieldWidth*3/8 = K1*(R1+R2)/(K2+0)
-% fieldWidth*K2*3/(8*(R1+R2)) = K1
-const K1 = FIELD_WIDTH * K2 * 3 / (8 * (R1 + R2));
+% canvasWidth*3/8 = K1*(R1+R2)/(K2+0)
+% canvasWidth*K2*3/(8*(R1+R2)) = K1
+const K1 = CANVAS_WIDTH * K2 * 3 / (8 * (R1 + R2));
 
 /**
  * Render the current frame given A and B to the
@@ -223,8 +218,8 @@ function render_frame(A, B) {
 
             % x and y projection.
             % Note that y is negated here, because y goes up in 3D space but down on 2D displays.
-            var xp = Math.floor(FIELD_WIDTH / 2 + K1 * ooz * x);
-            var yp = Math.floor(FIELD_HEIGHT / 2 - K1 * ooz * y);
+            var xp = Math.floor(CANVAS_WIDTH / 2 + K1 * ooz * x);
+            var yp = Math.floor(CANVAS_HEIGHT / 2 - K1 * ooz * y);
 
             % Calculate luminance.
             var L = cosphi * costheta * sinB - cosA * costheta * sinphi -
@@ -251,19 +246,20 @@ function render_frame(A, B) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draw the current state of the complete field (output array)
+ * Draw the current state of the canvas (output array)
  * to the display elements.
  */
 function draw() {
     % Now, dump output[] to the screen.
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
-            field.fillColor = color.transparent;
-            field.borderColor = color.transparent;
-            field.value = output[y][x];
-            field.delay = false;
+    var cell;
+    for (var x = 0; x < CANVAS_WIDTH; x++) {
+        for (var y = 0; y < CANVAS_HEIGHT; y++) {
+            cell = this.getField("cell" + x + "-" + y);
+            cell.delay = true;
+            cell.fillColor = color.transparent;
+            cell.borderColor = color.transparent;
+            cell.value = output[y][x];
+            cell.delay = false;
         }
     }
 }
@@ -295,17 +291,17 @@ function draw() {
         \end{multicols}
 
         % TODO use dynamic dimension for textfield
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        \FPeval{\resultW}{(\canvasWidth * 4 + 3)}
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\canvasWidth \relax}
 
         % The canvas (pixelarray)
         \begin{tcolorbox}[colback=black]
             %\centering
             \begin{flushright}
-            \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            \xintFor* #2 in {\xintSeq{0}{\canvasHeight-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\canvasWidth-1}} \do {%
                     \TextField[%
-                        width=10pt, height=10pt, bordercolor=white, name=pos#1-#2, readonly=true%
+                        width=10pt, height=10pt, bordercolor=white, name=cell#1-#2, readonly=true%
                     ]{}\hspace{3pt}%
                 }\vspace{3pt}
                 \newline
@@ -313,7 +309,7 @@ function draw() {
             \end{flushright}
         \end{tcolorbox}
 
-       \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 
