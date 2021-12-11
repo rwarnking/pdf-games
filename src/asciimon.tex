@@ -868,14 +868,9 @@ function initialiseButtons() {
         cell.textFont = font.Cour;
     }
 
-    % Info GUI setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
-
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 
     printInfoText("Initialised the game. Beat the current enemy creature.");
 }
@@ -939,10 +934,11 @@ function tooltip(on) {
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
         % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
@@ -950,12 +946,6 @@ function tooltip(on) {
         var field = this.getField("tooltiptxt");
         field.delay = true;
         field.hidden = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
         field.delay = false;
     }
 }
@@ -2200,7 +2190,7 @@ function fluffParticles(target) {
 
         % Different physics since the canvas elements are not equal in height
         if (target == PLAYER) {
-            particles[p][MOMENTUM] = [-35, 15 * 4.0];
+            particles[p][MOMENTUM] = [-35, 15 * 3.5];
         } else {
             particles[p][MOMENTUM] = [40, 15 * 6.5];
         }
@@ -2678,8 +2668,8 @@ function addInfoText(text) {
             % Tooltip object
             \begin{flushright}%
                 \TextField[backgroundcolor=white, bordercolor=white,
-                    name=hintbox, readonly=true, hidden]{}
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                    name=hintbox, readonly, hidden]{}
+                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -2695,13 +2685,13 @@ function addInfoText(text) {
 
             \begin{tcolorbox}%
                 \TextField[name=enemyname, bordercolor=black, backgroundcolor=,
-                    width=\linewidth, readonly=true]{}\newline
+                    width=\linewidth, readonly]{}\newline
 
                 \TextField[name=enemyhp, bordercolor=black, backgroundcolor=,
-                    width=\linewidth, readonly=true]{}\newline
+                    width=\linewidth, readonly]{}\newline
 
                 \TextField[name=enemystatus, bordercolor=black, backgroundcolor=,
-                    width=\linewidth, readonly=true]{}%
+                    width=\linewidth, readonly]{}%
             \end{tcolorbox}%
 
             \vspace{2.5cm}
@@ -2710,7 +2700,7 @@ function addInfoText(text) {
                 \xintFor* #1 in {\xintSeq{0}{\boardCharsH-1}} \do {%
                     \TextField[%
                         width=\blocksizeW, height=\blocksizeH,%
-                        bordercolor=white, name=player#1, readonly=true%
+                        bordercolor=white, name=player#1, readonly%
                     ]{}%
                     \\[0pt]%
                 }%
@@ -2722,7 +2712,7 @@ function addInfoText(text) {
                 \xintFor* #1 in {\xintSeq{0}{\boardCharsH-1}} \do {%
                     \TextField[%
                         width=\blocksizeW, height=\blocksizeH,%
-                        bordercolor=white, name=enemy#1, readonly=true%
+                        bordercolor=white, name=enemy#1, readonly%
                     ]{}%
                     \\[0pt]%
                 }%
@@ -2732,13 +2722,13 @@ function addInfoText(text) {
 
             \begin{tcolorbox}%
                 \TextField[name=playername, bordercolor=black, backgroundcolor=,
-                    width=\linewidth, readonly=true]{}\newline
+                    width=\linewidth, readonly]{}\newline
 
                 \TextField[name=playerhp, bordercolor=black, backgroundcolor=,
-                    width=\linewidth, readonly=true]{}\newline
+                    width=\linewidth, readonly]{}\newline
 
                 \TextField[name=playerstatus, bordercolor=black, backgroundcolor=,
-                    width=\linewidth, readonly=true]{}%
+                    width=\linewidth, readonly]{}%
             \end{tcolorbox}%
 
         \end{multicols}
@@ -2765,50 +2755,50 @@ function addInfoText(text) {
         %%%%%%%%%%%%%%%%
         \begin{center}
             \begin{tcolorbox}
-                \TextField[name=info, width=\linewidth, readonly=true]{}
+                \TextField[name=info, bordercolor=, backgroundcolor=, width=\linewidth, readonly]{}
             \end{tcolorbox}
 
             % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=button1, bordercolor=white, borderwidth=0]{
+                \PushButton[name=button1, bordercolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \TextField[name=button1txt, bordercolor=, backgroundcolor=,
-                            width=\linewidth, readonly=true]{}%
+                            width=\linewidth, readonly]{}%
                         \strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=button2, bordercolor=white, borderwidth=0]{
+                \PushButton[name=button2, bordercolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \TextField[name=button2txt, bordercolor=, backgroundcolor=,
-                            width=\linewidth, readonly=true]{}%
+                            width=\linewidth, readonly]{}%
                         \strut
                     \end{tcolorbox}
                 }\\
-                \PushButton[name=button3, bordercolor=white, borderwidth=0]{
+                \PushButton[name=button3, bordercolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \TextField[name=button3txt, bordercolor=, backgroundcolor=,
-                            width=\linewidth, readonly=true]{}%
+                            width=\linewidth, readonly]{}%
                         \strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=button4, bordercolor=white, borderwidth=0]{
+                \PushButton[name=button4, bordercolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \TextField[name=button4txt, bordercolor=, backgroundcolor=,
-                            width=\linewidth, readonly=true]{}%
+                            width=\linewidth, readonly]{}%
                         \strut
                     \end{tcolorbox}
                 }\\
-                \PushButton[name=back, bordercolor=white, borderwidth=0]{
+                \PushButton[name=back, bordercolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Back\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
+                \PushButton[name=restart, bordercolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut
@@ -2824,12 +2814,12 @@ function addInfoText(text) {
 
             \xintFor* #1 in {\xintSeq{0}{\atkAnimCells-1}} \do {%
                 \TextField[%
-                    bordercolor=, backgroundcolor=,
-                    name=atkanim#1, readonly=true, borderwidth=0pt, hidden
+                    name=atkanim#1, bordercolor=, backgroundcolor=,
+                    borderwidth=0pt, readonly, hidden
                 ]{}%
             }%
 
-            \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
         \columnbreak
             \centering
