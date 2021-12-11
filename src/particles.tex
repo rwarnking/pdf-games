@@ -1,4 +1,4 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
@@ -135,7 +135,6 @@ function initialiseButtons() {
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 }
 
 /**
@@ -162,9 +161,9 @@ function restart() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -172,26 +171,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -304,7 +300,7 @@ function moveParticles(idx) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -320,7 +316,7 @@ function moveParticles(idx) {
             \TextField[bordercolor=white, name=particle#1, readonly=true]{}%
         }
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}%
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
         % Game related buttons
         \begin{center}%
@@ -332,7 +328,8 @@ function moveParticles(idx) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \ChoiceMenu[name=particleType, width=50mm, combo]{Particlesystem:}{Snow, Explosions}
+                    \ChoiceMenu[name=particleType, width=50mm, combo]{Particlesystem:}
+                        {Snow, Explosions}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

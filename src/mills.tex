@@ -1,4 +1,4 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
@@ -222,7 +222,6 @@ function initialiseButtons() {
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 
     printInfoText("Initialised game. " + PLAYER_STR[turn] + ": Your turn!");
 }
@@ -253,9 +252,9 @@ function restart() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -268,10 +267,11 @@ function tooltip(on) {
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
         % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
@@ -279,12 +279,6 @@ function tooltip(on) {
         var field = this.getField("tooltiptxt");
         field.delay = true;
         field.hidden = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
         field.delay = false;
     }
 }
@@ -368,7 +362,7 @@ function placing(m, n) {
 
 /**
  * Processes the given position as a move operation.
- * This must be called twice, once for the source and once for the target position.
+ * Two inputs are needed, the source and the target position.
  * If the positions are in a neighbourhood or the player has only
  * three stones left the piece is moved.
  * The source piece must be of the player type, while the
@@ -392,7 +386,12 @@ function moving(m, n) {
             return;
         }
         % Only allow moves to neighbouring cells, unless the player has 3 pieces left
-        if (!isNeighbour(m, n) && (stones[turn] + stonesToPlace[turn] != 3)) {
+        if (!isNeighbour(m, n) &&
+            !(
+                ((turn == P_1) && (stones[P_1] + stonesToPlace[P_1] == 3)) ||
+                ((turn == P_2) && (stones[P_2] + stonesToPlace[P_2] == 3))
+            )
+        ) {
             printInfoText(PLAYER_STR[turn] + ": Please select a connected position.");
             return;
         }
@@ -689,7 +688,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -772,7 +771,7 @@ function printInfoText(text) {
                         value=0, readonly%
                     ]{to place:\strut}
                 \end{tcolorbox} \\%
-                \PushButton[name=restart, bordercolor=white]{
+                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut
@@ -786,7 +785,7 @@ function printInfoText(text) {
 
         \TextField[name=animationField, backgroundcolor=, bordercolor=,
             width=1.0cm, height=1.0cm, readonly=true]{}%
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true, hidden]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 \end{document}

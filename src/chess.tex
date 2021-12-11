@@ -313,9 +313,9 @@ function addPieces() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -328,10 +328,11 @@ function tooltip(on) {
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
         % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
@@ -339,12 +340,6 @@ function tooltip(on) {
         var field = this.getField("tooltiptxt");
         field.delay = true;
         field.hidden = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
         field.delay = false;
     }
 }
@@ -1297,7 +1292,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -1373,7 +1368,7 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=, name=tooltiptxt, readonly=true, hidden]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 

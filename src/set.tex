@@ -1,4 +1,4 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
@@ -207,7 +207,6 @@ function initialiseButtons() {
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 
     printInfoText("Please select the player who found a set!");
 }
@@ -252,7 +251,7 @@ function restart() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
  * @param {Boolean} on Enable or disable tooltip
  */
@@ -262,11 +261,11 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
         % hight 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 581, 468, 381];
@@ -285,12 +284,7 @@ function tooltip(on) {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
 
         % Unhide the textelements
@@ -721,8 +715,8 @@ function printInfoText(text) {
         \columnbreak{}
             % Tooltip object
             \begin{flushright}%
-                \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
+                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%

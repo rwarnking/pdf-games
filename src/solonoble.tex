@@ -308,7 +308,6 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
-    var field;
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -329,6 +328,7 @@ function initialiseButtons() {
     this.getField("cmLayout").currentValueIndices = 0;
 
     % Each field needs to be connected to an input function
+    var field;
     var funcName = "fieldClicked";
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
@@ -344,10 +344,8 @@ function initialiseButtons() {
     this.getField("info").textFont = font.Times;
 
     % Tooltip setup
-    field = this.getField("tooltipbtn");
-    field.setAction("MouseDown", "tooltip(true);");
-    field.setAction("MouseUp", "tooltip(false);");
-    field.highlight="none";
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 
     printInfoText("Init");
 }
@@ -403,9 +401,9 @@ function restart() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -413,26 +411,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -1039,7 +1034,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -1157,6 +1152,6 @@ function printInfoText(text) {
             \end{tcolorbox}
         \end{tabularx}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
     \end{Form}
 \end{document}
