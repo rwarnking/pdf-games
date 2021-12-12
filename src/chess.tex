@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\usepackage[margin=0.5in]{geometry}
+\usepackage[margin=0.5in, bottom=0.1in]{geometry}
 
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
@@ -209,8 +209,8 @@ function initialiseButtons() {
 
     % Set the callbacks and attributes of each selectable cell
     var funcName = "move";
-    for (var m = 0; m < BOARD_WIDTH; m++) {
-        for (var n = 0; n < BOARD_HEIGHT; n++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
             var c = this.getField("cell" + m + "-" + n);
             c.setAction("MouseDown", callbackName);
@@ -306,10 +306,11 @@ function addPieces() {
     }
 
     % Init KINGs and QUEENs
-    complBoard[0][3] = [PIECE_SYMBOLS[QUEEN], BLACK, UNMOVED];
-    complBoard[0][4] = [PIECE_SYMBOLS[KING], BLACK, UNMOVED];
-    complBoard[BOARD_HEIGHT - 1][3] = [PIECE_SYMBOLS[QUEEN], WHITE, UNMOVED];
-    complBoard[BOARD_HEIGHT - 1][4] = [PIECE_SYMBOLS[KING], WHITE, UNMOVED];
+    var centerpos = Math.floor(BOARD_WIDTH / 2);
+    complBoard[0][centerpos - 1] = [PIECE_SYMBOLS[QUEEN], BLACK, UNMOVED];
+    complBoard[0][centerpos] = [PIECE_SYMBOLS[KING], BLACK, UNMOVED];
+    complBoard[BOARD_HEIGHT - 1][centerpos - 1] = [PIECE_SYMBOLS[QUEEN], WHITE, UNMOVED];
+    complBoard[BOARD_HEIGHT - 1][centerpos] = [PIECE_SYMBOLS[KING], WHITE, UNMOVED];
 }
 
 /**
@@ -1300,32 +1301,36 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
+        % Dynamically adjust the cell width and height to the number of cells
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\boardWidth * 4 + 3)}
+        \FPeval{\resultW}{(\boardWidth * 3 - 2)} % chktex 8
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\boardHeight * 4 + 3)}
+        \FPeval{\resultH}{(\boardHeight * 3 + 3)}
         \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
-
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
 
         % The game board
         \begin{tcolorbox}
-            \begin{flushright}
+            % Define the cellsize via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\blocksizeW<\blocksizeH
+                \def\blocksize{\blocksizeW}
+            \else
+                \def\blocksize{\blocksizeH}
+            \fi
+
+            \begin{center}
+                \tiny
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=cell#1-#2, readonly=true]{}\hspace{3pt}%
-                    }\vspace{3pt}
-                    \newline%
+                            name=cell#1-#2, bordercolor=white,%
+                            width=\blocksize, height=\blocksize, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         % Game related buttons
@@ -1335,14 +1340,15 @@ function printInfoText(text) {
                 \xintFor* #1 in {\xintSeq{0}{3}} \do {%
                     \begin{tcolorbox}
                         \TextField[
-                            name=promote#1, width=\linewidth, bordercolor=gray, readonly=true
+                            name=promote#1, width=\linewidth, bordercolor=gray, readonly
                         ]{}
                     \end{tcolorbox}
                     % Have the cell divider for all elements
                     % that are not the last one
                     \xintifForLast{}{&}%
-                }
+                }%
             \end{tabularx}
+            \vspace{-0.6cm}
 
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \begin{tcolorbox}
@@ -1354,7 +1360,7 @@ function printInfoText(text) {
                         Process moves
                         \strut
                     \end{tcolorbox}
-                }\\
+                }\\[-0.5cm]
                 \PushButton[name=restart, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
