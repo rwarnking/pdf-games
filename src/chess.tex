@@ -20,9 +20,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Board width and height (should not be changed)
+% Board width and height
 \def\boardWidth{8}
-\def\boardHeight{8}
+\def\boardHeight{\boardWidth}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -36,7 +36,7 @@ leaving a lot of room for different combinations and play styles.";
 % Outside variables
 const BOARD_WIDTH = AFMakeNumber(\boardWidth);
 const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
-const SCREEN_TEXT_SIZE = 500;
+const SCREEN_TEXT_SIZE = 250;
 const PLAYBACK_SPEED = 200;
 
 % Constants
@@ -215,8 +215,8 @@ function initialiseButtons() {
             var c = this.getField("cell" + m + "-" + n);
             c.setAction("MouseDown", callbackName);
             c.alignment = "center";
-            c.textSize = SCREEN_TEXT_SIZE / (BOARD_WIDTH * 3);
-            c.borderWidth = 4;
+            c.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
+            c.borderWidth = 3;
         }
     }
 

@@ -36,6 +36,7 @@ the different orientations and lighting states.";
 % Outside variables
 const CANVAS_WIDTH = AFMakeNumber(\canvasWidth);
 const CANVAS_HEIGHT = AFMakeNumber(\canvasHeight);
+const SCREEN_TEXT_SIZE = 350;
 
 % Constants
 const SCALE = 10;
@@ -67,6 +68,7 @@ function initialise() {
             cell = this.getField("cell" + m + "-" + n);
             cell.delay = true;
             cell.textColor = color.white
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(CANVAS_HEIGHT, CANVAS_WIDTH);
             cell.delay = false;
         }
     }
