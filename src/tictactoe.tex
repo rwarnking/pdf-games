@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,8 +20,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
-% to slow to play
+% Values can be changed
 \def\fieldWidth{3}
 \def\fieldHeight{3}
 \def\winningPieces{3}
@@ -111,13 +108,15 @@ function initialiseButtons() {
 
     % Each field needs to be connected to an input function
     % Define text style
+    var cell;
     var funcName = "markField";
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-            this.getField("pos" + x + "-" + y).alignment = "center";
+            cell = this.getField("pos" + x + "-" + y);
+            cell.setAction("MouseDown", callbackName);
+            cell.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            cell.alignment = "center";
         }
     }
 
@@ -394,31 +393,36 @@ function printInfoText(text, col=color.black) {
             \end{flushright}%
         \end{multicols}
 
+        % Dynamically adjust the cell width and height to the number of cells
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 15)}
+        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
         \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
+        % The game board
         \begin{tcolorbox}
-            \begin{flushright}
+            % Define the cellsize via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\blocksizeW<\blocksizeH
+                \def\blocksize{\blocksizeW}
+            \else
+                \def\blocksize{\blocksizeH}
+            \fi
+
+            \begin{center}
+                \tiny
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{5pt}%
-                    }\vspace{3pt}%
-                    \newline%
+                            name=pos#1-#2, bordercolor=white,%
+                            width=\blocksize, height=\blocksize, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         \begin{center}%

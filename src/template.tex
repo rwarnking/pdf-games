@@ -208,11 +208,13 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max height of a block
-        % \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        % \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/(\fieldHeight * 5) \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\boardWidth * 3 - 2)} % chktex 8
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        % ...
+        \FPeval{\resultH}{(\boardHeight * 3 + 3)}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
 
         %%%%%%%%%%%%%%%%%%%%%%%
         % Commandredifinition %

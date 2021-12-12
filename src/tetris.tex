@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -23,8 +21,9 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO needs to be atleast 4
-\def\fieldWidth{9}
-\def\fieldHeight{20}
+% Can be changed but impacts the performance
+\def\fieldWidth{10}
+\def\fieldHeight{16}
 % Higher means slower
 \def\GAMESPEED{5}
 
@@ -629,23 +628,36 @@ function draw(x, y) {
             \end{flushright}%
         \end{multicols}
 
-        \FPeval{\result}{(\fieldWidth * 3 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
-        \FPeval{\result}{(\fieldHeight * 3 + 3)}
-        \def\blocksizeH{\dimexpr (0.5\paperheight-\result pt)/\fieldHeight \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a block
+        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
+        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
-        % The gamefield
+        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
+        \def\blocksizeH{\dimexpr (0.55\paperheight -\resultH pt)/\fieldHeight \relax}
+
+        % The game board
         \begin{tcolorbox}
-            %\centering
-            \begin{flushright}
-            \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \TextField[width=\blocksizeW, height=\blocksizeH,
-                        bordercolor=white, readonly=true, name=pos#1-#2]{}\hspace{3pt}%
-                }\vspace{3pt}
-                \newline
-            }
-            \end{flushright}
+            % Define the cellsize via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\blocksizeW<\blocksizeH
+                \def\blocksize{\blocksizeW}
+            \else
+                \def\blocksize{\blocksizeH}
+            \fi
+
+            \begin{center}
+                \tiny
+                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                        \TextField[%
+                            name=pos#1-#2, bordercolor=white,%
+                            width=\blocksize, height=\blocksize, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
+                }
+            \end{center}
         \end{tcolorbox}
 
         % Game related buttons

@@ -138,12 +138,14 @@ function initialiseButtons() {
     this.getField("restart").highlight="none";
 
     var funcName = "revealField";
+    var cell;
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
-            this.getField("pos" + x + "-" + y).alignment = "center";
+            cell = this.getField("pos" + x + "-" + y);
+            cell.setAction("MouseDown", callbackName);
+            cell.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            cell.alignment = "center";
         }
     }
 

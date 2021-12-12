@@ -149,12 +149,14 @@ function initialiseButtons() {
     % Each field needs to be connected to an input function
     % Define text style
     var funcName = "checkInput";
+    var cell;
     for (var x = 0; x < FIELD_WIDTH; x++) {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("OnBlur", callbackName);
-            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-            this.getField("pos" + x + "-" + y).alignment = "center";
+            cell = this.getField("pos" + x + "-" + y);
+            cell.setAction("OnBlur", callbackName);
+            cell.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            cell.alignment = "center";
         }
     }
 
@@ -705,32 +707,34 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
+       % Dynamically adjust the cell width and height to the number of cells
         % Calculate the max width and height of a block
         \FPeval{\resultW}{(\fieldWidth * 4 + 3 + \fieldWidth * 3)}
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
         \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
-
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
 
         % Playingfield
         \begin{tcolorbox}
+            % Define the cellsize via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\blocksizeW<\blocksizeH
+                \def\blocksize{\blocksizeW}
+            \else
+                \def\blocksize{\blocksizeH}
+            \fi
+
             \begin{flushright}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                        \ifnum#2=3%
-                            \vspace{-12pt}%
-                            \noindent\rule[13pt]{\linewidth}{1pt}
-                        \fi%
-                        \ifnum#2=6%
-                            \vspace{-12pt}%
-                            \noindent\rule[13pt]{\linewidth}{1pt}
-                        \fi%
+                    \ifnum#2=3%
+                        \vspace{-12pt}%
+                        \noindent\rule[13pt]{\linewidth}{1pt}
+                    \fi%
+                    \ifnum#2=6%
+                        \vspace{-12pt}%
+                        \noindent\rule[13pt]{\linewidth}{1pt}
+                    \fi%
                     \vspace{1pt}%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
