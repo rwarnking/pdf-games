@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -584,38 +582,37 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
+        % Dynamically adjust the cell width and height to the number of cells
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
         \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
         \begin{tcolorbox}
-            \centering%
-            \includegraphics[width=0.25\textwidth]{end}
+            % Define the cellsize via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\blocksizeW<\blocksizeH
+                \def\blocksize{\blocksizeW}
+            \else
+                \def\blocksize{\blocksizeH}
+            \fi
             %
-            \begin{flushright}
+            \begin{center}
+                \tiny
+                \includegraphics[width=0.25\textwidth]{end}\\[2pt]
+                %
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \TextField[width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true%
-                        ]{}\hspace{3pt}%
-                    }\vspace{3pt}%
-                    \newline%
+                        \TextField[name=pos#1-#2, bordercolor=white,%
+                            width=\blocksize, height=\blocksize, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
-            %
-            \centering%
-            \includegraphics[width=0.25\textwidth]{start}
-            \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
+                \includegraphics[width=0.25\textwidth]{start}
+            \end{center}%
         \end{tcolorbox}
 
         \begin{center}%
@@ -632,6 +629,7 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
     \end{Form}
 
 \end{document}
