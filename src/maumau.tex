@@ -1071,20 +1071,20 @@ function printInfoText(text) {
             % The playing cards
             \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
                 \TextField[name=card#1, width=1cm, height=1cm,%
-                    bordercolor=black, backgroundcolor=white, readonly=true, hidden%
+                    bordercolor=black, backgroundcolor=white, readonly, hidden%
                 ]{}%
             }%
 
             % Field to show the currently active color
             \TextField[name=curcolor, width=1cm, height=1cm,%
-                bordercolor=, backgroundcolor=, readonly=true, hidden]{}%
+                bordercolor=, backgroundcolor=, readonly, hidden]{}%
             % Skip button to skip a turn
             \TextField[name=skip, width=1cm, height=1cm,%
-                bordercolor=black, backgroundcolor=white, readonly=true, hidden]{}%
+                bordercolor=black, backgroundcolor=white, readonly, hidden]{}%
             % For each color a button to allow for color selection
             \xintFor* #1 in {\xintSeq{0}{\colors-1}} \do {%
                 \TextField[name=color#1, width=1cm, height=1cm,%
-                    bordercolor=black, backgroundcolor=white, readonly=true, hidden%
+                    bordercolor=black, backgroundcolor=white, readonly, hidden%
                 ]{}%
             }%
 

@@ -105,8 +105,6 @@ function initialise() {
         field.delay = true;
         field.rect = [0, 0, 0, 0];
         field.alignment = "center";
-        field.fillColor = color.transparent;
-        field.borderColor = color.transparent;
         field.delay = false;
     }
 
@@ -126,7 +124,6 @@ function initialiseButtons() {
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("restart").highlight="none";
 
-    this.getField("particleType").borderColor = color.white;
     this.getField("particleType").currentValueIndices = 0;
     this.getField("particleType").commitOnSelChange = true;
 
@@ -149,8 +146,6 @@ function restart() {
         field.delay = true;
         field.rect = [0, 0, 0, 0];
         field.alignment = "center";
-        field.fillColor = color.transparent;
-        field.borderColor = color.transparent;
         field.textSize = PARTICLE_SIZE;
         field.delay = false;
     }
@@ -311,10 +306,17 @@ function moveParticles(idx) {
 
         % The fields for the particle system
         \xintFor* #1 in {\xintSeq{0}{\particleCount-1}} \do {%
-            \TextField[bordercolor=white, name=particle#1, readonly=true]{}%
+            \TextField[name=particle#1, bordercolor=, backgroundcolor=, readonly]{}%
         }
 
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
+
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        \renewcommand*{\DefaultWidthofChoiceMenu}{2.5ex}
+        \renewcommand*{\DefaultHeightofChoiceMenu}{2.04ex}
 
         % Game related buttons
         \begin{center}%
@@ -326,8 +328,9 @@ function moveParticles(idx) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \ChoiceMenu[name=particleType, width=50mm, combo]{Particlesystem:}
-                        {Snow, Explosions}
+                    \ChoiceMenu[name=particleType, width=50mm,
+                        bordercolor=white, combo
+                    ]{Particlesystem:\strut}{Snow, Explosions}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

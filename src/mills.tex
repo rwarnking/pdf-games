@@ -730,8 +730,8 @@ function printInfoText(text) {
         % The positions of the field
         \xintFor* #1 in {\xintSeq{0}{\rows-1}} \do {%
             \xintFor* #2 in {\xintSeq{0}{\columns-1}} \do {%
-                \TextField[name=pos#1-#2, backgroundcolor=white, bordercolor=gray,
-                    width=1.0cm, height=1.0cm, readonly=true]{}%
+                \TextField[name=pos#1-#2, width=1.0cm, height=1.0cm,%
+                    backgroundcolor=white, bordercolor=gray, readonly]{}%
             }
         }%
 
@@ -781,8 +781,8 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[name=animationField, backgroundcolor=, bordercolor=,
-            width=1.0cm, height=1.0cm, readonly=true]{}%
+        \TextField[name=animationField, width=1.0cm, height=1.0cm,
+            backgroundcolor=, bordercolor=, readonly]{}%
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
