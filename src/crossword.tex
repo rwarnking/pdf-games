@@ -106,11 +106,11 @@ var charPositions = [
 var curWords = [];
 
 % Arrow symbols
-const symbols = [
-    String.fromCharCode(0x2192),
+const SYMBOLS = [
     String.fromCharCode(0x2193),
-    String.fromCharCode(0x2190),
-    String.fromCharCode(0x2191)
+    String.fromCharCode(0x2192),
+    String.fromCharCode(0x2191),
+    String.fromCharCode(0x2190)
 ];
 
 %%%%%%%%%%
@@ -184,13 +184,12 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
             cell = this.getField("cell" + m + "-" + n);
             cell.setAction("OnBlur", callbackName);
-            cell.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+            cell.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
             cell.alignment = "center";
             cell.charLimit = 1;
 
             % Add hover callbacks to cells
             var showCallback = "showHint" + "(" + m.toString() + "," + n.toString() + ");";
-            var cell = this.getField("cell" + m + "-" + n);
             cell.setAction("MouseEnter", showCallback);
 
             var hideCallback = "hideHint" + "(" + m.toString() + "," + n.toString() + ");";
@@ -200,7 +199,7 @@ function initialiseButtons() {
 
     % The overlay used for the hint
     var overlay = this.getField("overlay");
-    overlay.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+    overlay.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
     overlay.alignment = "center";
     overlay.textColor = color.white;
     overlay.fillColor = color.black;
@@ -415,7 +414,7 @@ function addWord(word) {
     var wordCoords = [];
     wordCoords.push([m, n]);
     % Place the start icon and the index of the word
-    complField[m][n] = symbols[posInfo[ORI_IDX]];
+    complField[m][n] = SYMBOLS[posInfo[ORI_IDX]];
     solution[m][n] = curWords.length;
 
     % Iterate all chars and add them to the solution
@@ -873,32 +872,36 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
+        % Dynamically adjust the cell width and height to the number of cells
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
         \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
-        % The gamefield
+        % The game board
         \begin{tcolorbox}
-            \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            % Define the cellsize via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\blocksizeW<\blocksizeH
+                \def\blocksize{\blocksizeW}
+            \else
+                \def\blocksize{\blocksizeH}
+            \fi
+
+            \begin{center}
+                \tiny
+                \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
+                            name=cell#1-#2, bordercolor=gray,
                             width=\blocksize, height=\blocksize,%
-                            bordercolor=gray, name=cell#1-#2]{}\hspace{3pt}%
-                    }\vspace{3pt}
-                    \newline%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         %%%%%%%%%%%%%%%%%%%%%%%
