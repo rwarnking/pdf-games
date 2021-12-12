@@ -321,6 +321,7 @@ function draw() {
         \end{multicols}
 
         % Dynamically adjust the cell width to the number of cells per column
+        % Only need to check width since the board is quadratic
         \FPeval{\resultW}{(\canvasWidth * 3 - 2)} % chktex 8
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\canvasWidth \relax}
 
@@ -330,10 +331,11 @@ function draw() {
                 \xintFor* #1 in {\xintSeq{0}{\canvasHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\canvasWidth-1}} \do {%
                         \TextField[name=cell#1-#2, bordercolor=, backgroundcolor=,%
-                            width=\blocksizeW, height=\blocksizeW, readonly%
+                            width=\blocksizeW, height=\blocksizeW, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
-                    }\newline{}%
+                    }\vspace{3pt}%
+                    \newline{}%
                 }%
             \end{flushright}
         \end{tcolorbox}
