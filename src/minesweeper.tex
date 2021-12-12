@@ -20,6 +20,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Values can be changed
+% Obacht: Higher values than 20 might led to lag
 \def\boardWidth{20}
 \def\boardHeight{20}
 
@@ -37,6 +39,7 @@ a mine can be.";
 % Outside variables
 const BOARD_WIDTH = AFMakeNumber(\boardWidth);
 const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
+const SCREEN_TEXT_SIZE = 300;
 
 % Constants
 const MINE = -1;
@@ -120,6 +123,7 @@ function initialiseButtons() {
             c.setAction("MouseDown", callbackName);
             c.borderColor = color.black;
             c.fillColor = color.white;
+            c.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
             c.alignment = "center";
         }
     }
@@ -292,15 +296,14 @@ function reveal(m, n) {
     % Remove focus so the cursor is not shown
     this.getField("cell" + 0 + "-" + 0).setFocus();
 
-    % Clear output
-    printInfoText("Clicked on cell.");
     if (gameover) {
+        printInfoText("Gameover.");
         return;
     }
 
     if (complBoard[m][n][0] == VISIBLE) {
         printInfoText("Cell already visible!");
-        retrun;
+        return;
     }
 
     % Lock the cell or lift it depending on current state
@@ -311,6 +314,7 @@ function reveal(m, n) {
             complBoard[m][n][2] = !LOCK
         }
         draw(m, n);
+        printInfoText("Locked cell.");
         return;
     }
 
@@ -326,6 +330,8 @@ function reveal(m, n) {
     if (complBoard[m][n][1] == MINE) {
         gameover = true;
         printInfoText("You hit a mine and lost!");
+    } else {
+        printInfoText("You reveled a " + complBoard[m][n][1] + " .");
     }
 
     % Reveal all empty cells in the neighborhood
@@ -460,32 +466,36 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
+        % Dynamically adjust the cell width and height to the number of cells
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\boardWidth * 4 + 3)}
+        \FPeval{\resultW}{(\boardWidth * 3 - 2)} % chktex 8
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\boardHeight * 4 + 3)}
+        \FPeval{\resultH}{(\boardHeight * 3 + 3)}
         \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
-
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
 
         % The game board
         \begin{tcolorbox}
-            \begin{flushright}
+            % Define the cellsize via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\blocksizeW<\blocksizeH
+                \def\blocksize{\blocksizeW}
+            \else
+                \def\blocksize{\blocksizeH}
+            \fi
+
+            \begin{center}
+                \tiny
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=cell#1-#2, readonly=true]{}\hspace{3pt}%
-                    }\vspace{3pt}
-                    \newline%
+                            name=cell#1-#2, bordercolor=white,%
+                            width=\blocksize, height=\blocksize, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         % Game related buttons

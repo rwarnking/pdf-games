@@ -5,7 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-% \usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -20,8 +19,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
-% to slow to play
+% These variables should not be changed
 \def\fieldWidth{80}
 \def\fieldHeight{30}
 \def\obstacleCount{5}
@@ -688,8 +686,8 @@ function printInfoText(text) {
         \begin{center}
             \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                 \TextField[%
-                    width=\blocksizeW, height=\blocksizeH,%
-                    bordercolor=, name=line#1, readonly=true%
+                    name=line#1, bordercolor=,%
+                    width=\blocksizeW, height=\blocksizeH, readonly%
                 ]{}%
                 \\[0pt]%
             }%
@@ -708,7 +706,7 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
@@ -722,7 +720,7 @@ function printInfoText(text) {
 
         \xintFor* #1 in {\xintSeq{0}{\obstacleCount-1}} \do {%
             \TextField[name=obstacle#1, width=1cm, height=1cm,%
-                bordercolor=, backgroundcolor=, readonly=true%
+                bordercolor=, backgroundcolor=, readonly%
             ]{}%
         }%
 

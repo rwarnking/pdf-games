@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -43,7 +41,7 @@ where the symbol is the same but color and appearance differ.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_HEIGHT = 500;
+const SCREEN_TEXT_HEIGHT = 400;
 const MAX_PLAYERS = AFMakeNumber(\playerCount);
 
 const APPEARANCES = 3;
@@ -724,11 +722,14 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max height of a block
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        % Calculate the max height of a text field
+        % 2pt for each Textfield, 5pt for distance between cards, 2 * 5pt for margin inside a card
+        \FPeval{\resultH}{\fieldHeight * 4 * 2 + \fieldHeight * 5 + \fieldHeight * 5 * 2}
         \def\blocksizeH{\dimexpr (500 pt -\resultH pt) / (\fieldHeight * 5) \relax}
 
         \begin{center}
+            \tiny
+            \renewcommand{\arraystretch}{0.0}
             % Add all card fields
             \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
@@ -740,16 +741,16 @@ function printInfoText(text) {
                                 % so the elements need to be copy pasted
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field0#1#2, readonly=true]{}\\[0.5mm]%
+                                    bordercolor=white, name=field0#1#2, readonly=true]{}\\[2pt]%
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field1#1#2, readonly=true]{}\\[0.5mm]%
+                                    bordercolor=white, name=field1#1#2, readonly=true]{}\\[2pt]%
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field2#1#2,  readonly=true]{}\\[0.5mm]%
+                                    bordercolor=white, name=field2#1#2,  readonly=true]{}\\[2pt]%
                                 \TextField[%
                                     height=\blocksizeH,%
-                                    bordercolor=white, name=field3#1#2,  readonly=true]{}\\[0.5mm]%
+                                    bordercolor=white, name=field3#1#2,  readonly=true]{}\\[2pt]%
                                 \TextField[%
                                     height=\blocksizeH,%
                                     bordercolor=white, name=field4#1#2,  readonly=true]{}\\%
@@ -770,7 +771,7 @@ function printInfoText(text) {
                     \PushButton[name=player#1, bordercolor=white]{
                         \begin{tcolorbox}
                             \centering
-                            \TextField[name=points#1, height=0.35cm, width=0.5cm, readonly=true]
+                            \TextField[name=points#1, height=0.35cm, width=0.4cm, align=1, readonly]
                                 {Player #1:}
                         \end{tcolorbox}
                     }
