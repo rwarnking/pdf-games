@@ -5,8 +5,6 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,6 +20,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Values can be changed
 % Obacht: width * height needs to be an even number
 \def\fieldWidth{6}
 \def\fieldHeight{6}
@@ -104,8 +103,8 @@ function initialise() {
     % Create an array that contains all symbols twice
     var symbols = [];
     for (var i = 0; i < MAX_PAIRS; i++) {
-        symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i]));
-        symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i]));
+        symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i \% MEMORY_SYMBOLS.length]));
+        symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i \% MEMORY_SYMBOLS.length]));
     }
 
     % Create the field by removing one element for each slot
@@ -143,7 +142,7 @@ function initialiseButtons() {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
             this.getField("pos" + x + "-" + y).alignment = "center";
         }
     }
@@ -394,32 +393,35 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
+        % Dynamically adjust the cell width and height to the number of cells
         % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
+        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
         \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
+        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
         \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
-        % The gamefield
+        % The game board
         \begin{tcolorbox}
-            \begin{flushright}
+            % Define the cellsize via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\blocksizeW<\blocksizeH
+                \def\blocksize{\blocksizeW}
+            \else
+                \def\blocksize{\blocksizeH}
+            \fi
+
+            \begin{center}
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
-                    }\vspace{3pt}
-                    \newline%
+                            name=pos#1-#2, bordercolor=white,%
+                            width=\blocksize, height=\blocksize, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         % Game related buttons
