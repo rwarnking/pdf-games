@@ -13,7 +13,7 @@
 \usepackage{multicol}
 
 % \usepackage{xinttools}
-% \usepackage[nomessages]{fp}
+\usepackage[nomessages]{fp}
 \usepackage{tabularx}
 \usepackage{tcolorbox}
 
@@ -26,8 +26,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
 % to slow to play
-\def\fieldWidth{4}
-\def\fieldHeight{3}
+\def\boardWidth{4}
+\def\boardHeight{3}
 
 % Max playercount is 5
 \def\playerCount{5}
@@ -44,8 +44,8 @@ Text.\
 Text.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 
 % Constants
 
@@ -88,10 +88,6 @@ function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     % this.getField("restart").highlight="none";
-
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
@@ -151,8 +147,8 @@ function tooltip(on) {
  * Draw all cells.
  */
 function drawAll() {
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        for (var n = 0; n < FIELD_WIDTH; n++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             draw(m, n);
         }
     }
@@ -249,7 +245,8 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

@@ -130,26 +130,16 @@ function initialiseButtons() {
 
     % Mode change button setup
     this.getField("reveal").setAction("MouseUp", "changeMode();");
-    var field = this.getField("revealtxt");
-    field.value = "On";
-    field.borderColor = color.transparent;
-    field.fillColor = color.transparent;
+    this.getField("revealtxt").value = "On";
 
     this.getField("lock").setAction("MouseUp", "changeMode();");
-    var field = this.getField("locktxt");
-    field.value = "Off";
-    field.borderColor = color.transparent;
-    field.fillColor = color.transparent;
+    this.getField("locktxt").value = "Off";
 
     % Restat button setup
     this.getField("restart").setAction("MouseDown", "restart();");
     this.getField("restart").highlight="none";
 
     this.getField("percentage").currentValueIndices = 2;
-
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
 
     % Tooltip button setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
@@ -504,16 +494,16 @@ function printInfoText(text) {
                 \PushButton[name=reveal, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=revealtxt, height=0.35cm, width=0.5cm, readonly=true]
-                            {Revel mode:}
+                        \TextField[name=revealtxt, height=0.35cm, width=0.5cm,
+                            bordercolor=, backgroundcolor=, readonly]{Revel mode:}
                         \strut
                     \end{tcolorbox}
                 } &
                 \PushButton[name=lock, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=locktxt, height=0.35cm, width=0.5cm, readonly=true]
-                            {Lock mode:}
+                        \TextField[name=locktxt, height=0.35cm, width=0.5cm,
+                            bordercolor=, backgroundcolor=, readonly]{Lock mode:}
                         \strut
                     \end{tcolorbox}
                 } \\
@@ -529,7 +519,8 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &%
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

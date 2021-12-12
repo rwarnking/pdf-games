@@ -216,10 +216,6 @@ function initialiseButtons() {
     f.alignment = "center";
     f.value = PIECE_SYMBOL;
 
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
-
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
@@ -779,7 +775,8 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=2\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

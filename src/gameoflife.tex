@@ -147,16 +147,12 @@ function initialiseButtons() {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + "-" + y).borderColor = color.transparent;
-            this.getField("pos" + x + "-" + y).fillColor = color.transparent;
         }
     }
 
     this.getField("animate").setAction("MouseDown", "toggleAnimation();");
     this.getField("animate").highlight="none";
     this.getField("animatetxt").setAction("MouseDown", "toggleAnimation();");
-    this.getField("animatetxt").fillColor = color.transparent;
-    this.getField("animatetxt").borderColor = color.transparent;
     if (animate) {
         this.getField("animatetxt").value = "On";
     } else {
@@ -169,8 +165,6 @@ function initialiseButtons() {
     this.getField("shapemode").setAction("MouseDown", "toggleMode();");
     this.getField("shapemode").highlight="none";
     this.getField("shapemodetxt").setAction("MouseDown", "toggleMode();");
-    this.getField("shapemodetxt").fillColor = color.transparent;
-    this.getField("shapemodetxt").borderColor = color.transparent;
     if (shapeMode) {
         this.getField("shapemodetxt").value = "On";
     } else {
@@ -178,25 +172,14 @@ function initialiseButtons() {
     }
 
     this.getField("shapeidx").currentValueIndices = 0;
-    this.getField("shapeidx").fillColor = color.transparent;
-    this.getField("shapeidx").borderColor = color.white;
 
     this.getField("fillrnd").setAction("MouseDown", "fillRandom();");
     this.getField("fillrnd").highlight="none";
 
     this.getField("percentage").currentValueIndices = 0;
-    this.getField("percentage").fillColor = color.transparent;
-    this.getField("percentage").borderColor = color.white;
 
     this.getField("clear").setAction("MouseDown", "clear();");
     this.getField("clear").highlight="none";
-
-    this.getField("currstep").fillColor = color.transparent;
-    this.getField("currstep").borderColor = color.transparent;
-
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
@@ -563,8 +546,8 @@ function printInfoText(text) {
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, bordercolor=white,
-                            width=\blocksize, height=\blocksize, readonly%
+                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            bordercolor=, backgroundcolor=, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%
@@ -578,8 +561,8 @@ function printInfoText(text) {
                 \PushButton[name=animate, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=animatetxt, height=0.35cm, width=0.5cm, readonly=true]%
-                            {Animation:}
+                        \TextField[name=animatetxt, width=0.5cm, height=0.35cm,
+                            bordercolor=, backgroundcolor=, readonly]{Animation:}
                         \strut
                     \end{tcolorbox}
                 } &
@@ -592,17 +575,16 @@ function printInfoText(text) {
                 \PushButton[name=shapemode, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[%
-                            name=shapemodetxt, height=0.35cm, width=0.5cm, readonly=true%
-                        ]{Shape mode:}
+                        \TextField[name=shapemodetxt, width=0.5cm, height=0.35cm,
+                            bordercolor=, backgroundcolor=, readonly]{Shape mode:}
                         \strut
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
                     \centering
-                    \ChoiceMenu[%
-                        name=shapeidx, height=0.35cm, width=0.5cm, combo, commitonselchange=true]%
-                            {Shape name:}{%
+                    \ChoiceMenu[name=shapeidx, width=0.5cm, height=0.35cm,%
+                        bordercolor=white, backgroundcolor=, combo, commitonselchange=true%
+                    ]{Shape name:}{%
                         One, Block, Beehive, Loaf, Boat, Tub,%
                         Blinker, Toad, Beacon, Pulsar, Pentadecathlon,%
                         Glider, Light-weight spaceship, Middle-weight spaceship,%
@@ -613,15 +595,17 @@ function printInfoText(text) {
                 \PushButton[name=fillrnd, bordercolor=white]{
                     \begin{tcolorbox}
                         \centering
-                        \ChoiceMenu[name=percentage, height=0.35cm, width=0.5cm, combo,%
-                            commitonselchange=true]{Fill random with \% alive:}{%
+                        \ChoiceMenu[name=percentage, width=0.5cm, height=0.35cm,
+                            bordercolor=, backgroundcolor=, combo, commitonselchange=true%
+                        ]{Fill random with \% alive:}{%
                             20, 40, 60, 80,%
                         }%
                         \strut
                     \end{tcolorbox}
                 } &%
                 \begin{tcolorbox}
-                    \TextField[name=currstep, width=\linewidth, readonly=true]{}
+                    \TextField[name=currstep, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox} \\[-0.5cm]% TODO why do we need -0.5 here
                 \PushButton[name=clear, bordercolor=white]{
                     \begin{tcolorbox}
@@ -630,7 +614,8 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

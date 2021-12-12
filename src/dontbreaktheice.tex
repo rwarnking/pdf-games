@@ -101,9 +101,6 @@ function initialise() {
         complField.push(tmp);
     }
 
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
-
     printInfoText("Select fields and find a way across.");
 
     % Init the GUI
@@ -625,7 +622,8 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

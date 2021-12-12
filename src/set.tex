@@ -168,7 +168,6 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
             this.getField("pos" + x + "-" + y).highlight="none";
-            this.getField("pos" + x + "-" + y).borderColor = color.transparent;
 
             for (var z = 0; z < SYMB_COUNT; z++) {
                 var f = this.getField("field" + z + x + y);
@@ -176,8 +175,6 @@ function initialiseButtons() {
 
                 f.textSize = SCREEN_TEXT_HEIGHT / (FIELD_HEIGHT * 5);
                 f.alignment = "center";
-                f.fillColor = color.transparent;
-                f.borderColor = color.transparent;
             }
         }
     }
@@ -193,14 +190,8 @@ function initialiseButtons() {
         f.delay = true;
         f.setAction("MouseDown", callbackName);
         f.value = points[p - 1];
-        f.fillColor = color.transparent;
-        f.borderColor = color.transparent;
         f.delay = false;
     }
-
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
@@ -734,26 +725,21 @@ function printInfoText(text) {
             \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \PushButton[name=pos#1-#2, bordercolor=white]{%
+                        \PushButton[name=pos#1-#2, bordercolor=]{%
                             \begin{tcolorbox}%
                                 \centering%
                                 % Sadly xintFor* does not work inside a PushButton
                                 % so the elements need to be copy pasted
-                                \TextField[%
-                                    height=\blocksizeH,%
-                                    bordercolor=white, name=field0#1#2, readonly=true]{}\\[2pt]%
-                                \TextField[%
-                                    height=\blocksizeH,%
-                                    bordercolor=white, name=field1#1#2, readonly=true]{}\\[2pt]%
-                                \TextField[%
-                                    height=\blocksizeH,%
-                                    bordercolor=white, name=field2#1#2,  readonly=true]{}\\[2pt]%
-                                \TextField[%
-                                    height=\blocksizeH,%
-                                    bordercolor=white, name=field3#1#2,  readonly=true]{}\\[2pt]%
-                                \TextField[%
-                                    height=\blocksizeH,%
-                                    bordercolor=white, name=field4#1#2,  readonly=true]{}\\%
+                                \TextField[name=field0#1#2, height=\blocksizeH,%
+                                    bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
+                                \TextField[name=field1#1#2, height=\blocksizeH,%
+                                    bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
+                                \TextField[name=field2#1#2, height=\blocksizeH,%
+                                    bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
+                                \TextField[name=field3#1#2, height=\blocksizeH,%
+                                    bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
+                                \TextField[name=field4#1#2, height=\blocksizeH,%
+                                    bordercolor=, backgroundcolor=, readonly]{}\\%
                             \end{tcolorbox}%
                         }%
                         % Have the cell divider for all elements
@@ -771,8 +757,8 @@ function printInfoText(text) {
                     \PushButton[name=player#1, bordercolor=white]{
                         \begin{tcolorbox}
                             \centering
-                            \TextField[name=points#1, height=0.35cm, width=0.4cm, align=1, readonly]
-                                {Player #1:}
+                            \TextField[name=points#1, width=0.4cm, height=0.35cm,
+                                bordercolor=, backgroundcolor=, align=1, readonly]{Player #1:}
                         \end{tcolorbox}
                     }
                     % Have the cell divider for all elements
@@ -804,7 +790,8 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

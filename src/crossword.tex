@@ -205,10 +205,6 @@ function initialiseButtons() {
     overlay.textColor = color.white;
     overlay.fillColor = color.black;
 
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
-
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
@@ -920,7 +916,8 @@ function printInfoText(text) {
             % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{\strut}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{\strut}
                 \end{tcolorbox} &
                 \begin{tcolorbox}
                     \centering

@@ -237,10 +237,6 @@ function initialiseButtons() {
     % Restart button setup
     this.getField("restart").setAction("MouseDown", "restart();");
 
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
-
     % Tooltip button setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
@@ -1369,13 +1365,13 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &%
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
 
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
-
     \end{Form}
 
 \end{document}
