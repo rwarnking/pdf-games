@@ -393,7 +393,7 @@ function printInfoText(text) {
                                 umn%
                             \fi%
                             \ifdim\linewidth>25pt
-                                \;%
+                                \(\;\)%
                             \fi%
                             #1%
                         \end{tcolorbox}
@@ -404,18 +404,19 @@ function printInfoText(text) {
                 }%
             \end{tabularx}%
             % The game board
-            \begin{flushright}
+            \begin{center}
+                \tiny
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=cell#1-#2, readonly=true]{}%
+                            name=cell#1-#2, bordercolor=white,%
+                            width=\blocksize, height=\blocksize, readonly
+                        ]{}%
                         % Have space between all cells that are not the last one
                         \xintifForLast{}{\hspace{3pt}}%
-                    }\vspace{3pt}
-                    \newline
-                }
-            \end{flushright}
+                    }\vspace{3pt}\\[-1pt]%
+                }%
+            \end{center}
         \end{tcolorbox}
 
         %%%%%%%%%%%%%%%%%%%%%%%
