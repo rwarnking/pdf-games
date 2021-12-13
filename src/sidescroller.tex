@@ -182,7 +182,6 @@ function initialiseButtons() {
     var field = this.getField("player");
     field.value = String.fromCharCode(0x261B);
     field.textSize = TEXT_SIZE;
-    field.alignment = "center";
     field.hidden = false;
 
     % Init obstacles
@@ -190,7 +189,6 @@ function initialiseButtons() {
         obstacles.push([-1, -1, "#"]);
         field = this.getField("obstacle" + i);
         field.textSize = TEXT_SIZE;
-        field.alignment = "center";
     }
 
     % Assign each button the coresponding function and disable the highlights
@@ -681,9 +679,8 @@ function printInfoText(text) {
 
         \begin{center}
             \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                \TextField[%
-                    name=line#1, bordercolor=,%
-                    width=\blocksizeW, height=\blocksizeH, readonly%
+                \TextField[name=line#1, width=\blocksizeW, height=\blocksizeH,%
+                    bordercolor=, readonly%
                 ]{}%
                 \\[0pt]%
             }%
@@ -712,12 +709,12 @@ function printInfoText(text) {
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
 
         \TextField[name=player, width=1cm, height=1cm,
-            bordercolor=, backgroundcolor=, readonly, hidden
+            bordercolor=, backgroundcolor=, align=1, readonly, hidden
         ]{}
 
         \xintFor* #1 in {\xintSeq{0}{\obstacleCount-1}} \do {%
             \TextField[name=obstacle#1, width=1cm, height=1cm,%
-                bordercolor=, backgroundcolor=, readonly%
+                bordercolor=, backgroundcolor=, align=1, readonly%
             ]{}%
         }%
 

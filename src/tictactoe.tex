@@ -118,7 +118,6 @@ function initialiseButtons() {
             cell = this.getField("pos" + x + "-" + y);
             cell.setAction("MouseDown", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
-            cell.alignment = "center";
         }
     }
 
@@ -414,8 +413,8 @@ function printInfoText(text, col=color.black) {
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, bordercolor=white,%
-                            width=\blocksize, height=\blocksize, readonly%
+                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            bordercolor=white, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%

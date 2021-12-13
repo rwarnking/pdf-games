@@ -205,7 +205,6 @@ function initialiseButtons() {
             f.setAction("MouseDown", callbackName);
 
             f.textSize = TEXT_SIZE;
-            f.alignment = "center";
 
             f.rect = BOX_POSITIONS[m][n];
         }
@@ -215,7 +214,6 @@ function initialiseButtons() {
     var f = this.getField("animationField");
     f.hidden = true;
     f.textSize = TEXT_SIZE;
-    f.alignment = "center";
     f.value = PIECE_SYMBOL;
 
     % Tooltip setup
@@ -733,7 +731,7 @@ function printInfoText(text) {
         \xintFor* #1 in {\xintSeq{0}{\rows-1}} \do {%
             \xintFor* #2 in {\xintSeq{0}{\columns-1}} \do {%
                 \TextField[name=pos#1-#2, width=1.0cm, height=1.0cm,%
-                    backgroundcolor=white, bordercolor=gray, readonly]{}%
+                    backgroundcolor=white, bordercolor=gray, align=1, readonly]{}%
             }
         }%
 
@@ -784,7 +782,7 @@ function printInfoText(text) {
         \end{center}
 
         \TextField[name=animationField, width=1.0cm, height=1.0cm,
-            backgroundcolor=, bordercolor=, readonly]{}%
+            backgroundcolor=, bordercolor=, align=1, readonly]{}%
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}

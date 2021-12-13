@@ -127,7 +127,6 @@ function initialiseButtons() {
             c.borderColor = color.black;
             c.fillColor = color.white;
             c.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
-            c.alignment = "center";
         }
     }
 
@@ -482,7 +481,7 @@ function printInfoText(text) {
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
                             name=cell#1-#2, bordercolor=white,%
-                            width=\blocksize, height=\blocksize, readonly%
+                            width=\blocksize, height=\blocksize, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%

@@ -289,7 +289,6 @@ function initialiseButtons() {
             field = this.getField("pos" + x + "-" + y);
             field.setAction("MouseDown", callbackName);
             field.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
-            field.alignment = "center";
 
             var swapCallback = "swap" + "(" + x.toString() + "," + y.toString() + ");";
             field.setAction("MouseEnter", swapCallback);
@@ -1110,7 +1109,7 @@ function printInfoText(text) {
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             name=pos#1-#2, bordercolor=white,%
-                            width=\blocksize, height=\blocksize,%
+                            width=\blocksize, height=\blocksize, align=1%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%

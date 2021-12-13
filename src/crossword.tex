@@ -186,7 +186,6 @@ function initialiseButtons() {
             cell = this.getField("cell" + m + "-" + n);
             cell.setAction("OnBlur", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
-            cell.alignment = "center";
             cell.charLimit = 1;
 
             % Add hover callbacks to cells
@@ -201,7 +200,6 @@ function initialiseButtons() {
     % The overlay used for the hint
     var overlay = this.getField("overlay");
     overlay.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
-    overlay.alignment = "center";
     overlay.textColor = color.white;
     overlay.fillColor = color.black;
 
@@ -893,7 +891,7 @@ function printInfoText(text) {
                     \xintFor* #2 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
                             name=cell#1-#2, bordercolor=gray,
-                            width=\blocksize, height=\blocksize,%
+                            width=\blocksize, height=\blocksize, align=1%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%
@@ -943,7 +941,7 @@ function printInfoText(text) {
 
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
-        \TextField[name=overlay, bordercolor=white, readonly, hidden]{}
+        \TextField[name=overlay, bordercolor=white, align=1, readonly, hidden]{}
 
     \end{Form}
 \end{document}

@@ -104,7 +104,6 @@ function initialise() {
         field = this.getField("particle" + idx);
         field.delay = true;
         field.rect = [0, 0, 0, 0];
-        field.alignment = "center";
         field.delay = false;
     }
 
@@ -147,7 +146,6 @@ function restart() {
         field = this.getField("particle" + idx);
         field.delay = true;
         field.rect = [0, 0, 0, 0];
-        field.alignment = "center";
         field.textSize = PARTICLE_SIZE;
         field.delay = false;
     }
@@ -308,7 +306,7 @@ function moveParticles(idx) {
 
         % The fields for the particle system
         \xintFor* #1 in {\xintSeq{0}{\particleCount-1}} \do {%
-            \TextField[name=particle#1, bordercolor=, backgroundcolor=, readonly]{}%
+            \TextField[name=particle#1, bordercolor=, backgroundcolor=, align=1, readonly]{}%
         }
 
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}

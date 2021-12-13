@@ -240,7 +240,6 @@ function initialiseButtons() {
         }
         card.textFont = font.Cour;
         card.textSize = TEXT_SIZE_MED;
-        card.alignment = "center";
         card.delay = false;
     }
 
@@ -1025,7 +1024,6 @@ function addButton(name, callback, rect, value, hidden, tsize) {
     btn.rect = rect;
     btn.textFont = font.Cour;
     btn.textSize = tsize;
-    btn.alignment = "center";
     btn.value = value;
     btn.hidden = hidden;
     btn.delay = false;
@@ -1071,20 +1069,20 @@ function printInfoText(text) {
             % The playing cards
             \xintFor* #1 in {\xintSeq{0}{\cards-1}} \do {%
                 \TextField[name=card#1, width=1cm, height=1cm,%
-                    bordercolor=black, backgroundcolor=white, readonly, hidden%
+                    bordercolor=black, backgroundcolor=white, align=1, readonly, hidden%
                 ]{}%
             }%
 
             % Field to show the currently active color
             \TextField[name=curcolor, width=1cm, height=1cm,%
-                bordercolor=, backgroundcolor=, readonly, hidden]{}%
+                bordercolor=, backgroundcolor=, align=1, readonly, hidden]{}%
             % Skip button to skip a turn
             \TextField[name=skip, width=1cm, height=1cm,%
-                bordercolor=black, backgroundcolor=white, readonly, hidden]{}%
+                bordercolor=black, backgroundcolor=white, align=1, readonly, hidden]{}%
             % For each color a button to allow for color selection
             \xintFor* #1 in {\xintSeq{0}{\colors-1}} \do {%
                 \TextField[name=color#1, width=1cm, height=1cm,%
-                    bordercolor=black, backgroundcolor=white, readonly, hidden%
+                    bordercolor=black, backgroundcolor=white, align=1, readonly, hidden%
                 ]{}%
             }%
 

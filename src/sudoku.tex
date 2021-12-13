@@ -154,7 +154,6 @@ function initialiseButtons() {
             cell = this.getField("pos" + x + "-" + y);
             cell.setAction("OnBlur", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
-            cell.alignment = "center";
         }
     }
 
@@ -731,10 +730,9 @@ function printInfoText(text) {
                     \fi%
                     \vspace{1pt}%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2]{}%
-                        %
+                        \TextField[name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            bordercolor=white, align=1%
+                        ]{}%
                         \hspace{2pt}%
                         \ifnum#1=2%
                             %\vspace{1pt}%
