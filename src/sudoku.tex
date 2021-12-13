@@ -40,7 +40,7 @@ while the placements needs to follow these rules:\
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 300;
+const SCREEN_TEXT_SIZE = 300;
 
 % Constants
 const NUMBERS = 9;
@@ -129,17 +129,15 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
     % Assign each button the coresponding function and disable the highlights
     this.getField("generate").setAction("MouseUp", "generateSudoku();");
-    this.getField("generate").highlight="none";
     this.getField("hint").setAction("MouseUp", "showHint();");
-    this.getField("hint").highlight="none";
     this.getField("solve").setAction("MouseUp", "showSolution();");
-    this.getField("solve").highlight="none";
     this.getField("enter").setAction("MouseUp", "enterSudoku();");
-    this.getField("enter").highlight="none";
     this.getField("reset").setAction("MouseUp", "resetSudoku();");
-    this.getField("reset").highlight="none";
 
     % Selection field for the amount of predefined fields when generating
     this.getField("elemcount").borderColor = color.white;
@@ -155,7 +153,7 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             cell = this.getField("pos" + x + "-" + y);
             cell.setAction("OnBlur", callbackName);
-            cell.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
             cell.alignment = "center";
         }
     }

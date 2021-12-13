@@ -39,7 +39,7 @@ If nothing is pressed the player will move downwards automatically.";
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
 const OBSTACLE_COUNT = AFMakeNumber(\obstacleCount);
-const SCREEN_TEXT_WIDTH = 800;
+const SCREEN_TEXT_SIZE = 800;
 const TEXT_SIZE = 40;
 const ANIMATION_SPEED = 5;
 
@@ -174,7 +174,7 @@ function initialiseButtons() {
     var line;
     for (var m = 0; m < FIELD_HEIGHT; m++) {
         line = this.getField("line" + m);
-        line.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
+        line.textSize = SCREEN_TEXT_SIZE / FIELD_WIDTH;
         line.textFont = font.Cour;
     }
 

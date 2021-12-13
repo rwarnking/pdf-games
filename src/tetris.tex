@@ -148,26 +148,21 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
     % Assign each button the coresponding function and disable the highlights
     this.getField("input1").setFocus();
 
     this.getField("left").setAction("MouseUp", "move('a');");
-    this.getField("left").highlight="invert";
-
     this.getField("right").setAction("MouseUp", "move('d');");
-    this.getField("right").highlight="invert";
     this.getField("down").setAction("MouseUp", "move('s');");
-    this.getField("down").highlight="invert";
     this.getField("fulldown").setAction("MouseUp", "move(' ');");
-    this.getField("fulldown").highlight="invert";
 
     this.getField("turnLeft").setAction("MouseUp", "move('q');");
-    this.getField("turnLeft").highlight="invert";
     this.getField("turnRight").setAction("MouseUp", "move('e');");
-    this.getField("turnRight").highlight="invert";
 
     this.getField("start").setAction("MouseUp", "restart();");
-    this.getField("start").highlight="invert";
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");

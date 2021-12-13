@@ -40,7 +40,7 @@ The topmost cells are filled randomly. Chain reactions are desired.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 300;
+const SCREEN_TEXT_SIZE = 300;
 
 % Constants
 const ANIMATION_SPEED = 500;
@@ -279,7 +279,6 @@ function initialiseButtons() {
 
     % Assign each button the coresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="outline";
 
     % Each field needs to be connected to an input function
     var field;
@@ -289,7 +288,7 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             field = this.getField("pos" + x + "-" + y);
             field.setAction("MouseDown", callbackName);
-            field.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            field.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
             field.alignment = "center";
 
             var swapCallback = "swap" + "(" + x.toString() + "," + y.toString() + ");";

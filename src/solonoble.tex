@@ -38,7 +38,7 @@ The jumped over marble is removed and it is not allowed to jump diagonal.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 300;
+const SCREEN_TEXT_SIZE = 300;
 
 % Constants
 const ANIMATION_SPEED = 33;
@@ -316,10 +316,8 @@ function initialiseButtons() {
 
     % Assign each button the coresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="outline";
 
     this.getField("showSol").setAction("MouseUp", "showSolution();");
-    this.getField("showSol").highlight="outline";
 
     this.getField("import").setAction("MouseUp", "importField();");
     this.getField("export").setAction("MouseUp", "exportField();");
@@ -336,7 +334,7 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             field = this.getField("pos" + x + "-" + y);
             field.setAction("MouseDown", callbackName);
-            field.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            field.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
             field.alignment = "center";
         }
     }

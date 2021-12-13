@@ -141,6 +141,9 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
     % Assign each button the coresponding function and disable the highlights
     var funcName = "addShape";
     for (var x = 0; x < FIELD_WIDTH; x++) {
@@ -151,7 +154,6 @@ function initialiseButtons() {
     }
 
     this.getField("animate").setAction("MouseDown", "toggleAnimation();");
-    this.getField("animate").highlight="none";
     this.getField("animatetxt").setAction("MouseDown", "toggleAnimation();");
     if (animate) {
         this.getField("animatetxt").value = "On";
@@ -160,10 +162,8 @@ function initialiseButtons() {
     }
 
     this.getField("step").setAction("MouseDown", "runAll();");
-    this.getField("step").highlight="none";
 
     this.getField("shapemode").setAction("MouseDown", "toggleMode();");
-    this.getField("shapemode").highlight="none";
     this.getField("shapemodetxt").setAction("MouseDown", "toggleMode();");
     if (shapeMode) {
         this.getField("shapemodetxt").value = "On";
@@ -172,14 +172,9 @@ function initialiseButtons() {
     }
 
     this.getField("shapeidx").currentValueIndices = 0;
-
     this.getField("fillrnd").setAction("MouseDown", "fillRandom();");
-    this.getField("fillrnd").highlight="none";
-
     this.getField("percentage").currentValueIndices = 0;
-
     this.getField("clear").setAction("MouseDown", "clear();");
-    this.getField("clear").highlight="none";
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");

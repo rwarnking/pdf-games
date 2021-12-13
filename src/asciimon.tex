@@ -41,7 +41,7 @@ If your own creature dies you lose, unless you previously caught another one.";
 const BOARD_CHARS_W = AFMakeNumber(\boardCharsW);
 const BOARD_CHARS_H = AFMakeNumber(\boardCharsH);
 const ATK_ANIM_CELLS = AFMakeNumber(\atkAnimCells);
-const SCREEN_TEXT_WIDTH = 400;
+const SCREEN_TEXT_SIZE = 400;
 const ROUND_ANIMATION_SPEED = 100;
 const CHANGE_ANIMATION_SPEED = 50;
 
@@ -860,11 +860,11 @@ function initialiseButtons() {
     var cell;
     for (var m = 0; m < BOARD_CHARS_H; m++) {
         cell = this.getField("player" + m);
-        cell.textSize = SCREEN_TEXT_WIDTH / BOARD_CHARS_W;
+        cell.textSize = SCREEN_TEXT_SIZE / BOARD_CHARS_W;
         cell.textFont = font.Cour;
 
         cell = this.getField("enemy" + m);
-        cell.textSize = SCREEN_TEXT_WIDTH / BOARD_CHARS_W;
+        cell.textSize = SCREEN_TEXT_SIZE / BOARD_CHARS_W;
         cell.textFont = font.Cour;
     }
 
@@ -1717,7 +1717,7 @@ function defaultParticleSys() {
         2, [0, 0],  % MASS, MOMENTUM
         canvas.halfWidth / BOARD_CHARS_H, % WIDTH
         canvas.halfHeight / BOARD_CHARS_H, % HEIGHT
-        (SCREEN_TEXT_WIDTH / BOARD_CHARS_W) * 1.3 % SIZE
+        (SCREEN_TEXT_SIZE / BOARD_CHARS_W) * 1.3 % SIZE
     ]);
 
     % Needed because the water changes the fill color
@@ -2049,7 +2049,7 @@ function stoneParticles(target) {
         % Create a particle with same width as height
         particles[p][WIDTH] = (canvas.halfHeight / BOARD_CHARS_H) * 2.0;
         particles[p][HEIGHT] = (canvas.halfHeight / BOARD_CHARS_H) * 2.0;
-        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / BOARD_CHARS_W) * 0.9;
+        particles[p][SIZE] = (SCREEN_TEXT_SIZE / BOARD_CHARS_W) * 0.9;
 
         const s = (canvas.l[target] + particles[p][WIDTH]);
         const w = (canvas.halfWidth - particles[p][WIDTH]) * 2.0;
@@ -2121,7 +2121,7 @@ function grassParticles(target) {
         const offset = 70;
         const offsetY = -offset * 0.5 + getRandomInt(offset);
         particles[p][POS][Y] = canvas.c[(target + 1) \% 2][Y] + offsetY;
-        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / BOARD_CHARS_W) * 0.9;
+        particles[p][SIZE] = (SCREEN_TEXT_SIZE / BOARD_CHARS_W) * 0.9;
         particles[p][ROTATION] = 90;
 
         particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
@@ -2185,7 +2185,7 @@ function fluffParticles(target) {
     particleSys.emit = function(p) {
         particles[p][WIDTH] = (canvas.halfHeight / BOARD_CHARS_H) * 2.0;
         particles[p][HEIGHT] = (canvas.halfHeight / BOARD_CHARS_H) * 2.0;
-        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / BOARD_CHARS_W) / 3.0;
+        particles[p][SIZE] = (SCREEN_TEXT_SIZE / BOARD_CHARS_W) / 3.0;
         particles[p][POS] = canvas.c[(target + 1) \% 2];
 
         % Different physics since the canvas elements are not equal in height
@@ -2306,7 +2306,7 @@ function standardParticles(target) {
     particleSys.emit = function(p) {
         particles[p][WIDTH] = (canvas.halfHeight / BOARD_CHARS_H) * 2.0;
         particles[p][HEIGHT] = (canvas.halfHeight / BOARD_CHARS_H) * 2.0;
-        particles[p][SIZE] = (SCREEN_TEXT_WIDTH / BOARD_CHARS_W) * 2.0;
+        particles[p][SIZE] = (SCREEN_TEXT_SIZE / BOARD_CHARS_W) * 2.0;
         particles[p][POS] = canvas.c[target];
 
         particles[p][STATE]++;

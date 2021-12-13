@@ -36,7 +36,7 @@ is shown, indicating which word should be entered into a row or column.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 300;
+const SCREEN_TEXT_SIZE = 300;
 % Maximum amount of words in the puzzle
 % OBACHT: This count is not very accurate, since the random length of the words highly
 % influence how many words can be placed onto the field.
@@ -185,7 +185,7 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
             cell = this.getField("cell" + m + "-" + n);
             cell.setAction("OnBlur", callbackName);
-            cell.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
             cell.alignment = "center";
             cell.charLimit = 1;
 
@@ -200,7 +200,7 @@ function initialiseButtons() {
 
     % The overlay used for the hint
     var overlay = this.getField("overlay");
-    overlay.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+    overlay.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
     overlay.alignment = "center";
     overlay.textColor = color.white;
     overlay.fillColor = color.black;

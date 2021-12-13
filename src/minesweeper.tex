@@ -114,6 +114,9 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
     % Set the callbacks and attributes of each cell
     var funcName = "reveal";
     for (var m = 0; m < BOARD_HEIGHT; m++) {
@@ -137,7 +140,6 @@ function initialiseButtons() {
 
     % Restat button setup
     this.getField("restart").setAction("MouseDown", "restart();");
-    this.getField("restart").highlight="none";
 
     this.getField("percentage").currentValueIndices = 2;
 

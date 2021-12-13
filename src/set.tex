@@ -151,15 +151,13 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
     % Assign each button the coresponding function and disable the highlights
     this.getField("refill").setAction("MouseUp", "refill();");
-    this.getField("refill").highlight="none";
-
     this.getField("hint").setAction("MouseUp", "hint();");
-    this.getField("hint").highlight="none";
-
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
 
     % Each field needs to be connected to an input function
     var funcName = "markField";
@@ -167,7 +165,6 @@ function initialiseButtons() {
         for (var y = 0; y < FIELD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + "-" + y).highlight="none";
 
             for (var z = 0; z < SYMB_COUNT; z++) {
                 var f = this.getField("field" + z + x + y);

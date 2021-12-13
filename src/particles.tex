@@ -120,9 +120,11 @@ function initialise() {
  * For example add callbacks.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
 
     this.getField("particleType").currentValueIndices = 0;
     this.getField("particleType").commitOnSelChange = true;

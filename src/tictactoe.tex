@@ -40,7 +40,7 @@ The player who is able to create such a line first wins.";
 % Outside variables
 const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
 const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 300;
+const SCREEN_TEXT_SIZE = 300;
 const WINNING_PIECES = AFMakeNumber(\winningPieces);
 const MAX_PLAYERS = AFMakeNumber(\playerCount);
 
@@ -102,9 +102,11 @@ function initialise() {
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
 
     % Each field needs to be connected to an input function
     % Define text style
@@ -115,7 +117,7 @@ function initialiseButtons() {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             cell = this.getField("pos" + x + "-" + y);
             cell.setAction("MouseDown", callbackName);
-            cell.textSize = SCREEN_TEXT_WIDTH / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
             cell.alignment = "center";
         }
     }
