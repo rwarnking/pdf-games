@@ -23,22 +23,22 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Values can be changed
-\def\fieldWidth{10}
-\def\fieldHeight{12}
+\def\boardWidth{10}
+\def\boardHeight{12}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{dbti}
 
-const GAME_DESC = "The goal of this game is to get from the bottom of the field to the top,\
-while only using specified fields. These fields are shown once in the beginning (red).\
-Therefore the player needs to remember the path and click the right fields in\
-the right order. If the user misssteps the game is lost";
+const GAME_DESC = "The goal of this game is to get from the bottom of the board to the top,\
+while only using specified cells. These cells are shown once in the beginning (red).\
+Therefore the player needs to remember the path and click the right cells in\
+the right order. If the user miss steps the game is lost";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 
 % Constants
 % For the path generation
@@ -54,8 +54,8 @@ const W_REVEAL = -1;
 % Globals
 % Animation interval variable
 var run;
-% The game field array
-var complField = new Array();
+% The game board array
+var complBoard = new Array();
 var freePath = new Array();
 % Lock if the game has ended
 var gameover = false;
@@ -63,8 +63,8 @@ var gameover = false;
 var drawPiece = 0;
 % Needed for so one cant play before the animation is finished
 var play = false;
-% Which field was found last
-var currentField = -1;
+% Which board was found last
+var currentBoard = -1;
 
 % Color data
 const COLORS = new Array(
@@ -93,15 +93,15 @@ function getRandomInt(max) {
  * Initialise the default game state.
  */
 function initialise() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
         var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             tmp.push(EMPTY);
         }
-        complField.push(tmp);
+        complBoard.push(tmp);
     }
 
-    printInfoText("Select fields and find a way across.");
+    printInfoText("Select cells and find a way across.");
 
     % Init the GUI
     initialiseButtons();
@@ -120,9 +120,9 @@ function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
-    var funcName = "revealField";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    var funcName = "revealCell";
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
         }
@@ -134,7 +134,7 @@ function initialiseButtons() {
 }
 
 /**
- * Restarts the game by clearing the field array and creating a new path.
+ * Restarts the game by clearing the board array and creating a new path.
  */
 function restart() {
     % Prevent multiple restart processes at the same time
@@ -142,30 +142,30 @@ function restart() {
          return;
     }
 
-    % Clear complField and redraw
-    var field;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField[y][x] = EMPTY;
+    % Clear complBoard and redraw
+    var cell;
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
+            complBoard[y][x] = EMPTY;
 
-            field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
-            field.borderColor = color.white;
-            field.fillColor = color.white;
-            field.delay = false;
+            cell = this.getField("pos" + x + "-" + y);
+            cell.delay = true;
+            cell.borderColor = color.white;
+            cell.fillColor = color.white;
+            cell.delay = false;
         }
     }
 
-    % Reset field for other use
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField[y][x] = EMPTY;
+    % Reset board for other use
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
+            complBoard[y][x] = EMPTY;
         }
     }
 
     gameover = false;
     play = false;
-    printInfoText("Select fields and find a way across.");
+    printInfoText("Select cells and find a way across.");
     createPath();
 }
 
@@ -209,61 +209,61 @@ function tooltip(on) {
  * This is done by marking the bot and top row as unreachable first.
  * Afterwards a list of all possible slots is created from which
  * a random one is selected until only one path is left.
- * After each draw it needs to be checked wether there is still a path,
- * if there is none the field is added to the final path, since there is
- * none without this field. When the list is empty only one path remains.
+ * After each draw it needs to be checked whether there is still a path,
+ * if there is none the cell is added to the final path, since there is
+ * none without this cell. When the list is empty only one path remains.
  *
  * Starts an animated draw after generating.
  */
 function createPath() {
     freePath = new Array();
 
-    var startX = getRandomInt(FIELD_WIDTH);
-    var endX = getRandomInt(FIELD_WIDTH);
+    var startX = getRandomInt(BOARD_WIDTH);
+    var endX = getRandomInt(BOARD_WIDTH);
 
     % Mark bottom and top rowas unselectable
-    for (var ix = 0; ix < FIELD_WIDTH; ix++) {
-        complField[0][ix] = FORBIDDEN;
-        complField[FIELD_HEIGHT - 1][ix] = FORBIDDEN;
+    for (var ix = 0; ix < BOARD_WIDTH; ix++) {
+        complBoard[0][ix] = FORBIDDEN;
+        complBoard[BOARD_HEIGHT - 1][ix] = FORBIDDEN;
     }
 
-    % Create a list of all potential fields
-    var fieldList = [];
-    for (var i = 0; i < FIELD_WIDTH; i++) {
-        for (var j = 1; j < FIELD_HEIGHT - 1; j++) {
-            fieldList.push([i, j]);
+    % Create a list of all potential cells
+    var cellList = [];
+    for (var i = 0; i < BOARD_WIDTH; i++) {
+        for (var j = 1; j < BOARD_HEIGHT - 1; j++) {
+            cellList.push([i, j]);
         }
     }
-    fieldList.push([startX, FIELD_HEIGHT - 1]);
+    cellList.push([startX, BOARD_HEIGHT - 1]);
 
     % Loop as long as there are entrys in the list
-    while (fieldList.length !== 0) {
+    while (cellList.length !== 0) {
         % Get one random entry
         % Exclude the last entry since the algorithm does not
         % work otherwise, not sure why
-        var rnd = getRandomInt(fieldList.length - 1);
-        var elem = fieldList[rnd];
+        var rnd = getRandomInt(cellList.length - 1);
+        var elem = cellList[rnd];
 
-        % Remove and mark the field
-        fieldList.splice(rnd, 1);
-        complField[elem[1]][elem[0]] = FORBIDDEN;
-        % If there is no path available after marking this field,
-        % the field is needed for the path
-        if (!doesPathExist([startX, FIELD_HEIGHT - 1], [endX, 0], complField)) {
-            complField[elem[1]][elem[0]] = EMPTY;
+        % Remove and mark the cell
+        cellList.splice(rnd, 1);
+        complBoard[elem[1]][elem[0]] = FORBIDDEN;
+        % If there is no path available after marking this cell,
+        % the cell is needed for the path
+        if (!doesPathExist([startX, BOARD_HEIGHT - 1], [endX, 0], complBoard)) {
+            complBoard[elem[1]][elem[0]] = EMPTY;
         }
     }
 
-    freePath = getPath([startX, FIELD_HEIGHT - 1], [endX, 0], complField);
+    freePath = getPath([startX, BOARD_HEIGHT - 1], [endX, 0], complBoard);
 
-    % Reset field for other use
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField[y][x] = EMPTY;
+    % Reset board for other use
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
+            complBoard[y][x] = EMPTY;
         }
     }
 
-    currentField = -1;
+    currentBoard = -1;
     drawAll();
 
     % Animation interval
@@ -272,24 +272,24 @@ function createPath() {
 
 /**
  * Creates a path from the start position to the end position.
- * For this a list is generated to which all pathfields should be added.
- * Beginning with the start position the neighbourhood is searched for
- * the next field.
+ * For this a list is generated to which all pathcells should be added.
+ * Beginning with the start position the neighborhood is searched for
+ * the next cell.
  * Works best if there is only one path.
  *
  * @param {Number} start The start 2D position.
  * @param {Number} end The end 2D position.
- * @param {Array} The field in which to search.
+ * @param {Array} The board on which to search.
  * @return {Array} An array containing all positions of the path.
  */
-function getPath(start, end, field) {
+function getPath(start, end, board) {
     var pathList = [start];
     % While the target is not reached search neighbourhood
     while (pathList[pathList.length - 1][0] !== end[0] ||
         pathList[pathList.length - 1][1] !== end[1]
     ) {
         var elem = pathList[pathList.length - 1];
-    	field[elem[1]][elem[0]] = IS_PATH;
+    	board[elem[1]][elem[0]] = IS_PATH;
 
         % Push next piece
         var xpo = elem[0] + 1;
@@ -298,19 +298,19 @@ function getPath(start, end, field) {
         var ymo = elem[1] - 1;
 
         var added = false;
-       	if (ypo < FIELD_HEIGHT && field[ypo][elem[0]] == REACHABLE) {
+       	if (ypo < BOARD_HEIGHT && board[ypo][elem[0]] == REACHABLE) {
         	pathList.push([elem[0], ypo]);
         	added = true;
         }
-        if (ymo >= 0 && field[ymo][elem[0]] == REACHABLE) {
+        if (ymo >= 0 && board[ymo][elem[0]] == REACHABLE) {
         	pathList.push([elem[0], ymo]);
         	added = true;
         }
-        if (xpo < FIELD_WIDTH && field[elem[1]][xpo] == REACHABLE) {
+        if (xpo < BOARD_WIDTH && board[elem[1]][xpo] == REACHABLE) {
         	pathList.push([xpo, elem[1]]);
         	added = true;
         }
-        if (xmo >= 0 && field[elem[1]][xmo] == REACHABLE) {
+        if (xmo >= 0 && board[elem[1]][xmo] == REACHABLE) {
         	pathList.push([xmo, elem[1]]);
         	added = true;
         }
@@ -324,35 +324,35 @@ function getPath(start, end, field) {
 }
 
 /**
- * Checks wether there is a path from the end to the start in the given field.
+ * Checks whether there is a path from the end to the start in the given board.
  * Starting with the end position a list is generated containing positions,
- * that are reachable and whose neighbours should be added to this list.
+ * that are reachable and whose neighbors should be added to this list.
  * A position is removed after marking, resulting in an empty list when all
- * fields where either marked or could not be reached.
- * If the start field is marked after the list is empty the field can be
+ * cells where either marked or could not be reached.
+ * If the start cell is marked after the list is empty the cell can be
  * reached, otherwise it is not reachable.
  *
  * @param {Number} start The start 2D position.
  * @param {Number} end The end 2D position.
- * @param {Array} The field in which to search.
+ * @param {Array} The board in which to search.
  * @return {Boolean} True if path exists false otherwise
  */
-function doesPathExist(start, end, field) {
+function doesPathExist(start, end, board) {
 	% Cleanup: Ensure that there is no leftover data
 	% that could come from earlier calls of this method
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (field[y][x] > EMPTY) {
-                field[y][x] = EMPTY;
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
+            if (board[y][x] > EMPTY) {
+                board[y][x] = EMPTY;
             }
         }
     }
 
-    % Starting from the goal mark all fields to indicate
+    % Starting from the goal mark all cells to indicate
     % whether they can reach it
     var toMarkList = [end];
-    field[end[1]][end[0]] = REACHABLE;
-    field[start[1]][start[0]] = EMPTY;
+    board[end[1]][end[0]] = REACHABLE;
+    board[start[1]][start[0]] = EMPTY;
 
     while (toMarkList.length !== 0) {
   	    var elem = toMarkList.pop();
@@ -363,75 +363,75 @@ function doesPathExist(start, end, field) {
         var ypo = elem[1] + 1;
         var ymo = elem[1] - 1;
 
-       	if (ypo < FIELD_HEIGHT && field[ypo][elem[0]] == EMPTY) {
+       	if (ypo < BOARD_HEIGHT && board[ypo][elem[0]] == EMPTY) {
         	toMarkList.push([elem[0], ypo]);
-            % Mark the field
-            field[ypo][elem[0]] = REACHABLE;
+            % Mark the cell
+            board[ypo][elem[0]] = REACHABLE;
         }
-        if (ymo >= 0 && field[ymo][elem[0]] == EMPTY) {
+        if (ymo >= 0 && board[ymo][elem[0]] == EMPTY) {
         	toMarkList.push([elem[0], ymo]);
-            % Mark the field
-            field[ymo][elem[0]] = REACHABLE;
+            % Mark the cell
+            board[ymo][elem[0]] = REACHABLE;
         }
-        if (xpo < FIELD_WIDTH && field[elem[1]][xpo] == EMPTY) {
+        if (xpo < BOARD_WIDTH && board[elem[1]][xpo] == EMPTY) {
         	toMarkList.push([xpo, elem[1]]);
-            % Mark the field
-            field[elem[1]][xpo] = REACHABLE;
+            % Mark the cell
+            board[elem[1]][xpo] = REACHABLE;
         }
-        if (xmo >= 0 && field[elem[1]][xmo] == EMPTY) {
+        if (xmo >= 0 && board[elem[1]][xmo] == EMPTY) {
         	toMarkList.push([xmo, elem[1]]);
-            % Mark the field
-            field[elem[1]][xmo] = REACHABLE;
+            % Mark the cell
+            board[elem[1]][xmo] = REACHABLE;
         }
     }
 
-	% Check the start field if it is marked as reachable
-    return field[start[1]][start[0]] == REACHABLE;
+	% Check the start cell if it is marked as reachable
+    return board[start[1]][start[0]] == REACHABLE;
 }
 
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
 /**
- * Reveal the selected field and update the visuals accordingly.
+ * Reveal the selected cell and update the visuals accordingly.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
-function revealField(x, y) {
+function revealCell(x, y) {
     if (gameover || !play) {
         return;
     }
 
-    % Is field a neighbour of the current or first line
-    if (currentField == -1) {
-        if (y != FIELD_HEIGHT -1) {
+    % Is the cell a neighbour of the current or first line
+    if (currentBoard == -1) {
+        if (y != BOARD_HEIGHT -1) {
             return;
         }
     } else {
-        var diffX = Math.abs(freePath[currentField][0] - x);
-        var diffY = Math.abs(freePath[currentField][1] - y);
+        var diffX = Math.abs(freePath[currentBoard][0] - x);
+        var diffY = Math.abs(freePath[currentBoard][1] - y);
         if (diffX + diffY != 1) {
             return;
         }
     }
 
-    % Test if the selected field is on the path
+    % Test if the selected cell is on the path
     var hit = false;
-    if (freePath[currentField + 1][0] == x && freePath[currentField + 1][1] == y) {
-        complField[y][x] = R_REVEAL;
+    if (freePath[currentBoard + 1][0] == x && freePath[currentBoard + 1][1] == y) {
+        complBoard[y][x] = R_REVEAL;
         hit = true;
         % Unmark the last neighbourhood
-        if (currentField != -1) {
-            markNeighbors(freePath[currentField][0], freePath[currentField][1], false);
+        if (currentBoard != -1) {
+            markNeighbors(freePath[currentBoard][0], freePath[currentBoard][1], false);
         }
-        % Move to next field
-        currentField++;
-        if (currentField == freePath.length - 1) {
+        % Move to next cell
+        currentBoard++;
+        if (currentBoard == freePath.length - 1) {
             gameover = true;
             printInfoText("Congratulations you found a way across!");
         }
-        % Mark the neighbouring fields that are accessible
+        % Mark the neighboring cells that are accessible
         markNeighbors(x, y, true);
     }
 
@@ -440,9 +440,9 @@ function revealField(x, y) {
     if (!hit) {
         gameover = true;
         for (var idx = 0; idx < freePath.length; idx++) {
-            complField[freePath[idx][1]][freePath[idx][0]] = 1;
+            complBoard[freePath[idx][1]][freePath[idx][0]] = 1;
         }
-        complField[y][x] = -1;
+        complBoard[y][x] = -1;
         printInfoText("Sadly you died!");
     }
 
@@ -453,43 +453,43 @@ function revealField(x, y) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draw all fields.
+ * Draw all cells.
  */
 function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             draw(x, y);
         }
     }
 }
 
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
 function draw(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    var value = complField[y][x];
-    % If the field was correctly revealed
+    var cell = this.getField("pos" + x + "-" + y);
+    cell.delay = true;
+    var value = complBoard[y][x];
+    % If the cell was correctly revealed
     if (value > HIDDEN) {
-        field.fillColor = COLORS[1];
-        field.borderColor = COLORS[1];
+        cell.fillColor = COLORS[1];
+        cell.borderColor = COLORS[1];
     }
-    % If the field was wrongly revealed
+    % If the cell was wrongly revealed
     else if (value < HIDDEN) {
-        field.fillColor = COLORS[0];
-        field.borderColor = COLORS[0];
+        cell.fillColor = COLORS[0];
+        cell.borderColor = COLORS[0];
     }
     % Not revealed
     else {
-        field.fillColor = color.white;
-        field.borderColor = color.white;
+        cell.fillColor = color.white;
+        cell.borderColor = color.white;
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
@@ -502,14 +502,14 @@ function drawPath() {
     if (drawPiece >= freePath.length) {
         drawPiece = 0;
         for (var idx = 0; idx < freePath.length; idx++) {
-            complField[freePath[idx][1]][freePath[idx][0]] = HIDDEN;
+            complBoard[freePath[idx][1]][freePath[idx][0]] = HIDDEN;
             draw(freePath[idx][0], freePath[idx][1]);
         }
         play = true;
         app.clearInterval(run);
     } else {
         % Redraw and continue
-        complField[freePath[drawPiece][1]][freePath[drawPiece][0]] = R_REVEAL;
+        complBoard[freePath[drawPiece][1]][freePath[drawPiece][0]] = R_REVEAL;
         draw(freePath[drawPiece][0], freePath[drawPiece][1]);
 
         drawPiece++;
@@ -517,7 +517,7 @@ function drawPath() {
 }
 
 /**
- * Highlight the neighboring fields of the given position.
+ * Highlight the neighboring cells of the given position.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
@@ -531,18 +531,18 @@ function markNeighbors(x, y, mark) {
         var newY = y + directions[idx][1];
 
         % Check for out of bounds
-        if (newX < 0 || newX >= FIELD_WIDTH || newY < 0 || newY >= FIELD_HEIGHT) {
+        if (newX < 0 || newX >= BOARD_WIDTH || newY < 0 || newY >= BOARD_HEIGHT) {
             continue;
         }
 
-        field = this.getField("pos" + newX + "-" + newY);
-        field.delay = true;
+        var cell = this.getField("pos" + newX + "-" + newY);
+        cell.delay = true;
         if (mark) {
-            field.borderColor = COLORS[2];
+            cell.borderColor = COLORS[2];
         } else {
-            field.borderColor = color.white;
+            cell.borderColor = color.white;
         }
-        field.delay = false;
+        cell.delay = false;
     }
 }
 
@@ -583,30 +583,30 @@ function printInfoText(text) {
         \end{multicols}
 
         % Dynamically adjust the cell width and height to the number of cells
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
 
         \begin{tcolorbox}
             % Define the cellsize via the smaller amount
             % Must be done here so the \linewidth has the correct value
-            \ifdim\blocksizeW<\blocksizeH
-                \def\blocksize{\blocksizeW}
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
             \else
-                \def\blocksize{\blocksizeH}
+                \def\cellsize{\cellHeight}
             \fi
             %
             \begin{center}
                 \tiny
                 \includegraphics[width=0.25\textwidth]{end}\\[2pt]
                 %
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[
-                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%

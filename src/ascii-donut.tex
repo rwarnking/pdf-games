@@ -20,7 +20,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Can be changed but 20-30 seem to be a good values
+% Can be changed but 20-30 seem to be a good values, but the canvas should be quadratic
 \def\canvasWidth{20}
 \def\canvasHeight{\canvasWidth}
 
@@ -324,8 +324,8 @@ function draw() {
 
         % Dynamically adjust the cell width to the number of cells per column
         % Only need to check width since the board is quadratic
-        \FPeval{\resultW}{(\canvasWidth * 3 - 2)} % chktex 8
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\canvasWidth \relax}
+        \FPeval{\resultW}{\canvasWidth * 3 - 2} % chktex 8
+        \def\cellsize{\dimexpr (\linewidth-\resultW pt)/\canvasWidth \relax}
 
         % The canvas (pixelarray)
         \begin{tcolorbox}[colback=black]
@@ -333,7 +333,7 @@ function draw() {
                 \xintFor* #1 in {\xintSeq{0}{\canvasHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\canvasWidth-1}} \do {%
                         \TextField[
-                            name=cell#1-#2, width=\blocksizeW, height=\blocksizeW,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=, backgroundcolor=, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%

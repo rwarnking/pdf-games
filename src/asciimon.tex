@@ -2668,7 +2668,7 @@ function addInfoText(text) {
             % Tooltip object
             \begin{flushright}%
                 \TextField[name=hintbox,%
-                    bordercolor=white, backgroundcolor=white, readonly, hidden]{}
+                    bordercolor=white, backgroundcolor=white, readonly]{}
                 \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
@@ -2677,9 +2677,9 @@ function addInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max width and height of a block
-        \def\blocksizeH{\dimexpr (250 pt)/\boardCharsH \relax}
-        \def\blocksizeW{\dimexpr (250 pt) \relax}
+        % Calculate the max height of a line
+        \def\lineHeight{\dimexpr (250 pt)/\boardCharsH \relax}
+        \def\lineWidth{\dimexpr (250 pt) \relax}
 
         \begin{multicols}{2}
 
@@ -2699,7 +2699,7 @@ function addInfoText(text) {
             \begin{center}
                 \xintFor* #1 in {\xintSeq{0}{\boardCharsH-1}} \do {%
                     \TextField[%
-                        name=player#1, width=\blocksizeW, height=\blocksizeH,%
+                        name=player#1, width=\lineWidth, height=\lineHeight,%
                         bordercolor=, backgroundcolor=, readonly%
                     ]{}%
                     \\[0pt]%
@@ -2711,7 +2711,7 @@ function addInfoText(text) {
             \begin{center}
                 \xintFor* #1 in {\xintSeq{0}{\boardCharsH-1}} \do {%
                     \TextField[%
-                        name=enemy#1, width=\blocksizeW, height=\blocksizeH,%
+                        name=enemy#1, width=\lineWidth, height=\lineHeight,%
                         bordercolor=, backgroundcolor=, readonly%
                     ]{}%
                     \\[0pt]%

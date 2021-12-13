@@ -105,7 +105,7 @@ function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
-    % Each field needs to be connected to an input function
+    % Each cell needs to be connected to an input function
     var funcName = "addToColumn";
     for (var n = 0; n < BOARD_WIDTH; n++) {
         var callbackName = funcName + "(" + n.toString() + ");";
@@ -218,7 +218,7 @@ function addToColumn(n) {
 }
 
 /**
- * Returns the first empty spot for the given column (n).
+ * Returns the first empty cell for the given column (n).
  *
  * @param {Number} n The column for which the m should be returned.
  */
@@ -373,8 +373,8 @@ function printInfoText(text) {
         \end{multicols}
 
         % Dynamically adjust the cell width to the number of cells per column
-        \FPeval{\result}{(\boardWidth * 3 - 2)} % chktex 8
-        \def\blocksize{\dimexpr (\linewidth-\result pt)/\boardWidth \relax}
+        \FPeval{\result}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellsize{\dimexpr (\linewidth-\result pt)/\boardWidth \relax}
 
         \begin{tcolorbox}
             % Column selection buttons
@@ -409,7 +409,7 @@ function printInfoText(text) {
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=cell#1-#2, width=\blocksize, height=\blocksize,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, readonly%
                         ]{}%
                         % Have space between all cells that are not the last one
