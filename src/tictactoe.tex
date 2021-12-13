@@ -270,7 +270,7 @@ function checkForWinner(x, y) {
     for (var dirIdx = 0; dirIdx < directions.length; dirIdx += 2) {
         count = 0;
         maxCount = 0;
-        % Count succeeding stones
+        % Count succeeding cells
         for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
             var nx = x + directions[dirIdx] * wp;
             var ny = y + directions[dirIdx + 1] * wp;

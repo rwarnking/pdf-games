@@ -21,10 +21,10 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Values can be changed
-% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% Obacht: It is discouraged to use a board with size bigger than 15x15 since the PDF might get
 % to slow to play
-\def\fieldWidth{15}
-\def\fieldHeight{10}
+\def\boardWidth{15}
+\def\boardHeight{10}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
@@ -33,13 +33,13 @@
 
 const GAME_DESC = "The goal of this game is to generate matches. A match is defined as at least\
 three cells that contain the same symbol. To build a match the player is allowed to swap the\
-symbol of two adjacent cells. If the swap would indeed led to a match, the cells are swaped\
+symbol of two adjacent cells. If the swap would indeed led to a match, the cells are swapped\
 and the match is removed. The free cells are refilled by the symbols of the cells above it.\
 The topmost cells are filled randomly. Chain reactions are desired.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const SCREEN_TEXT_SIZE = 300;
 
 % Constants
@@ -79,8 +79,8 @@ const BOMB_POSITIONS = [
 % Globals
 % Animation interval variable
 var run;
-% The game field
-var complField = new Array();
+% The game board
+var complBoard = new Array();
 % Saves the symbols for the current match
 var cur_symbols = [];
 % Saves the last clicked cell
@@ -201,8 +201,8 @@ function hslToRgb(h, s, l) {
 /**
  * Generates the specified amount of colors and pushes
  * them to the colors array.
- * For generating the colors are selected using hsl
- * and afterwards transformed to rgb.
+ * For generating the colors are selected using HSL
+ * and afterwards transformed to RGB.
  *
  * @param {number} amount The amount of colors to generate
  * @param {number} saturation The saturation
@@ -221,7 +221,7 @@ function generateColors(saturation, lightness, amount) {
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
 function initialise() {
     % Init the GUI
@@ -234,20 +234,20 @@ function initialise() {
     }
 
     % Mark all columns as unchanged
-    for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var column = 0; column < BOARD_WIDTH; column++) {
         changedColumns.push(UNCHANGED);
     }
 
-    % Create the field choosing a random symbol for each field
+    % Create the board choosing a random symbol for each cell
     var elem, rnd;
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
         var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             rnd = getRandomInt(cur_symbols.length);
             % Random number and direction counts
             tmp.push([rnd, [0, 0, 0, 0], NORMAL]);
         }
-        complField.push(tmp);
+        complBoard.push(tmp);
     }
 
     % Add special cells like unbreakable, ...
@@ -255,7 +255,7 @@ function initialise() {
     % calling this function would not do anything
     %addSpecialCells();
     % Remove matches due to generation
-    cleanupField();
+    cleanupBoard();
 
     % Initialise direction counts
     % Meaning the amount of identical symbols in each direction
@@ -266,7 +266,7 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
@@ -280,18 +280,18 @@ function initialiseButtons() {
     % Assign each button the coresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
-    % Each field needs to be connected to an input function
-    var field;
-    var funcName = "fieldClicked";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    % Each cell needs to be connected to an input function
+    var cell;
+    var funcName = "cellClicked";
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            field = this.getField("pos" + x + "-" + y);
-            field.setAction("MouseDown", callbackName);
-            field.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            cell = this.getField("pos" + x + "-" + y);
+            cell.setAction("MouseDown", callbackName);
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
 
             var swapCallback = "swap" + "(" + x.toString() + "," + y.toString() + ");";
-            field.setAction("MouseEnter", swapCallback);
+            cell.setAction("MouseEnter", swapCallback);
         }
     }
 
@@ -318,7 +318,7 @@ function restart() {
     currentCell = null;
 
     % Mark all columns as unchanged
-    for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var column = 0; column < BOARD_WIDTH; column++) {
         changedColumns[column] = UNCHANGED;
     }
 
@@ -344,27 +344,27 @@ function restart() {
         }
     }
 
-    % Create the field choosing a random symbol for each field
+    % Create the board choosing a random symbol for each cell
     var rnd;
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             rnd = getRandomInt(cur_symbols.length);
-            complField[row][column][0] = rnd;
-            complField[row][column][2] = NORMAL;
+            complBoard[row][column][0] = rnd;
+            complBoard[row][column][2] = NORMAL;
         }
     }
 
     % Add special cells like unbreakable, ...
     addSpecialCells();
     % Remove matches due to generation
-    cleanupField();
+    cleanupBoard();
     % Initialise direction counts
     calcAllDirCounts();
 
     drawAll();
     % Disable left over highlights
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             highlight(column, row, false);
         }
     }
@@ -406,17 +406,17 @@ function tooltip(on) {
 }
 
 %%%%%%%%%%%%%%%%%%%%
-% Field Generation %
+% Board Generation %
 %%%%%%%%%%%%%%%%%%%%
 function addSpecialCells() {
     var modCell = function modCell(type, count) {
         var x, y;
         for (var i = 0; i < count; i++) {
-            x = getRandomInt(FIELD_WIDTH);
-            y = getRandomInt(FIELD_HEIGHT);
-            complField[y][x][2] = type;
+            x = getRandomInt(BOARD_WIDTH);
+            y = getRandomInt(BOARD_HEIGHT);
+            complBoard[y][x][2] = type;
             if (type == OBSTACLE) {
-                complField[y][x][0] = EMPTY;
+                complBoard[y][x][0] = EMPTY;
             }
         }
     }
@@ -445,13 +445,13 @@ function addSpecialCells() {
 
 /**
  * Remove all matches with three or more elements by iterating
- * the field and checking if there are two cells with
- * the same symbol directly above or infront.
- * In that case change the symbol to one that is not in the neighbourhood.
+ * the board and checking if there are two cells with
+ * the same symbol directly above or in front.
+ * In that case change the symbol to one that is not in the neighborhood.
  * OBACHT: Does not work with MAX_SYMBOLS < 5.
  * TODO replace this?
  */
-function cleanupField() {
+function cleanupBoard() {
     % Cleanup is not possible below 5 symbols, since it would be
     % possible that there is no replacement symbol if each
     % neighbour is a different symbol
@@ -460,21 +460,21 @@ function cleanupField() {
     }
 
     var elem;
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            elem = complField[row][column][0];
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
+            elem = complBoard[row][column][0];
             if (column > 1 &&
-                complField[row][column - 1][0] == elem &&
-                complField[row][column - 2][0] == elem) {
+                complBoard[row][column - 1][0] == elem &&
+                complBoard[row][column - 2][0] == elem) {
 
-                complField[row][column][0] = getReplacementSymbol(row, column);
+                complBoard[row][column][0] = getReplacementSymbol(row, column);
                 %highlight(column, row, true);
             }
             if (row > 1 &&
-                complField[row - 1][column][0] == elem &&
-                complField[row - 2][column][0] == elem) {
+                complBoard[row - 1][column][0] == elem &&
+                complBoard[row - 2][column][0] == elem) {
 
-                complField[row][column][0] = getReplacementSymbol(row, column);
+                complBoard[row][column][0] = getReplacementSymbol(row, column);
                 %highlight(column, row, true);
             }
         }
@@ -483,7 +483,7 @@ function cleanupField() {
 
 /**
  * Finds a replacement symbol for the given cell.
- * The neighbourhood is checked for accurring symbols.
+ * The neighborhood is checked for occurring symbols.
  * These are ignored from the remaining symbols a
  * random one is selected.
  *
@@ -498,18 +498,18 @@ function getReplacementSymbol(row, column) {
 
     % Save which symbols are disallowed
     if (column > 0) {
-        neighbourhood[complField[row][column - 1][0]] = false;
+        neighbourhood[complBoard[row][column - 1][0]] = false;
     }
-    if (column < FIELD_WIDTH - 1) {
-        neighbourhood[complField[row][column + 1][0]] = false;
+    if (column < BOARD_WIDTH - 1) {
+        neighbourhood[complBoard[row][column + 1][0]] = false;
     }
     if (row > 0) {
-        neighbourhood[complField[row - 1][column][0]] = false;
+        neighbourhood[complBoard[row - 1][column][0]] = false;
     }
-    if (row < FIELD_HEIGHT - 1) {
-        neighbourhood[complField[row + 1][column][0]] = false;
+    if (row < BOARD_HEIGHT - 1) {
+        neighbourhood[complBoard[row + 1][column][0]] = false;
     }
-    neighbourhood[complField[row][column][0]] = false;
+    neighbourhood[complBoard[row][column][0]] = false;
 
     % Save the indices of the allowed symbols
     var indices = [];
@@ -527,20 +527,20 @@ function getReplacementSymbol(row, column) {
 % Gamelogic %
 %%%%%%%%%%%%%
 /**
- * Save and highlight the last field the user clicked on.
- * Selection is only removed after clicking on the same field.
+ * Save and highlight the last cell the user clicked on.
+ * Selection is only removed after clicking on the same cell.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
-function fieldClicked(x, y, ignore=false) {
-    % Allow for multiple clicks on the same field
+function cellClicked(x, y, ignore=false) {
+    % Allow for multiple clicks on the same cell
     this.getField("restart").setFocus();
     if (inChainReaction && !ignore) {
         printInfoText("Input not possible while in chain reaction!");
         return;
     }
-    if (complField[y][x][2] === OBSTACLE) {
+    if (complBoard[y][x][2] === OBSTACLE) {
         printInfoText("Cant select an obstacle!");
         return;
     }
@@ -557,8 +557,8 @@ function fieldClicked(x, y, ignore=false) {
 /**
  * Swaps the given position with the currentCell, if:
  * 1. There is a currentCell
- * 2. The given position is in the 4-neighbourhood
- * 3. The swap would leed to a stone removal
+ * 2. The given position is in the 4-neighborhood
+ * 3. The swap would lead to a stone removal
  * Lifts highlight after swap.
  *
  * @param {Number} x The x position.
@@ -568,7 +568,7 @@ function swap(x, y) {
     if (currentCell !== null) {
         var x2 = currentCell[0];
         var y2 = currentCell[1];
-        var type = complField[y][x][2] | complField[y2][x2][2];
+        var type = complBoard[y][x][2] | complBoard[y2][x2][2];
         if (type > NORMAL) {
             if ((type & BOMB) > 0) {
                 printInfoText("Swap not possible! ITS A BOMB!");
@@ -578,16 +578,16 @@ function swap(x, y) {
                 printInfoText("Swap not possible! Unmoveable stone.");
             }
             % Remove last click and highlight
-            fieldClicked(x2, y2, true);
+            cellClicked(x2, y2, true);
             return;
         }
 
-        % Check that only the 4-neighbourhood is valid
+        % Check that only the 4-neighborhood is valid
         if (Math.abs(x - x2) + Math.abs(y - y2) == 1) {
             % Swap contents
-            var tmp = complField[y2][x2][0];
-            complField[y2][x2][0] = complField[y][x][0];
-            complField[y][x][0] = tmp;
+            var tmp = complBoard[y2][x2][0];
+            complBoard[y2][x2][0] = complBoard[y][x][0];
+            complBoard[y][x][0] = tmp;
 
             % Check if the swap was valid
             % Bitwise or so that both methods are executed
@@ -599,24 +599,24 @@ function swap(x, y) {
                 draw(x2, y2);
                 % Start replacing stones
                 replaceStones()
-            % If it wasnt revert the swap
+            % If it was not, revert the swap
             } else {
                 printInfoText("Swap not allowed!");
                 % Swap contents back
-                tmp = complField[y2][x2][0];
-                complField[y2][x2][0] = complField[y][x][0];
-                complField[y][x][0] = tmp;
+                tmp = complBoard[y2][x2][0];
+                complBoard[y2][x2][0] = complBoard[y][x][0];
+                complBoard[y][x][0] = tmp;
             }
             % Remove last click and highlight
-            fieldClicked(x2, y2, true);
+            cellClicked(x2, y2, true);
         }
     }
 }
 
 /**
- * Checks if the given position has a match with atleast 3 elements.
+ * Checks if the given position has a match with at least 3 elements.
  * For this the direction counts are recalculated and used to
- * obtain the amount of identical neighbours.
+ * obtain the amount of identical neighbors.
  * If no match is found the original direction counts are reassigned.
  *
  * @param {Number} x The x position.
@@ -625,18 +625,18 @@ function swap(x, y) {
  */
 function hasMatch(x, y) {
     % Save the current direction count for a potential reset
-    var tmpDirCounts = complField[y][x][1];
+    var tmpDirCounts = complBoard[y][x][1];
     calcDirCounts(x, y);
 
-    var countXPos = complField[y][x][1][0] + complField[y][x][1][2];
-    var countYPos = complField[y][x][1][1] + complField[y][x][1][3];
+    var countXPos = complBoard[y][x][1][0] + complBoard[y][x][1][2];
+    var countYPos = complBoard[y][x][1][1] + complBoard[y][x][1][3];
 
     % If it is a match ...
     if (countXPos > 1 || countYPos > 1) {
         return true;
     } else {
         % Reset the direction counts
-        complField[y][x][1] = tmpDirCounts;
+        complBoard[y][x][1] = tmpDirCounts;
         return false;
     }
 }
@@ -717,21 +717,21 @@ function chainReaction() {
  * @param {Number} x The column position.
  */
 function dropAndAddStones(x) {
-    % Iterate each field of a column
-    for (var y = FIELD_HEIGHT - 1; y >= 0; y--) {
+    % Iterate each cell of a column
+    for (var y = BOARD_HEIGHT - 1; y >= 0; y--) {
         % If there is no symbol in this cell
-        if (complField[y][x][0] === EMPTY && complField[y][x][2] !== OBSTACLE) {
-            % Check all fields above the current cell
+        if (complBoard[y][x][0] === EMPTY && complBoard[y][x][2] !== OBSTACLE) {
+            % Check all cells above the current cell
             var y2 = y - 1;
             for (; y2 >= 0; y2--) {
                 % If there is a non emtpy, moveable cell swap values
-                var type = complField[y2][x][2];
-                if (complField[y2][x][0] !== EMPTY && type < UNBREAKABLE) {
-                    complField[y][x][0] = complField[y2][x][0];
-                    complField[y2][x][0] = EMPTY;
+                var type = complBoard[y2][x][2];
+                if (complBoard[y2][x][0] !== EMPTY && type < UNBREAKABLE) {
+                    complBoard[y][x][0] = complBoard[y2][x][0];
+                    complBoard[y2][x][0] = EMPTY;
                     if (type !== NORMAL) {
-                        complField[y][x][2] = type;
-                        complField[y2][x][2] = NORMAL;
+                        complBoard[y][x][2] = type;
+                        complBoard[y2][x][2] = NORMAL;
                     }
 
                     % Cancel loop to prevent override
@@ -742,22 +742,22 @@ function dropAndAddStones(x) {
             if (y2 === -1) {
                 % Generate randomly new stone
                 var rnd = getRandomInt(cur_symbols.length);
-                complField[y][x][0] = rnd;
+                complBoard[y][x][0] = rnd;
                 % Respawn bombs
                 if (bombEnable) {
                     rnd = getRandomInt(1000);
                     if (rnd <= BOMB_PROBABILITY) {
-                        complField[y][x][2] = BOMB;
+                        complBoard[y][x][2] = BOMB;
                     }
                 }
                 if (bkTwiceEnable) {
                     rnd = getRandomInt(1000);
                     if (rnd <= BKTWICE_PROBABILITY) {
-                        complField[y][x][2] = BREAKTWICE;
+                        complBoard[y][x][2] = BREAKTWICE;
                     }
                 }
             }
-            % Redraw only fields that changed
+            % Redraw only cells that changed
             draw(x, y);
         }
     }
@@ -765,27 +765,26 @@ function dropAndAddStones(x) {
 
 /**
  * Check all stones if they should be removed.
- *
  */
 function checkAllForStoneRemoval() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             removeStone(column, row);
         }
     }
 }
 
 /**
- * Removes the stone for the given position
- * from the field if it is part of a match.
+ * Removes the cell for the given position
+ * from the board if it is part of a match.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
 function removeStone(x, y) {
     % Get directions in which a match can be found
-    var countXPos = complField[y][x][1][0] + complField[y][x][1][2];
-    var countYPos = complField[y][x][1][1] + complField[y][x][1][3];
+    var countXPos = complBoard[y][x][1][0] + complBoard[y][x][1][2];
+    var countYPos = complBoard[y][x][1][1] + complBoard[y][x][1][3];
 
     % If a match is found in this direction remove the stone values
     if (countXPos > 1 || countYPos > 1) {
@@ -796,7 +795,7 @@ function removeStone(x, y) {
 }
 
 /**
- * Helperfunction:
+ * Helper function:
  * Remove symbol and redrawing a cell.
  * Marks the columns which were removed.
  * @param {Number} x The x position.
@@ -804,14 +803,14 @@ function removeStone(x, y) {
  */
 function clearPos(x, y) {
     % Only cells with content give points
-    if (complField[y][x][0] !== EMPTY) {
+    if (complBoard[y][x][0] !== EMPTY) {
         points++;
     }
-    if (complField[y][x][2] === BREAKTWICE) {
-        complField[y][x][2] = NORMAL;
+    if (complBoard[y][x][2] === BREAKTWICE) {
+        complBoard[y][x][2] = NORMAL;
         draw(x, y);
-    } else if (complField[y][x][2] < UNBREAKABLE) {
-        complField[y][x][0] = EMPTY;
+    } else if (complBoard[y][x][2] < UNBREAKABLE) {
+        complBoard[y][x][0] = EMPTY;
         draw(x, y);
         changedColumns[x] = CHANGED;
         stonesRemoved = true;
@@ -819,35 +818,35 @@ function clearPos(x, y) {
 }
 
 /**
- * Helperfunction:
+ * Helper function:
  * If the cell is a bomb delete the surrounding cells.
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
 function processIfBomb(x, y) {
-    if (complField[y][x][2] == BOMB) {
+    if (complBoard[y][x][2] == BOMB) {
         for (var j = 0; j < BOMB_POSITIONS.length; j++) {
             var nX = x + BOMB_POSITIONS[j][0];
             var nY = y + BOMB_POSITIONS[j][1];
             % Border check
-            if (nX >= 0 && nY >= 0 && nX < FIELD_WIDTH && nY < FIELD_HEIGHT) {
+            if (nX >= 0 && nY >= 0 && nX < BOARD_WIDTH && nY < BOARD_HEIGHT) {
                 clearPos(nX, nY);
             }
         }
         % Reset the cell state
-        complField[y][x][2] = NORMAL;
+        complBoard[y][x][2] = NORMAL;
     }
 }
 
 /**
  * Enables or disables the highlight for
- * all matches in the field.
+ * all matches on the board.
  *
  * @param {Boolean} enable Enables or disables highlight.
  */
 function highlightAllMatches(enable) {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             highlightStones(column, row, enable);
         }
     }
@@ -862,20 +861,20 @@ function highlightAllMatches(enable) {
  */
 function highlightStones(x, y, enable) {
     % Get directions in which a match can be found
-    var countXPos = complField[y][x][1][0] + complField[y][x][1][2];
-    var countYPos = complField[y][x][1][1] + complField[y][x][1][3];
+    var countXPos = complBoard[y][x][1][0] + complBoard[y][x][1][2];
+    var countYPos = complBoard[y][x][1][1] + complBoard[y][x][1][3];
 
     % If a match is found in this direction highlight the stones
     if (countXPos > 1) {
         % Just iterate from one side of the given position to the other
-        for (var i = -complField[y][x][1][2]; i < complField[y][x][1][0] + 1; i++) {
+        for (var i = -complBoard[y][x][1][2]; i < complBoard[y][x][1][0] + 1; i++) {
             var tmpX = x + i;
             highlight(tmpX, y, enable);
             highlightBomb(tmpX, y, enable);
         }
     }
     if (countYPos > 1) {
-        for (var i = -complField[y][x][1][3]; i < complField[y][x][1][1] + 1; i++) {
+        for (var i = -complBoard[y][x][1][3]; i < complBoard[y][x][1][1] + 1; i++) {
             var tmpY = y + i;
             highlight(x, tmpY, enable);
             highlightBomb(x, tmpY, enable);
@@ -891,12 +890,12 @@ function highlightStones(x, y, enable) {
  * @param {Boolean} enable Enables or disables highlight.
  */
 function highlightBomb(x, y, enable) {
-    if (complField[y][x][2] == BOMB) {
+    if (complBoard[y][x][2] == BOMB) {
         for (var j = 0; j < BOMB_POSITIONS.length; j++) {
             var nX = x + BOMB_POSITIONS[j][0];
             var nY = y + BOMB_POSITIONS[j][1];
             % Border check
-            if (nX >= 0 && nY >= 0 && nX < FIELD_WIDTH && nY < FIELD_HEIGHT) {
+            if (nX >= 0 && nY >= 0 && nX < BOARD_WIDTH && nY < BOARD_HEIGHT) {
                 highlight(nX, nY, enable, true);
             }
         }
@@ -907,13 +906,13 @@ function highlightBomb(x, y, enable) {
 % Get direction counts %
 %%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Calculates the direction counts for all cells of the array (complField).
+ * Calculates the direction counts for all cells of the array (complBoard).
  * Direction counts are the amount of identical symbols in each
  * of the four directions.
  */
 function calcAllDirCounts() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             calcDirCounts(column, row);
         }
     }
@@ -928,15 +927,15 @@ function calcAllDirCounts() {
  * @param {Number} y The y position.
  */
 function calcDirCounts(x, y) {
-    complField[y][x][1][0] = calcDirCount(x, y, 1, 0);
-    complField[y][x][1][1] = calcDirCount(x, y, 0, 1);
-    complField[y][x][1][2] = calcDirCount(x, y, -1, 0);
-    complField[y][x][1][3] = calcDirCount(x, y, 0, -1);
+    complBoard[y][x][1][0] = calcDirCount(x, y, 1, 0);
+    complBoard[y][x][1][1] = calcDirCount(x, y, 0, 1);
+    complBoard[y][x][1][2] = calcDirCount(x, y, -1, 0);
+    complBoard[y][x][1][3] = calcDirCount(x, y, 0, -1);
 }
 
 /**
  * Calculates the direction count for the given cell
- * in the given direction, by iterating over the field
+ * in the given direction, by iterating over the board
  * in that direction.
  *
  * @param {Number} x The x position.
@@ -946,7 +945,7 @@ function calcDirCounts(x, y) {
  */
 function calcDirCount(x, y, dirX, dirY) {
     % Get the symbols
-    var symb = complField[y][x][0];
+    var symb = complBoard[y][x][0];
 
     var count = 0;
 
@@ -954,11 +953,11 @@ function calcDirCount(x, y, dirX, dirY) {
     var nX = x + dirX;
     var nY = y + dirY;
     % Check for out of bounds
-    while (nX >= 0 && nX < FIELD_WIDTH &&
-        nY >= 0 && nY < FIELD_HEIGHT
+    while (nX >= 0 && nX < BOARD_WIDTH &&
+        nY >= 0 && nY < BOARD_HEIGHT
     ) {
         % Check the symbol
-        if (complField[nY][nX][0] === symb) {
+        if (complBoard[nY][nX][0] === symb) {
             count++;
         } else {
             break;
@@ -973,46 +972,46 @@ function calcDirCount(x, y, dirX, dirY) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draw all fields.
+ * Draw all cells.
  */
 function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             draw(x, y);
         }
     }
 }
 
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
 function draw(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
+    var cell = this.getField("pos" + x + "-" + y);
+    cell.delay = true;
 
     % Get backgroundcolor
-    var cType = complField[y][x][2];
-    field.fillColor = BACKGROUND_COLORS[cType];
+    var cType = complBoard[y][x][2];
+    cell.fillColor = BACKGROUND_COLORS[cType];
 
-    var val = complField[y][x][0];
+    var val = complBoard[y][x][0];
     if (val != EMPTY) {
-        field.value = cur_symbols[val];
+        cell.value = cur_symbols[val];
 
         if (cType == UNBREAKABLE || cType == BOMB) {
-            field.textColor = color.white;
+            cell.textColor = color.white;
         } else if (colorEnable) {
-            field.textColor = colors[val];
+            cell.textColor = colors[val];
         } else {
-            field.textColor = color.black;
+            cell.textColor = color.black;
         }
     } else {
-        field.value = "";
+        cell.value = "";
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
@@ -1021,21 +1020,21 @@ function draw(x, y) {
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  * @param {Boolean} enable If true enables the highlight
- * @param {Boolean} bomb If true enables the bombhighlight
+ * @param {Boolean} bomb If true enables the bomb highlight
  */
 function highlight(x, y, enable, bomb=false) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
+    var cell = this.getField("pos" + x + "-" + y);
+    cell.delay = true;
     % Highlight the current taken move
     if (enable) {
-        field.borderColor = HIGHLIGHT_COLOR;
+        cell.borderColor = HIGHLIGHT_COLOR;
         if (bomb) {
-            field.borderColor = HIGHLIGHT_BOMB_COLOR;
+            cell.borderColor = HIGHLIGHT_BOMB_COLOR;
         }
     } else {
-        field.borderColor = color.white;
+        cell.borderColor = color.white;
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
@@ -1086,29 +1085,29 @@ function printInfoText(text) {
         \end{multicols}
 
         % Dynamically adjust the cell width and height to the number of cells
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
-        \def\blocksizeH{\dimexpr (400 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (400 pt -\resultH pt)/\boardHeight \relax}
 
         % The game board
         \begin{tcolorbox}
-            % Define the cellsize via the smaller amount
+            % Define the cell size via the smaller amount
             % Must be done here so the \linewidth has the correct value
-            \ifdim\blocksizeW<\blocksizeH
-                \def\blocksize{\blocksizeW}
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
             \else
-                \def\blocksize{\blocksizeH}
+                \def\cellsize{\cellHeight}
             \fi
 
             \begin{center}
                 \tiny
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, align=1%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
