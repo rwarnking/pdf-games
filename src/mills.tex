@@ -31,7 +31,7 @@
 \begin{insDLJS}[]{JSDateiname}{mills}
 
 const GAME_DESC = "This game has three phases:\
-1. Each player places 9 stones onto the field.\
+1. Each player places 9 stones onto the board.\
 2. Each turn a player is allowed to move a stone to an adjacent cell.\
 3. If in step 1 or 2 a mill is constructed, the player removes a stone of the opponent.\
 Three stones on a straight line are a mill. A player with only 3 stones left,\
@@ -64,8 +64,8 @@ const ANIMATION_OFFSET = 0.05;
 % Animation interval variable for moving
 var run;
 var timestep = 0.0;
-% The game field
-var complField = [
+% The game board
+var complBoard = [
     [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
     [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
     [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY]
@@ -196,25 +196,26 @@ function initialiseButtons() {
     % Assign each button the coresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
-    % Set the callbacks and attributes of each small field
+    % Set the callbacks and attributes of each cell
+    var cell;
     var funcName = "place";
     for (var m = 0; m < ROWS; m++) {
         for (var n = 0; n < COLUMNS; n++) {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
-            var f = this.getField("pos" + m + "-" + n);
-            f.setAction("MouseDown", callbackName);
+            cell = this.getField("pos" + m + "-" + n);
+            cell.setAction("MouseDown", callbackName);
 
-            f.textSize = TEXT_SIZE;
+            cell.textSize = TEXT_SIZE;
 
-            f.rect = BOX_POSITIONS[m][n];
+            cell.rect = BOX_POSITIONS[m][n];
         }
     }
 
     % Animation field
-    var f = this.getField("animationField");
-    f.hidden = true;
-    f.textSize = TEXT_SIZE;
-    f.value = PIECE_SYMBOL;
+    var field = this.getField("animationCell");
+    field.hidden = true;
+    field.textSize = TEXT_SIZE;
+    field.value = PIECE_SYMBOL;
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
@@ -230,7 +231,7 @@ function restart() {
     % Reset array to be empty
     for (var m = 0; m < ROWS; m++) {
         for (var n = 0; n < COLUMNS; n++) {
-            complField[m][n] = EMPTY;
+            complBoard[m][n] = EMPTY;
         }
     }
 
@@ -330,12 +331,12 @@ function place(m, n) {
  * @param {Number} n The n position.
  */
 function placing(m, n) {
-    if (complField[m][n] != EMPTY) {
+    if (complBoard[m][n] != EMPTY) {
         printInfoText(PLAYER_STR[turn] + ": Please select an empty cell!");
         return;
     }
     % Place stone
-    complField[m][n] = turn;
+    complBoard[m][n] = turn;
     stonesToPlace[turn]--;
     stones[turn]++;
 
@@ -378,7 +379,7 @@ function moving(m, n) {
             return;
         }
         % The selected cell must be an actual stone
-        if (complField[m][n] != EMPTY) {
+        if (complBoard[m][n] != EMPTY) {
             printInfoText(PLAYER_STR[turn] + ": Please select an empty position.");
             return;
         }
@@ -401,12 +402,12 @@ function moving(m, n) {
         lastClick = null;
     } else {
         % Ensure selection of an actuall stone
-        if (complField[m][n] == EMPTY) {
+        if (complBoard[m][n] == EMPTY) {
             printInfoText(PLAYER_STR[turn] + ": Please select non empty position.");
             return;
         }
         % Ensure selection of own piece
-        if (complField[m][n] != turn) {
+        if (complBoard[m][n] != turn) {
             printInfoText(PLAYER_STR[turn] + ": Please select one of your own pieces.");
             return;
         }
@@ -430,12 +431,12 @@ function moving(m, n) {
  */
 function moveAnimation(m1, n1, m2, n2) {
     % Get animation cell
-    var field = this.getField("animationField");
+    var cell = this.getField("animationCell");
 
     % Stop animation and reset if timelimit is reached
     if (timestep >= 1.0) {
         % Redraw
-        complField[m2][n2] = turn;
+        complBoard[m2][n2] = turn;
         draw(m2, n2);
         % Check for next state
         if (checkMills(m2, n2)) {
@@ -447,20 +448,20 @@ function moveAnimation(m1, n1, m2, n2) {
         }
         % Reset
         timestep = 0.0;
-        field.hidden = true;
+        cell.hidden = true;
         app.clearInterval(run);
         return;
     }
     % Draw (remove) the start marble in the beginning
     if (timestep >= 0.0 && timestep <= 0.0 + ANIMATION_OFFSET) {
-        field.textColor = colors[turn];
+        cell.textColor = colors[turn];
 
-        complField[m1][n1] = EMPTY;
+        complBoard[m1][n1] = EMPTY;
         draw(m1, n1);
     }
 
     % Show the animation cell
-    field.hidden = false;
+    cell.hidden = false;
 
     % Get the cells for the rectangle
     var src = this.getField("pos" + m1 + "-" + n1);
@@ -470,7 +471,7 @@ function moveAnimation(m1, n1, m2, n2) {
     for (var i = 0; i < 4; i++) {
         rect[i] = tgt.rect[i] * timestep + src.rect[i] * (1.0 - timestep);
     }
-    field.rect = rect;
+    cell.rect = rect;
 
     timestep += ANIMATION_OFFSET;
 }
@@ -484,8 +485,8 @@ function moveAnimation(m1, n1, m2, n2) {
  * @param {Number} n The n position.
  */
 function removing(m, n) {
-    if (complField[m][n] != turn && complField[m][n] != EMPTY) {
-        complField[m][n] = EMPTY;
+    if (complBoard[m][n] != turn && complBoard[m][n] != EMPTY) {
+        complBoard[m][n] = EMPTY;
         nextTurn();
         stones[turn]--;
 
@@ -529,13 +530,13 @@ function isNeighbour(m, n) {
  * @return {Boolen} True if the position is part of a mill, else false.
  */
 function checkMills(m, n) {
-    var p = complField[m][n];
+    var p = complBoard[m][n];
     % Check differ depending on arrayposition beeing even or odd
     if (n \% 2 == 0) {
         % Check in a line up and down with m, n beeing at the end of the line
         var n_m2 = (n + 8 - 2) \% 8;
-        if (complField[m][n + 1] == p && complField[m][(n + 2) \% 8] == p ||
-            complField[m][n_m2 + 1] == p && complField[m][n_m2] == p
+        if (complBoard[m][n + 1] == p && complBoard[m][(n + 2) \% 8] == p ||
+            complBoard[m][n_m2 + 1] == p && complBoard[m][n_m2] == p
         ) {
             return true;
         }
@@ -543,8 +544,8 @@ function checkMills(m, n) {
         % Check in a line up and down with m, n beeing at the center of the line
         var m_m1 = (m + 3 - 1) \% 3;
         var m_p1 = (m + 1) \% 3;
-        if (complField[m][n - 1] == p && complField[m][(n + 1) \% 8] == p ||
-            complField[m_m1][n] == p && complField[m_p1][n] == p
+        if (complBoard[m][n - 1] == p && complBoard[m][(n + 1) \% 8] == p ||
+            complBoard[m_m1][n] == p && complBoard[m_p1][n] == p
         ) {
             return true;
         }
@@ -556,7 +557,7 @@ function checkMills(m, n) {
 /**
  * Checks if a given player has any moves left.
  * Iterates all cells and checks its neighbourhood for empty cells.
- * @param {Number} player The player value in the complField.
+ * @param {Number} player The player value in the complBoard.
  * @return {Boolen} True if no moves are left, else false.
  */
 function hasNoMoves(player) {
@@ -568,13 +569,13 @@ function hasNoMoves(player) {
     for (var m = 0; m < ROWS; m++) {
         for (var n = 0; n < COLUMNS; n++) {
             % Check only cells with stones of this player
-            if (complField[m][n] != player) {
+            if (complBoard[m][n] != player) {
                 continue;
             }
             % Check all neighbours for beeing empty
             for (var i = 0; i < NEIGHBOURS[m][n].length; i++) {
                 var neighbour = NEIGHBOURS[m][n][i];
-                if (complField[neighbour[0]][neighbour[1]] == EMPTY) {
+                if (complBoard[neighbour[0]][neighbour[1]] == EMPTY) {
                     return false;
                 }
             }
@@ -591,7 +592,7 @@ function nextTurn() {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Redraws the gui elements responsible for displaying
+ * Redraws the GUI elements responsible for displaying
  * the current amounts of stones for each player.
  */
 function refreshGUIstoneCounts() {
@@ -616,19 +617,19 @@ function refreshGUIstoneCounts() {
  * @param {Boolean} enable If true enables the highlight
  */
 function highlight(m, n, enable) {
-    var field = this.getField("pos" + m + "-" + n);
-    field.delay = true;
+    var cell = this.getField("pos" + m + "-" + n);
+    cell.delay = true;
     % Highlight the current taken move
     if (enable) {
-        field.borderColor = HIGHLIGHT_COLOR;
+        cell.borderColor = HIGHLIGHT_COLOR;
     } else {
-        field.borderColor = color.gray;
+        cell.borderColor = color.gray;
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
- * Draw all fields.
+ * Draw all cells.
  */
 function drawAll() {
     for (var m = 0; m < ROWS; m++) {
@@ -639,22 +640,22 @@ function drawAll() {
 }
 
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
  *
  * @param {Number} m The m position.
  * @param {Number} n The n position.
  */
 function draw(m, n) {
-    var field = this.getField("pos" + m + "-" + n);
-    field.delay = true;
-    if (complField[m][n] != EMPTY) {
-        field.value = PIECE_SYMBOL;
-        field.textColor = colors[complField[m][n]];
+    var cell = this.getField("pos" + m + "-" + n);
+    cell.delay = true;
+    if (complBoard[m][n] != EMPTY) {
+        cell.value = PIECE_SYMBOL;
+        cell.textColor = colors[complBoard[m][n]];
     } else {
-        field.value = "";
+        cell.value = "";
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
@@ -727,7 +728,7 @@ function printInfoText(text) {
             \end{tikzpicture}
         \end{center}
 
-        % The positions of the field
+        % Create the cells
         \xintFor* #1 in {\xintSeq{0}{\rows-1}} \do {%
             \xintFor* #2 in {\xintSeq{0}{\columns-1}} \do {%
                 \TextField[name=pos#1-#2, width=1.0cm, height=1.0cm,%
@@ -781,7 +782,7 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[name=animationField, width=1.0cm, height=1.0cm,
+        \TextField[name=animationCell, width=1.0cm, height=1.0cm,
             backgroundcolor=, bordercolor=, align=1, readonly]{}%
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 

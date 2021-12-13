@@ -48,7 +48,7 @@ const CHANGE_ANIMATION_SPEED = 50;
 %%%%%%%%%%%%%%%%%%
 % Game constants %
 %%%%%%%%%%%%%%%%%%
-% Gui states
+% GUI states
 const MENU = 0;
 const FIGHT = 1;
 const CHANGE = 2;
@@ -176,7 +176,7 @@ const T_FLUFF = 5;
 const T_FIRE = 6;
 const T_STANDARD = 7;
 
-% For showing the creature type in the gui
+% For showing the creature type in the GUI
 const TYPE_STRINGS = new Array(
     "Water", "Air", "Stone", "Grass", "Ghost", "Fluff", "Fire"
 );
@@ -998,7 +998,7 @@ function processInput(button) {
         return;
     }
 
-    % Nothing is currently processed, advance gui
+    % Nothing is currently processed, advance GUI
     if (turnState == ACTION_END) {
         % Do not allow the player to play without replacing dead creatures
         if (guiState != CHANGE && curPlayerCreatures[curCreatureIdx][NAME] == "Empty") {
@@ -1013,7 +1013,7 @@ function processInput(button) {
                 guiState = button;
             }
         }
-        % Process gui input that was not in the main menu
+        % Process GUI input that was not in the main menu
         else {
             % Save the guiState so it can be overridden if necessary
             var lastState = guiState;
@@ -1049,7 +1049,7 @@ function processInput(button) {
 
 /**
  * This function determines the program flow,
- * by processing the current state of the round and the taken gui action.
+ * by processing the current state of the round and the taken GUI action.
  * The usual order is:
  * 1. Player turn
  * 2. Enemy turn
@@ -1105,7 +1105,7 @@ function executeRound(action, idx) {
         } else if (action == CHANGE) {
             turnState = change(idx);
         } else if (action == ITEM_SELECT) {
-            % Items that need a selection via the gui
+            % Items that need a selection via the GUI
             turnState = itemSelect(idx);
         } else if (action == ITEMS) {
             % Items that are applied to the current player creature
@@ -1315,7 +1315,7 @@ function run() {
  * Selects the chosen item from the backpack and applies its affect.
  * Processes items that are not targeted on creatures in the player list,
  * but rather on the enemy or the current player creature.
- * (The difference is to 'itemSelect' one gui step.)
+ * (The difference is to 'itemSelect' one GUI step.)
  * Processes:
  * Empty (ends current round),
  * Weaken (Triggers attack)
@@ -1347,7 +1347,7 @@ function itemApply(idx) {
 /**
  * Selects the chosen item from the backpack and applies its affect.
  * Processes items that are targeted on creatures in the player list.
- * (The difference to 'itemApply' is one gui step.)
+ * (The difference to 'itemApply' is one GUI step.)
  * Processes:
  * Capsule (ends current round),
  * Drink (Triggers attack)
@@ -1571,7 +1571,7 @@ function getCreature(curLvl) {
 % Information updates %
 %%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Update the text of all four gui buttons depending on the
+ * Update the text of all four GUI buttons depending on the
  * current menu state.
  */
 function updateButtontxt() {
@@ -1615,7 +1615,7 @@ function updateButtontxt() {
 }
 
 /**
- * Updates the player information displayed by the gui.
+ * Updates the player information displayed by the GUI.
  */
 function updatePlayerTxt() {
     var creature = curPlayerCreatures[curCreatureIdx];
@@ -1636,7 +1636,7 @@ function updatePlayerTxt() {
 }
 
 /**
- * Updates the enemy information displayed by the gui.
+ * Updates the enemy information displayed by the GUI.
  */
 function updateEnemyTxt() {
     this.getField("enemyname").value =
@@ -1654,7 +1654,7 @@ function updateEnemyTxt() {
 }
 
 /**
- * Updates the health information displayed by the gui for player and enemy.
+ * Updates the health information displayed by the GUI for player and enemy.
  * This allows for animations of the health bar and the health text.
  * This function only increases or decreases the shown health points by one bar
  * calling it multiple times results in an animation.
@@ -1674,7 +1674,7 @@ function updateHpInfo() {
         % Calculate how much hp one bar symbolizes
         var hpPerBar = cs[i][MAX_HP] / MAX_HP_SYMBS;
         var p = ps[i];
-        % If the gui shows less hp than the creature has, increase the shown hp
+        % If the GUI shows less hp than the creature has, increase the shown hp
         if (guiHP[p] < cs[i][CUR_HP]) {
             % Prevent overstepping the max hp
             guiHP[p] += Math.min(cs[i][CUR_HP] - guiHP[p], Math.ceil(hpPerBar));
@@ -1687,7 +1687,7 @@ function updateHpInfo() {
             }
             res = false;
         }
-        % If the gui shows more hp than the creature has, decrease the shown hp
+        % If the GUI shows more hp than the creature has, decrease the shown hp
         else if (guiHP[p] > cs[i][CUR_HP]) {
             % Prevent undercutting 0 hp
             guiHP[p] -= Math.min(guiHP[p] - cs[i][CUR_HP], Math.ceil(hpPerBar));
@@ -2601,7 +2601,7 @@ function addToCanvas(id, value) {
 }
 
 /**
- * Print information to the information-gui.
+ * Print information to the information-GUI.
  * @param {String} text The text to print.
  */
 function printInfoText(text) {
@@ -2613,10 +2613,10 @@ function printInfoText(text) {
 }
 
 /**
- * Print information to the information-gui animated.
+ * Print information to the information-GUI animated.
  * For this each time this function is called only two character
- * are added to the gui (from the animatedString variable).
- * Overrides last gui value.
+ * are added to the GUI (from the animatedString variable).
+ * Overrides last GUI value.
  * @return {Boolean} Returns true if the string was complete, false else.
  */
 function printTextAnimated() {
@@ -2639,7 +2639,7 @@ function printTextAnimated() {
 }
 
 /**
- * Add information to the information-gui.
+ * Add information to the information-GUI.
  * @param {String} text The text to add.
  */
 function addInfoText(text) {

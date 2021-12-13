@@ -32,8 +32,8 @@
 
 const GAME_DESC = "This is a logic based puzzle game.\
 The goal is to reveal as many cells as possible without hitting a mine.\
-These mines are distributed randomly. Everytime a cell is revealed it shows a counter\
-of how many mines are in the neighbourhood allowing for logical deduction where\
+These mines are distributed randomly. Every time a cell is revealed it shows a counter\
+of how many mines are in the neighborhood allowing for logical deduction where\
 a mine can be.";
 
 % Outside variables
@@ -78,18 +78,18 @@ const COLORS = new Array(
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
 function initialise() {
     % Fill the array with the default content and infos
@@ -110,7 +110,7 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
@@ -183,13 +183,13 @@ function tooltip(on) {
 % Fill and restart %
 %%%%%%%%%%%%%%%%%%%%
 /**
- * Calculates the amount of expected mines using the gui and
+ * Calculates the amount of expected mines using the GUI and
  * distributes them to the board.
- * Afterwards iterate all non mined cells and check the neighbourhood
+ * Afterwards iterate all non mined cells and check the neighborhood
  * to get the mine amount.
  */
 function fillMines() {
-    % Get the amount of mines using the gui-percentage
+    % Get the amount of mines using the GUI-percentage
     mines = Math.floor((BOARD_WIDTH * BOARD_HEIGHT) / 100 * this.getField("percentage").value);
     % Reduce the count of cells to reveal
     cellsToReveal -= mines;
@@ -234,7 +234,7 @@ function fillMines() {
 }
 
 /**
- * Restart the game by reseting everything to default.
+ * Restart the game by resetting everything to default.
  */
 function restart() {
     % Remove focus so the cursor is not shown
@@ -276,7 +276,7 @@ function changeMode() {
  * Reveal the cell m, n.
  * If the Lockmode is activated the cell will be marked and
  * can not be reveal unless the lock is lifted.
- * If the revealmode is activated the cell is revealed and
+ * If the Revealmode is activated the cell is revealed and
  * either shows a number, an area of numbers or a mine.
  * If the game is over nothing will happen.
  *

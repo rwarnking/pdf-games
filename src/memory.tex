@@ -22,8 +22,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Values can be changed
 % Obacht: width * height needs to be an even number
-\def\fieldWidth{6}
-\def\fieldHeight{6}
+\def\boardWidth{6}
+\def\boardHeight{6}
 
 % Max playercount is 5
 \def\playerCount{3}
@@ -37,26 +37,26 @@ const GAME_DESC = "In this game multiple player compete to collect the most pair
 Each pair contains two cards with the same symbol on it. At the beginning all\
 cards are hidden and each player can reveal two of them when it is their turn.\
 After the reveal both are hidden again if they do not match or they are removed if they do.\
-In that case the reveiling player gets another turn.";
+In that case the reveling player gets another turn.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const SCREEN_TEXT_SIZE = 300;
 const MAX_PLAYERS = AFMakeNumber(\playerCount);
-const MAX_PAIRS = (FIELD_WIDTH * FIELD_HEIGHT) / 2;
+const MAX_PAIRS = (BOARD_WIDTH * BOARD_HEIGHT) / 2;
 
 % Constants
 % -
 
 % Globals
-% The game field array
-var complField = new Array();
+% The game board array
+var complBoard = new Array();
 % Lock if the game has ended
 var gameover = false;
 var playerIdx = 1;
-var lastField = false;
-var beforeLastField = false;
+var lastCell = false;
+var beforeLastCell = false;
 var pairsFound = 0;
 var playerPoints = [];
 
@@ -86,8 +86,8 @@ const MEMORY_SYMBOLS = [
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
@@ -97,7 +97,7 @@ function getRandomInt(max) {
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
 function initialise() {
     % Create an array that contains all symbols twice
@@ -107,17 +107,17 @@ function initialise() {
         symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i \% MEMORY_SYMBOLS.length]));
     }
 
-    % Create the field by removing one element for each slot
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    % Create the board by removing one element for each cell
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
         var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             var rnd = getRandomInt(symbols.length);
             var elem = symbols[rnd];
             symbols.splice(rnd, 1);
-            % UTF8 symbol and is the field removed
+            % UTF8 symbol and is the cell removed
             tmp.push([elem, false]);
         }
-        complField.push(tmp);
+        complBoard.push(tmp);
     }
 
     for (var i = 0; i < MAX_PLAYERS; i++) {
@@ -129,7 +129,7 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks.
  */
 function initialiseButtons() {
@@ -141,12 +141,12 @@ function initialiseButtons() {
 
     var funcName = "revealField";
     var cell;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             cell = this.getField("pos" + x + "-" + y);
             cell.setAction("MouseDown", callbackName);
-            cell.textSize = SCREEN_TEXT_SIZE / Math.max(FIELD_HEIGHT, FIELD_WIDTH);
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
     }
 
@@ -158,7 +158,7 @@ function initialiseButtons() {
 }
 
 /**
- * Restarts the game by clearing the field array and redistributing cards.
+ * Restarts the game by clearing the board array and redistributing cards.
  * Resets playerpoints and gamevars.
  */
 function restart() {
@@ -169,19 +169,20 @@ function restart() {
         symbols.push(String.fromCharCode(MEMORY_SYMBOLS[i]));
     }
 
-    % Create the field by removing one element for each slot
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    % Create the board by removing one element for each cell
+    var cell;
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             var rnd = getRandomInt(symbols.length);
             var elem = symbols[rnd];
             symbols.splice(rnd, 1);
-            complField[y][x] = [elem, false];
+            complBoard[y][x] = [elem, false];
 
-            var field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
-            field.value = "";
-            field.borderColor = color.white;
-            field.delay = false;
+            cell = this.getField("pos" + x + "-" + y);
+            cell.delay = true;
+            cell.value = "";
+            cell.borderColor = color.white;
+            cell.delay = false;
         }
     }
 
@@ -189,9 +190,9 @@ function restart() {
         playerPoints[i] = 0;
     }
 
-    % Reset field marking
-    beforeLastField = false;
-    lastField = false;
+    % Reset cell marking
+    beforeLastCell = false;
+    lastCell = false;
 
     gameover = false;
     pairsFound = 0;
@@ -237,8 +238,8 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 /**
  * Reveal the card at the given coordinates.
- * If already two fields are revealed, they are either hidden or removed.
- * Does not do anything if field is already revealed.
+ * If already two cells are revealed, they are either hidden or removed.
+ * Does not do anything if cell is already revealed.
  *
  * @param {Number} x The x coordinate.
  * @param {Number} y The y coordinate.
@@ -251,21 +252,21 @@ function revealField(x, y) {
         return;
     }
 
-    % If there are two fields selected either hide or remove them
-    if (beforeLastField != false && lastField != false) {
+    % If there are two cells selected either hide or remove them
+    if (beforeLastCell != false && lastCell != false) {
 
         % Test if symbols match
-        var match = complField[lastField[1]][lastField[0]][0] ==
-            complField[beforeLastField[1]][beforeLastField[0]][0];
+        var match = complBoard[lastCell[1]][lastCell[0]][0] ==
+            complBoard[beforeLastCell[1]][beforeLastCell[0]][0];
         if (match) {
             % Remove both symbols
-            remove(lastField[0], lastField[1]);
-            remove(beforeLastField[0], beforeLastField[1]);
+            remove(lastCell[0], lastCell[1]);
+            remove(beforeLastCell[0], beforeLastCell[1]);
 
-            complField[lastField[1]][lastField[0]][1] = true;
-            complField[beforeLastField[1]][beforeLastField[0]][1] = true;
+            complBoard[lastCell[1]][lastCell[0]][1] = true;
+            complBoard[beforeLastCell[1]][beforeLastCell[0]][1] = true;
 
-            % Check if field is full or pairs left
+            % Check if cell is full or pairs left
             if (++pairsFound == MAX_PAIRS) {
                 gameover = true;
                 % Print game is over
@@ -273,28 +274,28 @@ function revealField(x, y) {
             }
         } else {
             % Hide both symbols
-            draw(lastField[0], lastField[1], "");
-            draw(beforeLastField[0], beforeLastField[1], "");
+            draw(lastCell[0], lastCell[1], "");
+            draw(beforeLastCell[0], beforeLastCell[1], "");
         }
-        beforeLastField = false;
-        lastField = false;
+        beforeLastCell = false;
+        lastCell = false;
 
         return;
     }
 
-    if (complField[y][x][1]) {
+    if (complBoard[y][x][1]) {
         return;
     }
 
-    % If one field is selected allow for a second one
-    if (lastField != false && (lastField[0] != x || lastField[1] != y)) {
+    % If one cell is selected allow for a second one
+    if (lastCell != false && (lastCell[0] != x || lastCell[1] != y)) {
         % Save both selections
-        beforeLastField = lastField;
-        lastField = [x, y];
+        beforeLastCell = lastCell;
+        lastCell = [x, y];
 
         % Test if symbols match
-        var match = complField[lastField[1]][lastField[0]][0] ==
-            complField[beforeLastField[1]][beforeLastField[0]][0];
+        var match = complBoard[lastCell[1]][lastCell[0]][0] ==
+            complBoard[beforeLastCell[1]][beforeLastCell[0]][0];
         if (!match) {
             % Advance player
             playerIdx++;
@@ -307,10 +308,10 @@ function revealField(x, y) {
         % Print whos turn it is
         printInfoText("Your Turn: Player " + playerIdx);
     } else {
-        lastField = [x, y];
+        lastCell = [x, y];
     }
 
-    draw(x, y, complField[y][x][0]);
+    draw(x, y, complBoard[y][x][0]);
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -324,10 +325,10 @@ function revealField(x, y) {
  * @param {String} value The text value.
  */
 function draw(x, y, value) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    field.value = value;
-    field.delay = false;
+    var cell = this.getField("pos" + x + "-" + y);
+    cell.delay = true;
+    cell.value = value;
+    cell.delay = false;
 }
 
 /**
@@ -337,11 +338,11 @@ function draw(x, y, value) {
  * @param {Number} y The y position.
  */
 function remove(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    field.value = "";
-    field.borderColor = color.black;
-    field.delay = false;
+    var cell = this.getField("pos" + x + "-" + y);
+    cell.delay = true;
+    cell.value = "";
+    cell.borderColor = color.black;
+    cell.delay = false;
 }
 
 /**
@@ -393,28 +394,28 @@ function printInfoText(text) {
         \end{multicols}
 
         % Dynamically adjust the cell width and height to the number of cells
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
 
         % The game board
         \begin{tcolorbox}
-            % Define the cellsize via the smaller amount
+            % Define the cell size via the smaller amount
             % Must be done here so the \linewidth has the correct value
-            \ifdim\blocksizeW<\blocksizeH
-                \def\blocksize{\blocksizeW}
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
             \else
-                \def\blocksize{\blocksizeH}
+                \def\cellsize{\cellHeight}
             \fi
 
             \begin{center}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%

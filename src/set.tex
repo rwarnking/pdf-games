@@ -20,10 +20,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% Obacht: It is discouraged to use a board with size bigger than 15x15 since the PDF might get
 % to slow to play
-\def\fieldWidth{4}
-\def\fieldHeight{3}
+\def\boardWidth{4}
+\def\boardHeight{3}
 
 % Max playercount is 5
 \def\playerCount{5}
@@ -39,13 +39,13 @@ is either the same or for each card different. Example: You may find a set,\
 where the symbol is the same but color and appearance differ.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const SCREEN_TEXT_HEIGHT = 400;
 const MAX_PLAYERS = AFMakeNumber(\playerCount);
 
 const APPEARANCES = 3;
-% The count of symbols on the field
+% The count of symbols on the board
 const NUMBER = 3;
 const SYMB_COUNT = 5;
 
@@ -59,8 +59,8 @@ const APP_P = 2;
 const NUM_P = 3;
 
 % Globals
-% The game field
-var complField = new Array();
+% The game board
+var complBoard = new Array();
 % Lock if the game has ended
 var gameover = false;
 % Save player idx so for points
@@ -77,7 +77,7 @@ var unusedCards = new Array();
 
 % Symbol array
 % Sadly special symbols using String.fromCharCode() does not work
-% because they cant be visualised in italic/bold
+% because they cant be visualized in italic/bold
 const SYMBOLS = [
     "A",
     "B",
@@ -95,18 +95,18 @@ const COLORS = new Array(
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  * Distribute initial cards.
  */
 function initialise() {
@@ -123,19 +123,19 @@ function initialise() {
         }
     }
 
-    % Initlialise the array with a cardindex
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    % Initialize the array with a cardindex
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
         var zArr = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             % Get random element from the cardList and remove the card afterwards
             var rnd = getRandomInt(unusedCards.length);
             zArr.push(unusedCards[rnd]);
             unusedCards.splice(rnd, 1);
         }
-        complField.push(zArr);
+        complBoard.push(zArr);
     }
 
-    % Initialise player points
+    % Initialize player points
     for (var p = 0; p < MAX_PLAYERS; p++) {
         points.push(0);
     }
@@ -147,31 +147,31 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("refill").setAction("MouseUp", "refill();");
     this.getField("hint").setAction("MouseUp", "hint();");
     this.getField("restart").setAction("MouseUp", "restart();");
 
-    % Each field needs to be connected to an input function
-    var funcName = "markField";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    % Each card needs to be connected to an input function
+    var funcName = "markCard";
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
             this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
 
             for (var z = 0; z < SYMB_COUNT; z++) {
-                var f = this.getField("field" + z + x + y);
-                f.setAction("MouseUp", callbackName);
+                var cell = this.getField("field" + z + x + y);
+                cell.setAction("MouseUp", callbackName);
 
-                f.textSize = SCREEN_TEXT_HEIGHT / (FIELD_HEIGHT * 5);
-                f.alignment = "center";
+                cell.textSize = SCREEN_TEXT_HEIGHT / (BOARD_HEIGHT * 5);
+                cell.alignment = "center";
             }
         }
     }
@@ -183,11 +183,11 @@ function initialiseButtons() {
         % Set buttonpress callback
         this.getField("player" + p).setAction("MouseDown", callbackName);
         % Set point-fields to zero
-        var f = this.getField("points" + p);
-        f.delay = true;
-        f.setAction("MouseDown", callbackName);
-        f.value = points[p - 1];
-        f.delay = false;
+        var field = this.getField("points" + p);
+        field.delay = true;
+        field.setAction("MouseDown", callbackName);
+        field.value = points[p - 1];
+        field.delay = false;
     }
 
     % Tooltip setup
@@ -207,12 +207,12 @@ function restart() {
         unusedCards.push(idx++);
     }
 
-    % Reset field
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    % Reset board
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             % Get random element from the cardList and remove the card afterwards
             var rnd = getRandomInt(unusedCards.length);
-            complField[y][x] = unusedCards[rnd];
+            complBoard[y][x] = unusedCards[rnd];
             unusedCards.splice(rnd, 1);
             draw(x, y);
         }
@@ -252,7 +252,7 @@ function tooltip(on) {
 
         field.multiline = true;
         field.textSize = 16;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 581, 468, 381];
 
@@ -311,7 +311,7 @@ function selectPlayer(idx) {
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
-function markField(x, y) {
+function markCard(x, y) {
     if (gameover) {
         return;
     }
@@ -326,7 +326,7 @@ function markField(x, y) {
     % If there are not jet 3 cards selected
     var len = lastSelections.length;
     if (len < 3) {
-        % Ignore fields that are already selected
+        % Ignore cards that are already selected
         if (len == 1 && (x == lastSelections[len - 1][0] && y == lastSelections[len - 1][1])) {
             return;
         }
@@ -350,10 +350,10 @@ function markField(x, y) {
         this.getField("points" + playerIdx).value++;
         this.getField("points" + playerIdx).delay = false;
 
-        % Clear the fields
+        % Clear the selection
         for (var i = 0; i < lastSelections.length; i++) {
             clear(lastSelections[i][0], lastSelections[i][1]);
-            complField[lastSelections[i][1]][lastSelections[i][0]] = -1;
+            complBoard[lastSelections[i][1]][lastSelections[i][0]] = -1;
         }
 
         if (gameOverCheck()) {
@@ -385,22 +385,22 @@ function hint() {
     if (gameover) {
         return;
     }
-    % Dont give a hint after a player selection
+    % Do not give a hint after a player selection
     if (playerIdx != -1) {
         printInfoText("Hint unavailable while player selected. (Player " + playerIdx + ")");
         return;
     }
 
-    % Actuall search for a set in the given cards
+    % Actual search for a set in the given cards
     var posArray = [[], [], []];
-    var cardCount = FIELD_WIDTH * FIELD_HEIGHT;
+    var cardCount = BOARD_WIDTH * BOARD_HEIGHT;
     for (var e1 = 0; e1 < cardCount - 2; e1++) {
         for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
             for (var e3 = e2 + 1; e3 < cardCount; e3++) {
                 % Reassign
-                posArray[0] = [e1 \% FIELD_WIDTH, Math.floor(e1 / FIELD_WIDTH)];
-                posArray[1] = [e2 \% FIELD_WIDTH, Math.floor(e2 / FIELD_WIDTH)];
-                posArray[2] = [e3 \% FIELD_WIDTH, Math.floor(e3 / FIELD_WIDTH)];
+                posArray[0] = [e1 \% BOARD_WIDTH, Math.floor(e1 / BOARD_WIDTH)];
+                posArray[1] = [e2 \% BOARD_WIDTH, Math.floor(e2 / BOARD_WIDTH)];
+                posArray[2] = [e3 \% BOARD_WIDTH, Math.floor(e3 / BOARD_WIDTH)];
 
                 if (isSet(posArray)) {
                     printInfoText("Try card " + posArray[0] + " ([x, y]).");
@@ -420,9 +420,9 @@ function hint() {
  * @return {Boolean} true if is a set false else.
  */
 function isSet(positions) {
-    var idx1 = complField[positions[0][1]][positions[0][0]];
-    var idx2 = complField[positions[1][1]][positions[1][0]];
-    var idx3 = complField[positions[2][1]][positions[2][0]];
+    var idx1 = complBoard[positions[0][1]][positions[0][0]];
+    var idx2 = complBoard[positions[1][1]][positions[1][0]];
+    var idx3 = complBoard[positions[2][1]][positions[2][0]];
 
     % If a card slot is empty there can not be a set
     if (idx1 == -1 || idx2 == -1 || idx3 == -1) {
@@ -482,11 +482,11 @@ function refill() {
 
     % Fill all empty slots and count all occurrences
     var slotCount = 0;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (complField[y][x] == -1) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
+            if (complBoard[y][x] == -1) {
                 var rnd = getRandomInt(unusedCards.length);
-                complField[y][x] = unusedCards[rnd];
+                complBoard[y][x] = unusedCards[rnd];
                 unusedCards.splice(rnd, 1);
                 draw(x, y);
 
@@ -496,28 +496,28 @@ function refill() {
     }
     printInfoText("Refilled " + slotCount + " slots.");
 
-    % If there are no empty slots refill the complete field.
+    % If there are no empty slots refill the complete board.
     if (slotCount == 0) {
         % Remove the current cards and mark them as unused
-        for (var x = 0; x < FIELD_WIDTH; x++) {
-            for (var y = 0; y < FIELD_HEIGHT; y++) {
-                unusedCards.push(complField[y][x]);
+        for (var x = 0; x < BOARD_WIDTH; x++) {
+            for (var y = 0; y < BOARD_HEIGHT; y++) {
+                unusedCards.push(complBoard[y][x]);
             }
         }
 
         % Select new cards
-        for (var x = 0; x < FIELD_WIDTH; x++) {
-            for (var y = 0; y < FIELD_HEIGHT; y++) {
+        for (var x = 0; x < BOARD_WIDTH; x++) {
+            for (var y = 0; y < BOARD_HEIGHT; y++) {
                 if (unusedCards.length == 0) {
                     continue;
                 }
                 var rnd = getRandomInt(unusedCards.length);
-                complField[y][x] = unusedCards[rnd];
+                complBoard[y][x] = unusedCards[rnd];
                 unusedCards.splice(rnd, 1);
                 draw(x, y);
             }
         }
-        printInfoText("Refilled the complete field.");
+        printInfoText("Refilled the complete board.");
     }
 }
 
@@ -525,15 +525,13 @@ function refill() {
  * Check if the remaining cards do not allow for another set.
  * If there are more then 20 cards left, these will contain a set.
  * Otherwise all cards need to be checked.
- *
- * TODO this function was not tested that intensly
  */
 function gameOverCheck() {
-    % Count remaining cards on the field
+    % Count remaining cards on the board
     var count = 0;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (complField[y][x] > -1) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
+            if (complBoard[y][x] > -1) {
                 count++;
             }
         }
@@ -544,13 +542,13 @@ function gameOverCheck() {
         return false;
     }
 
-    % Add as much rows as needed to have space for all missing elems
-    var rows = Math.ceil(unusedCards.length / FIELD_WIDTH);
+    % Add as much rows as needed to have space for all missing elements
+    var rows = Math.ceil(unusedCards.length / BOARD_WIDTH);
     for (var row = 0; row < rows; row++) {
         var zArr = new Array();
         % Get all unused cards and push them to the array
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            var idx = column + row * FIELD_WIDTH;
+        for (var column = 0; column < BOARD_WIDTH; column++) {
+            var idx = column + row * BOARD_WIDTH;
             % Push the index if there is one left. -1 otherwise
             if (idx < unusedCards.length) {
                 zArr.push(unusedCards[idx]);
@@ -558,19 +556,19 @@ function gameOverCheck() {
                 zArr.push(-1);
             }
         }
-        complField.push(zArr);
+        complBoard.push(zArr);
     }
 
     % Iterate all combinations
     var posArray = [[], [], []];
-    var cardCount = FIELD_WIDTH * (FIELD_HEIGHT + rows);
+    var cardCount = BOARD_WIDTH * (BOARD_HEIGHT + rows);
     for (var e1 = 0; e1 < cardCount - 2; e1++) {
         for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
             for (var e3 = e2 + 1; e3 < cardCount; e3++) {
                 % Reassign
-                posArray[0] = [e1 \% FIELD_WIDTH, Math.floor(e1 / FIELD_WIDTH)];
-                posArray[1] = [e2 \% FIELD_WIDTH, Math.floor(e2 / FIELD_WIDTH)];
-                posArray[2] = [e3 \% FIELD_WIDTH, Math.floor(e3 / FIELD_WIDTH)];
+                posArray[0] = [e1 \% BOARD_WIDTH, Math.floor(e1 / BOARD_WIDTH)];
+                posArray[1] = [e2 \% BOARD_WIDTH, Math.floor(e2 / BOARD_WIDTH)];
+                posArray[2] = [e3 \% BOARD_WIDTH, Math.floor(e3 / BOARD_WIDTH)];
 
                 if (isSet(posArray)) {
                     return false;
@@ -580,8 +578,8 @@ function gameOverCheck() {
     }
 
     % Remove the added rows again
-    for (var row = FIELD_HEIGHT; row < FIELD_HEIGHT + rows; row++) {
-        complField.splice(row, 1);
+    for (var row = BOARD_HEIGHT; row < BOARD_HEIGHT + rows; row++) {
+        complBoard.splice(row, 1);
     }
 
     return true;
@@ -591,25 +589,25 @@ function gameOverCheck() {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draw all fields.
+ * Draw all cards.
  */
 function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             draw(x, y);
         }
     }
 }
 
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Since only one card is updated with each input,
+ * only this card needs to be redrawn.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
 function draw(x, y) {
-    var idx = complField[y][x];
+    var idx = complBoard[y][x];
 
     % Generate the text value that is to be assigned
     var spans = new Array();
@@ -640,36 +638,36 @@ function draw(x, y) {
     ];
     var positions = posList[cardList[idx][NUM_P] - 1];
 
-    % Assign the text value to the right fields
+    % Assign the text value to the right cells
     for (var f = 0; f < SYMB_COUNT; f++) {
-        var field = this.getField("field" + f + x + y);
-        field.delay = true;
-        field.richText = true;
+        var cell = this.getField("field" + f + x + y);
+        cell.delay = true;
+        cell.richText = true;
 
         if (positions[f] == 1) {
-            field.richValue = spans;
+            cell.richValue = spans;
         } else {
-            % Clear field from previous element
-            field.value = "";
+            % Clear cell from previous element
+            cell.value = "";
         }
-        field.delay = false;
+        cell.delay = false;
     }
 }
 
 /**
- * Clear the field at the given position.
+ * Clear the cell at the given position.
  *
  * @param {Number} x The x coordinate.
  * @param {Number} y The y coordinate.
  */
 function clear(x, y) {
-    var idx = complField[y][x];
+    var idx = complBoard[y][x];
 
     for (var f = 0; f < SYMB_COUNT; f++) {
-        var field = this.getField("field" + f + x + y);
-        field.delay = true;
-        field.value = "";
-        field.delay = false;
+        var cell = this.getField("field" + f + x + y);
+        cell.delay = true;
+        cell.value = "";
+        cell.delay = false;
     }
 }
 
@@ -710,18 +708,18 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max height of a text field
-        % 2pt for each Textfield, 5pt for distance between cards, 2 * 5pt for margin inside a card
-        \FPeval{\resultH}{\fieldHeight * 4 * 2 + \fieldHeight * 5 + \fieldHeight * 5 * 2}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt) / (\fieldHeight * 5) \relax}
+        % Calculate the max height of a text cell
+        % 2pt for each TextField, 5pt for distance between cards, 2 * 5pt for margin inside a card
+        \FPeval{\resultH}{\boardHeight * 4 * 2 + \boardHeight * 5 + \boardHeight * 5 * 2}
+        \def\blocksizeH{\dimexpr (500 pt -\resultH pt) / (\boardHeight * 5) \relax}
 
         \begin{center}
             \tiny
             \renewcommand{\arraystretch}{0.0}
-            % Add all card fields
-            \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            % Add all cards
+            \begin{tabularx}{\textwidth}{@{} *{\boardWidth}{X} @{}}%
+                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \PushButton[name=pos#1-#2, bordercolor=, backgroundcolor=, borderwidth=0]{%
                             \begin{tcolorbox}%
                                 \centering%

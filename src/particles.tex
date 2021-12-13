@@ -20,7 +20,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Obacht: It is discuraged to use more than 50 particles the performance might be to bad
+% Obacht: It is discouraged to use more than 50 particles the performance might be to bad
 \def\particleCount{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -29,7 +29,7 @@
 \begin{insDLJS}[]{JSDateiname}{particles}
 
 const GAME_DESC = "In this application you can see a small particle system.\
-Via the gui it is possible to choose one of the available.";
+Via the GUI it is possible to choose one of the available.";
 
 % Outside variables
 const PARTICLE_COUNT = AFMakeNumber(\particleCount);
@@ -82,29 +82,30 @@ const CIRCLE_SYMBOLS = [
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default particle state.
+ * Initialize the default particle state.
  */
 function initialise() {
     % Initialise all particles as dead
+    var particle;
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
         % Lifestate, position, symbolindex
         particles.push([DEAD, [0, 0], 0]);
 
-        field = this.getField("particle" + idx);
-        field.delay = true;
-        field.rect = [0, 0, 0, 0];
-        field.delay = false;
+        particle = this.getField("particle" + idx);
+        particle.delay = true;
+        particle.rect = [0, 0, 0, 0];
+        particle.delay = false;
     }
 
     % Init the GUI
@@ -115,7 +116,7 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks.
  */
 function initialiseButtons() {
@@ -139,15 +140,16 @@ function initialiseButtons() {
 function restart() {
     app.clearInterval(run);
 
+    var particle;
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
         % Lifestate, position, symbolindex
         particles[idx] = [DEAD, [0, 0], 0];
 
-        field = this.getField("particle" + idx);
-        field.delay = true;
-        field.rect = [0, 0, 0, 0];
-        field.textSize = PARTICLE_SIZE;
-        field.delay = false;
+        particle = this.getField("particle" + idx);
+        particle.delay = true;
+        particle.rect = [0, 0, 0, 0];
+        particle.textSize = PARTICLE_SIZE;
+        particle.delay = false;
     }
 
     run = app.setInterval("runAll()", 100);
@@ -236,12 +238,12 @@ function moveParticles(idx) {
     var shift_x = 0;
     var add_x = 0;
     var add_y = 0;
-    var field = this.getField("particle" + idx);
-    field.delay = true;
+    var particle = this.getField("particle" + idx);
+    particle.delay = true;
 
     if (particleType == 0) {
-        field.value = String.fromCharCode(particles[idx][2]);
-        field.textSize = PARTICLE_SIZE;
+        particle.value = String.fromCharCode(particles[idx][2]);
+        particle.textSize = PARTICLE_SIZE;
         % Apply shifting motion like waves
         shift_x = Math.cos((particles[idx][1][0] + particles[idx][1][1]) / 40.0) * 20;
 
@@ -251,8 +253,8 @@ function moveParticles(idx) {
             particles[idx][0] = DEAD;
         }
     } else {
-        field.value = String.fromCharCode(CIRCLE_SYMBOLS[Math.floor(particles[idx][2] / 3)]);
-        field.textSize = PARTICLE_SIZE + particles[idx][2] * 2;
+        particle.value = String.fromCharCode(CIRCLE_SYMBOLS[Math.floor(particles[idx][2] / 3)]);
+        particle.textSize = PARTICLE_SIZE + particles[idx][2] * 2;
 
         particles[idx][2]++;
         add_x = particles[idx][2];
@@ -270,9 +272,9 @@ function moveParticles(idx) {
         particles[idx][1][0] + PARTICLE_SIZE_H + add_x + shift_x,
         particles[idx][1][1] - PARTICLE_SIZE_H - add_y
     ];
-    field.rect = rect;
+    particle.rect = rect;
 
-    field.delay = false;
+    particle.delay = false;
 }
 
 \end{insDLJS}
@@ -304,7 +306,7 @@ function moveParticles(idx) {
         % Fill the page such that the remaining elements get pushed to the bottom
         \vspace*{\fill}
 
-        % The fields for the particle system
+        % The particles for the particle system
         \xintFor* #1 in {\xintSeq{0}{\particleCount-1}} \do {%
             \TextField[name=particle#1, bordercolor=, backgroundcolor=, align=1, readonly]{}%
         }

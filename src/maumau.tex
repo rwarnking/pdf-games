@@ -95,9 +95,9 @@ var cardAnim = {
 }
 % Saves the index of the currently used card
 var curCardIdx = -1;
-% The playercount is read from the gui
+% The playercount is read from the GUI
 var playerCount = 0;
-% The cards per player is read from the gui
+% The cards per player is read from the GUI
 var cardsPerPlayer = 0;
 % Saves which turn it is
 var curPlayer = 0;
@@ -214,7 +214,7 @@ function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Read player count from gui
+    % Read player count from GUI
     var cmP = this.getField("cmPlayer");
     cmP.checkThisBox(2);
     playerCount = 0;
@@ -222,7 +222,7 @@ function initialiseButtons() {
         playerCount += cmP.isBoxChecked(i) * (2 + i);
     };
 
-    % Read cards per player count from gui
+    % Read cards per player count from GUI
     var cmC = this.getField("cmCards");
     cmC.checkThisBox(1);
     for (var i = 0; i < 5; i++) {
@@ -273,7 +273,7 @@ function initialiseButtons() {
             colorRect, CARD_COLORS[col], true, TEXT_SIZE_BIG);
     }
 
-    % Copy rules to the gui by iterating all keys of the rules object
+    % Copy rules to the GUI by iterating all keys of the rules object
     var cbKeys = Object.keys(rules);
     for (var idx = 0; idx < cbKeys.length; idx++) {
         if (rules[cbKeys[idx]] == true) {
@@ -339,21 +339,21 @@ function restart() {
         card.hidden = true;
     }
 
-    % Read player count from gui
+    % Read player count from GUI
     var cmP = this.getField("cmPlayer");
     playerCount = 0;
     for (var i = 0; i < 3; i++) {
         playerCount += cmP.isBoxChecked(i) * (2 + i);
     };
 
-    % Read cards per player count from gui
+    % Read cards per player count from GUI
     cardsPerPlayer = 0;
     var cmC = this.getField("cmCards");
     for (var i = 0; i < 5; i++) {
         cardsPerPlayer += cmC.isBoxChecked(i) * (4 + i);
     };
 
-    % Get rules from gui by iterating all keys of the rules object
+    % Get rules from GUI by iterating all keys of the rules object
     var cbKeys = Object.keys(rules);
     for (var idx = 0; idx < cbKeys.length; idx++) {
         var cb = this.getField(cbKeys[idx]);
@@ -686,7 +686,7 @@ function specialRulesDraw() {
  * Adjusting take count after 7 or K.
  * Mark next turn as skipped after 8 or A.
  * Change playing direction after 10.
- * Show color selection gui after J.
+ * Show color selection GUI after J.
  * Player gets another turn after A.
  *
  * @param {Number} cardIdx The selected card.
@@ -950,7 +950,7 @@ function redrawPlayerCards(pIdx) {
 /**
  * Drawmode for the front side. In reality the textelements do not have
  * multiple sides therefore two states are needed in which the visualisation changes.
- * The frontside changes the color to white, rotates the field if necessary and
+ * The frontside changes the color to white, rotates the card if necessary and
  * add the value of the selected card.
  *
  * @param {Number} cardIdx The selected card.
@@ -1009,7 +1009,7 @@ function moveCard() {
 
 /**
  * Utility function.
- * Adds a button to the gui using the given parameter.
+ * Adds a button to the GUI using the given parameter.
  * @param {String} name The field name.
  * @param {String} callback The function called on mouseup.
  * @param {Array} rect The field position.
@@ -1131,7 +1131,7 @@ function printInfoText(text) {
         \ChoiceMenu[name=cmCards, bordercolor=gray, radiosymbol=5, radio]
             {Player card count: }{4, 5, 6, 7, 8}
 
-        % Gui options for special rules like, take 2, skip, choose color, ...
+        % GUI options for special rules like, take 2, skip, choose color, ...
         \begin{center}
             \begin{tabularx}{\textwidth}{@{} X X @{}}
                 \CheckBox[name=cb7, bordercolor=gray, checkboxsymbol=5]{7: take 2} &%
