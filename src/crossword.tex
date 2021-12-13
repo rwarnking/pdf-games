@@ -27,7 +27,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Crossword}
+\begin{insDLJS}[]{JSDateiname}{crossword}
 
 const GAME_DESC = "This is a crossword puzzle. Your goal is to fill all cells with the correct\
 character. Usually the connected character build a word. When hovering over the arrows a hint\
@@ -859,7 +859,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -890,8 +890,8 @@ function printInfoText(text) {
                 \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
-                            name=cell#1-#2, bordercolor=gray,
-                            width=\blocksize, height=\blocksize, align=1%
+                            name=cell#1-#2, width=\blocksize, height=\blocksize,%
+                            bordercolor=gray, align=1%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%
@@ -924,13 +924,13 @@ function printInfoText(text) {
                     \ChoiceMenu[name=cmWords, bordercolor=gray, width=1.5cm, combo]
                         {Words: \strut}{5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15}
                 \end{tcolorbox}\\[-0.5cm]
-                \PushButton[name=checkall, bordercolor=white, borderwidth=0]{
+                \PushButton[name=checkall, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Check input\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=restart, bordercolor=white, borderwidth=0]{
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut

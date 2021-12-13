@@ -510,7 +510,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -553,7 +553,7 @@ function printInfoText(text) {
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=animate, bordercolor=white]{
+                \PushButton[name=animate, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \TextField[name=animatetxt, width=0.5cm, height=0.35cm,
@@ -561,13 +561,13 @@ function printInfoText(text) {
                         \strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=step, bordercolor=white]{
+                \PushButton[name=step, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Next step\strut
                     \end{tcolorbox}
                 } \\
-                \PushButton[name=shapemode, bordercolor=white]{
+                \PushButton[name=shapemode, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \TextField[name=shapemodetxt, width=0.5cm, height=0.35cm,
@@ -587,7 +587,7 @@ function printInfoText(text) {
                     }%
                     \strut
                 \end{tcolorbox} \\[-0.5cm]% TODO why do we need -0.5 here
-                \PushButton[name=fillrnd, bordercolor=white]{
+                \PushButton[name=fillrnd, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \ChoiceMenu[name=percentage, width=0.5cm, height=0.35cm,
@@ -602,7 +602,7 @@ function printInfoText(text) {
                     \TextField[name=currstep, width=\linewidth,
                         bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox} \\[-0.5cm]% TODO why do we need -0.5 here
-                \PushButton[name=clear, bordercolor=white]{
+                \PushButton[name=clear, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Clear\strut

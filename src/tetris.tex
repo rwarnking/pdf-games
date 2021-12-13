@@ -30,7 +30,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
+\begin{insDLJS}[]{JSDateiname}{tetris}
 
 const GAME_DESC = "Tetris is a puzzle game where you get stones of a specific shape.\
 These must be placed in such a manner that they build a complete line.\
@@ -615,7 +615,7 @@ function draw(x, y) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -646,8 +646,8 @@ function draw(x, y) {
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, bordercolor=white,%
-                            width=\blocksize, height=\blocksize, readonly%
+                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            bordercolor=white, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%
@@ -658,22 +658,22 @@ function draw(x, y) {
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{3}{X} @{}}%
-                \PushButton[name=start, bordercolor=white]{
+                \PushButton[name=start, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large start/restart\strut
                     \end{tcolorbox}
                 } &
                 \centering
-                \TextField[name=points, width=0.25\linewidth, value=0,
-                    bordercolor=, align=2, readonly]{Points:}&
-                \PushButton[name=pause, bordercolor=white]{
+                \TextField[name=points, width=0.25\linewidth,
+                    bordercolor=, align=2, value=0, readonly]{Points:}&
+                \PushButton[name=pause, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large pause\strut
                     \end{tcolorbox}
                 } \\
-                \PushButton[name=turnLeft, bordercolor=white]{
+                \PushButton[name=turnLeft, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large turnLeft\strut
@@ -686,32 +686,32 @@ function draw(x, y) {
                     %\begin{tcolorbox}
                     %\end{tcolorbox}
                 &
-                \PushButton[name=turnRight, bordercolor=white]{
+                \PushButton[name=turnRight, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large turnRight\strut
                     \end{tcolorbox}
                 } \\
-                \PushButton[name=left, bordercolor=white]{
+                \PushButton[name=left, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large left\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=down, bordercolor=white]{
+                \PushButton[name=down, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large down\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=right, bordercolor=white]{
+                \PushButton[name=right, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large right\strut
                     \end{tcolorbox}
                 } \\
                 \multicolumn{3}{@{} l @{}}{%
-                    \PushButton[name=fulldown, bordercolor=white]{
+                    \PushButton[name=fulldown, bordercolor=, backgroundcolor=, borderwidth=0]{
                         \begin{tcolorbox}
                             \centering
                             \Large fulldown\strut

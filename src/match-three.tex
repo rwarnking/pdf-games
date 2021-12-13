@@ -29,7 +29,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Match Three Puzzle}
+\begin{insDLJS}[]{JSDateiname}{match-three}
 
 const GAME_DESC = "The goal of this game is to generate matches. A match is defined as at least\
 three cells that contain the same symbol. To build a match the player is allowed to swap the\
@@ -1077,7 +1077,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -1108,8 +1108,8 @@ function printInfoText(text) {
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, bordercolor=white,%
-                            width=\blocksize, height=\blocksize, align=1%
+                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            bordercolor=white, align=1%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%

@@ -31,7 +31,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Set}
+\begin{insDLJS}[]{JSDateiname}{set}
 
 const GAME_DESC = "In this game you are shown a selection from 81 cards with symbols on them.\
 It is your job to find a so called set, containing three cards, where each attribute\
@@ -702,7 +702,7 @@ function printInfoText(text) {
             % Tooltip object
             \begin{flushright}%
                 \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -722,7 +722,7 @@ function printInfoText(text) {
             \begin{tabularx}{\textwidth}{@{} *{\fieldWidth}{X} @{}}%
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \PushButton[name=pos#1-#2, bordercolor=]{%
+                        \PushButton[name=pos#1-#2, bordercolor=, backgroundcolor=, borderwidth=0]{%
                             \begin{tcolorbox}%
                                 \centering%
                                 % Sadly xintFor* does not work inside a PushButton
@@ -742,7 +742,7 @@ function printInfoText(text) {
                         % Have the cell divider for all elements
                         % that are not the last one
                         \xintifForLast{}{&}%
-                    }\\%
+                    }\\[5pt]%
                 }%
             \end{tabularx}
         \end{center}
@@ -751,7 +751,7 @@ function printInfoText(text) {
             % Player selection buttons
             \begin{tabularx}{\textwidth}{@{} *{\playerCount}{X} @{}}%
                 \xintFor* #1 in {\xintSeq{1}{\playerCount}} \do {%
-                    \PushButton[name=player#1, bordercolor=white]{
+                    \PushButton[name=player#1, bordercolor=, backgroundcolor=, borderwidth=0]{
                         \begin{tcolorbox}
                             \centering
                             \TextField[name=points#1, width=0.4cm, height=0.35cm,
@@ -768,19 +768,19 @@ function printInfoText(text) {
         \begin{center}
             % Game related buttons
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=refill, bordercolor=white]{
+                \PushButton[name=refill, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Refill card slots.\strut{}
                     \end{tcolorbox}
                 } &
-                \PushButton[name=hint, bordercolor=white]{
+                \PushButton[name=hint, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Hint\strut{}
                     \end{tcolorbox}
                 }\\%
-                \PushButton[name=restart, bordercolor=white]{
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut{}

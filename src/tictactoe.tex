@@ -30,7 +30,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Tic-Tac-Toe}
+\begin{insDLJS}[]{JSDateiname}{tic-tac-toe}
 
 const GAME_DESC = "Tic-Tac-Toe is a turnbased multiplayer strategy game.\
 Each player has a symbol which is used to mark parts of the field.\
@@ -382,7 +382,7 @@ function printInfoText(text, col=color.black) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -424,7 +424,7 @@ function printInfoText(text, col=color.black) {
 
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=restart, bordercolor=white]{
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut

@@ -28,7 +28,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
+\begin{insDLJS}[]{JSDateiname}{connectfour}
 
 const GAME_DESC = "Connect four is a connection board game. The goal is to place a set amount\
 of stones (4) with the given playercolor in such a way that they lie on a strait line.\
@@ -364,7 +364,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -380,7 +380,7 @@ function printInfoText(text) {
             % Column selection buttons
             \begin{tabularx}{\linewidth}{*{\boardWidth}{@{\,}X@{\,}}}%
                 \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
-                    \PushButton[name=col#1, bordercolor=, borderwidth=0]{
+                    \PushButton[name=col#1, bordercolor=, backgroundcolor=, borderwidth=0]{
                         \begin{tcolorbox}[left=0pt, right=0pt, halign=center]
                             % https://tex.stackexchange.com/questions/131873/
                             \ifdim\linewidth>20pt
@@ -409,8 +409,8 @@ function printInfoText(text) {
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=cell#1-#2, bordercolor=white,%
-                            width=\blocksize, height=\blocksize, readonly
+                            name=cell#1-#2, width=\blocksize, height=\blocksize,%
+                            bordercolor=white, readonly%
                         ]{}%
                         % Have space between all cells that are not the last one
                         \xintifForLast{}{\hspace{3pt}}%
@@ -432,7 +432,7 @@ function printInfoText(text) {
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=restart, bordercolor=, borderwidth=0]{
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut
@@ -444,15 +444,15 @@ function printInfoText(text) {
                 \end{tcolorbox}\\
                 \begin{tcolorbox}%
                     \centering%
-                    \ChoiceMenu[name=cmPlayer, bordercolor=gray,
-                        width=2cm, combo, edit=false]{Playercount: }{%
+                    \ChoiceMenu[name=cmPlayer, width=2cm,
+                        bordercolor=gray, combo, edit=false]{Playercount: }{%
                         2, 3, 4, 5, 6%
                     }%
                 \end{tcolorbox} &
                 \begin{tcolorbox}%
                     \centering%
-                    \ChoiceMenu[name=cmWin, bordercolor=gray,
-                        width=2cm, combo, edit=false]{Winning Pieces: }{%
+                    \ChoiceMenu[name=cmWin, width=2cm,
+                        bordercolor=gray, combo, edit=false]{Winning Pieces: }{%
                         3, 4, 5, 6%
                     }%
                 \end{tcolorbox}%

@@ -28,7 +28,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Sudoku}
+\begin{insDLJS}[]{JSDateiname}{sudoku}
 
 const GAME_DESC = "Sudoku is a logic-based number-placement puzzle.\
 The objective is to fill all empty spots with a digit from 1 to 9,\
@@ -692,7 +692,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -730,7 +730,8 @@ function printInfoText(text) {
                     \fi%
                     \vspace{1pt}%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                        \TextField[name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                        \TextField[%
+                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
                             bordercolor=white, align=1%
                         ]{}%
                         \hspace{2pt}%
@@ -770,31 +771,31 @@ function printInfoText(text) {
         %
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=generate, bordercolor=white]{
+                \PushButton[name=generate, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Generate new Sudoku\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=enter, bordercolor=white]{
+                \PushButton[name=enter, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Enter own Sudoku\strut
                     \end{tcolorbox}
                 } \\
-                \PushButton[name=solve, bordercolor=white]{
+                \PushButton[name=solve, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Show current solution\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=hint, bordercolor=white]{
+                \PushButton[name=hint, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Give me a hint\strut
                     \end{tcolorbox}
                 } \\
-                \PushButton[name=reset, bordercolor=white]{
+                \PushButton[name=reset, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Reset current input\strut

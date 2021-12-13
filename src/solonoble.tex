@@ -27,7 +27,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Solo Noble}
+\begin{insDLJS}[]{JSDateiname}{solo-noble}
 
 const GAME_DESC = "This game consists of a field of cells. On each of these but one a marble\
 is placed. The goal is to reduce the marble count to one while placing this last marble\
@@ -1032,7 +1032,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -1114,8 +1114,8 @@ function printInfoText(text) {
                 \begin{tcolorbox}
                     \centering
                     Execute moves: \strut{}
-                    \TextField[name=exmovestxt, bordercolor=gray, borderwidth=2pt,
-                        backgroundcolor=white]{\strut}
+                    \TextField[name=exmovestxt,
+                        bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }
             &
@@ -1128,8 +1128,8 @@ function printInfoText(text) {
                 \begin{tcolorbox}
                     \centering
                     Import field: \strut{}
-                    \TextField[name=importtxt, bordercolor=gray, borderwidth=2pt,
-                        backgroundcolor=white]{\strut}
+                    \TextField[name=importtxt,
+                        bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }%
             &

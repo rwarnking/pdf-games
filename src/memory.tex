@@ -31,7 +31,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Javascript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Memory}
+\begin{insDLJS}[]{JSDateiname}{memory}
 
 const GAME_DESC = "In this game multiple player compete to collect the most pairs.\
 Each pair contains two cards with the same symbol on it. At the beginning all\
@@ -384,7 +384,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -414,8 +414,8 @@ function printInfoText(text) {
                 \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
                     \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, bordercolor=white,%
-                            width=\blocksize, height=\blocksize, align=1, readonly%
+                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            bordercolor=white, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%
@@ -426,7 +426,7 @@ function printInfoText(text) {
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=restart, bordercolor=white]{
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut
@@ -439,7 +439,7 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[name=pointtable, bordercolor=black, readonly, multiline=true]{}
+        \TextField[name=pointtable, bordercolor=black, multiline=true, readonly]{}
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}

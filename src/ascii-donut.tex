@@ -314,7 +314,7 @@ function draw() {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=, borderwidth=0]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -332,8 +332,9 @@ function draw() {
             \begin{flushright}
                 \xintFor* #1 in {\xintSeq{0}{\canvasHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\canvasWidth-1}} \do {%
-                        \TextField[name=cell#1-#2, bordercolor=, backgroundcolor=,%
-                            width=\blocksizeW, height=\blocksizeW, align=1, readonly%
+                        \TextField[
+                            name=cell#1-#2, width=\blocksizeW, height=\blocksizeW,%
+                            bordercolor=, backgroundcolor=, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}%
@@ -348,19 +349,19 @@ function draw() {
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{3}{X} @{}}%
-                \PushButton[name=restart, bordercolor=, borderwidth=0]{
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=pause, bordercolor=, borderwidth=0]{
+                \PushButton[name=pause, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Pause\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=resume, bordercolor=, borderwidth=0]{
+                \PushButton[name=resume, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Resume\strut
