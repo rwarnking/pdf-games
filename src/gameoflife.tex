@@ -118,15 +118,15 @@ function getRandomInt(max) {
  * Initialize the default game state.
  */
 function initialize() {
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var tmp1 = new Array();
-        var tmp2 = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            tmp1.push(DEAD);
-            tmp2.push(DEAD);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row1 = new Array();
+        var row2 = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row1.push(DEAD);
+            row2.push(DEAD);
         }
-        complBoard1.push(tmp1);
-        complBoard2.push(tmp2);
+        complBoard1.push(row1);
+        complBoard2.push(row2);
     }
 
     % Initialize the GUI
@@ -146,10 +146,10 @@ function initializeButtons() {
 
     % Assign each button the corresponding function and disable the highlights
     var funcName = "addShape";
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            this.getField("cell" + m + "-" + n).setAction("MouseDown", callbackName);
         }
     }
 
@@ -296,24 +296,24 @@ function process() {
     var result = DEAD;
     var n = 0;
     % Iterate all cells
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             if (boardIdx == 1) {
-                state = complBoard2[y][x];
+                state = complBoard2[m][n];
             } else {
-                state = complBoard1[y][x];
+                state = complBoard1[m][n];
             }
 
-            var n = getNeighbourCount(x, y);
+            var count = getNeighbourCount(m, n);
             % Rules for when a cell is dead or alive
-            if (state == DEAD && n == 3) {
+            if (state == DEAD && count == 3) {
                 % Repopulation
                 result = ALIVE;
             } else if (state == ALIVE) {
-                if (n < 2) {
+                if (count < 2) {
                     % Underpopulation
                     result = DEAD;
-                } else if (n == 2 || n == 3) {
+                } else if (count == 2 || count == 3) {
                     result = ALIVE;
                 } else {
                     % Overpopulation
@@ -324,30 +324,30 @@ function process() {
             }
 
             if (boardIdx == 1) {
-                complBoard1[y][x] = result;
+                complBoard1[m][n] = result;
             } else {
-                complBoard2[y][x] = result;
+                complBoard2[m][n] = result;
             }
         }
     }
 }
 
 /**
- * Calculates the amount of neighbors that are alive for the given cell x, y.
+ * Calculates the amount of neighbors that are alive for the given cell m, n.
  *
- * @param {Number} pX The x coordinate.
- * @param {Number} pY The y coordinate.
+ * @param {Number} pM The m coordinate.
+ * @param {Number} pN The n coordinate.
  */
-function getNeighbourCount(pX, pY) {
+function getNeighbourCount(pM, pN) {
     var counter = 0;
-    for (var x = pX - 1; x <= pX + 1; x++) {
-        for (var y = pY - 1; y <= pY + 1; y++) {
+    for (var m = pM - 1; m <= pM + 1; m++) {
+        for (var n = pN - 1; n <= pN + 1; n++) {
             % Ignore own position and border
-            if ((x == pX && y == pY) || x < 0 || y < 0 || x >= BOARD_WIDTH || y >= BOARD_HEIGHT) {
+            if ((m == pM && n == pN) || m < 0 || n < 0 || m >= BOARD_HEIGHT || n >= BOARD_WIDTH) {
                 continue;
             }
-            if ((boardIdx == 1 && complBoard2[y][x] == ALIVE) ||
-                (boardIdx == 0 && complBoard1[y][x] == ALIVE)
+            if ((boardIdx == 1 && complBoard2[m][n] == ALIVE) ||
+                (boardIdx == 0 && complBoard1[m][n] == ALIVE)
             ) {
                 counter++;
             }
@@ -380,10 +380,10 @@ function clear() {
     }
 
     % Clear all to dead
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            complBoard1[y][x] = DEAD;
-            complBoard2[y][x] = DEAD;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard1[m][n] = DEAD;
+            complBoard2[m][n] = DEAD;
         }
     }
     drawAll(boardIdx);
@@ -393,10 +393,10 @@ function clear() {
  * Adds the selected shape to the given coordinates, with its top left corner at
  * that position.
  *
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
+ * @param {Number} m The m coordinate.
+ * @param {Number} n The n coordinate.
  */
-function addShape(x, y) {
+function addShape(m, n) {
     % Warning when shapemode is disabled
     if (!shapeMode) {
         printInfoText("Enable shape mode to add shapes.");
@@ -407,18 +407,18 @@ function addShape(x, y) {
     currentShape = this.getField("shapeidx").currentValueIndices;
 
     for (var pos = 0; pos < SHAPES[currentShape].length; pos++) {
-        var eX = SHAPES[currentShape][pos][0] + x;
-        var eY = SHAPES[currentShape][pos][1] + y;
+        var eM = SHAPES[currentShape][pos][0] + m;
+        var eN = SHAPES[currentShape][pos][1] + n;
 
         % Border check
-        if (eX < 0 || eY < 0 || eX >= BOARD_WIDTH || eY >= BOARD_HEIGHT) {
+        if (eM < 0 || eN < 0 || eM >= BOARD_HEIGHT || eN >= BOARD_WIDTH) {
             continue;
         }
 
         if (boardIdx == 0) {
-            complBoard1[eY][eX] = ALIVE;
+            complBoard1[eM][eN] = ALIVE;
         } else {
-            complBoard2[eY][eX] = ALIVE;
+            complBoard2[eM][eN] = ALIVE;
         }
     };
 
@@ -432,17 +432,17 @@ function addShape(x, y) {
  */
 function fillRandom() {
     var percentage = this.getField("percentage").value;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             if (getRandomInt(100) < percentage) {
                 if (boardIdx == 0) {
-                    complBoard1[y][x] = ALIVE;
+                    complBoard1[m][n] = ALIVE;
                 } else {
-                    complBoard2[y][x] = ALIVE;
+                    complBoard2[m][n] = ALIVE;
                 }
             } else {
-                complBoard1[y][x] = DEAD;
-                complBoard2[y][x] = DEAD;
+                complBoard1[m][n] = DEAD;
+                complBoard2[m][n] = DEAD;
             }
         }
     }
@@ -459,15 +459,15 @@ function fillRandom() {
  */
 function drawAll(idx) {
     var cell;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            cell = this.getField("pos" + x + "-" + y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            cell = this.getField("cell" + m + "-" + n);
             cell.delay = true;
             var value = DEAD;
             if (idx == 1) {
-                value = complBoard1[y][x];
+                value = complBoard1[m][n];
             } else {
-                value = complBoard2[y][x];
+                value = complBoard2[m][n];
             }
 
             if (value > DEAD) {
@@ -538,10 +538,10 @@ function printInfoText(text) {
 
             \begin{center}
                 \tiny
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=, backgroundcolor=, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%

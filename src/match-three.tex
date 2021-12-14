@@ -43,6 +43,9 @@ const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const SCREEN_TEXT_SIZE = 300;
 
 % Constants
+const M = 0;
+const N = 1;
+
 const ANIMATION_SPEED = 500;
 var MAX_SYMBOLS = 5;
 % To mark modified columns
@@ -234,20 +237,20 @@ function initialize() {
     }
 
     % Mark all columns as unchanged
-    for (var column = 0; column < BOARD_WIDTH; column++) {
+    for (var n = 0; n < BOARD_WIDTH; n++) {
         changedColumns.push(UNCHANGED);
     }
 
     % Create the board choosing a random symbol for each cell
     var elem, rnd;
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             rnd = getRandomInt(cur_symbols.length);
             % Random number and direction counts
-            tmp.push([rnd, [0, 0, 0, 0], NORMAL]);
+            row.push([rnd, [0, 0, 0, 0], NORMAL]);
         }
-        complBoard.push(tmp);
+        complBoard.push(row);
     }
 
     % Add special cells like unbreakable, ...
@@ -283,14 +286,14 @@ function initializeButtons() {
     % Each cell needs to be connected to an input function
     var cell;
     var funcName = "cellClicked";
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            cell = this.getField("pos" + x + "-" + y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
             cell.setAction("MouseDown", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
 
-            var swapCallback = "swap" + "(" + x.toString() + "," + y.toString() + ");";
+            var swapCallback = "swap" + "(" + m.toString() + "," + n.toString() + ");";
             cell.setAction("MouseEnter", swapCallback);
         }
     }
@@ -306,7 +309,7 @@ function initializeButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 
-    printInfoText("Init");
+    printInfoText("Initialization finished.");
 }
 
 /**
@@ -318,8 +321,8 @@ function restart() {
     currentCell = null;
 
     % Mark all columns as unchanged
-    for (var column = 0; column < BOARD_WIDTH; column++) {
-        changedColumns[column] = UNCHANGED;
+    for (var n = 0; n < BOARD_WIDTH; n++) {
+        changedColumns[n] = UNCHANGED;
     }
 
     % Get current color and symbol mode as well as the symbol count
@@ -346,11 +349,11 @@ function restart() {
 
     % Create the board choosing a random symbol for each cell
     var rnd;
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             rnd = getRandomInt(cur_symbols.length);
-            complBoard[row][column][0] = rnd;
-            complBoard[row][column][2] = NORMAL;
+            complBoard[m][n][0] = rnd;
+            complBoard[m][n][2] = NORMAL;
         }
     }
 
@@ -363,9 +366,9 @@ function restart() {
 
     drawAll();
     % Disable left over highlights
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            highlight(column, row, false);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            highlight(m, n, false);
         }
     }
 
@@ -418,13 +421,13 @@ function tooltip(on) {
  */
 function addSpecialCells() {
     var modCell = function modCell(type, count) {
-        var x, y;
+        var m, n;
         for (var i = 0; i < count; i++) {
-            x = getRandomInt(BOARD_WIDTH);
-            y = getRandomInt(BOARD_HEIGHT);
-            complBoard[y][x][2] = type;
+            m = getRandomInt(BOARD_HEIGHT);
+            n = getRandomInt(BOARD_WIDTH);
+            complBoard[m][n][2] = type;
             if (type == OBSTACLE) {
-                complBoard[y][x][0] = EMPTY;
+                complBoard[m][n][0] = EMPTY;
             }
         }
     }
@@ -467,22 +470,22 @@ function cleanupBoard() {
     }
 
     var elem;
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            elem = complBoard[row][column][0];
-            if (column > 1 &&
-                complBoard[row][column - 1][0] == elem &&
-                complBoard[row][column - 2][0] == elem) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            elem = complBoard[m][n][0];
+            if (n > 1 &&
+                complBoard[m][n - 1][0] == elem &&
+                complBoard[m][n - 2][0] == elem) {
 
-                complBoard[row][column][0] = getReplacementSymbol(row, column);
-                %highlight(column, row, true);
+                complBoard[m][n][0] = getReplacementSymbol(m, n);
+                %highlight(m, n, true);
             }
-            if (row > 1 &&
-                complBoard[row - 1][column][0] == elem &&
-                complBoard[row - 2][column][0] == elem) {
+            if (m > 1 &&
+                complBoard[m - 1][n][0] == elem &&
+                complBoard[m - 2][n][0] == elem) {
 
-                complBoard[row][column][0] = getReplacementSymbol(row, column);
-                %highlight(column, row, true);
+                complBoard[m][n][0] = getReplacementSymbol(m, n);
+                %highlight(m, n, true);
             }
         }
     }
@@ -494,29 +497,29 @@ function cleanupBoard() {
  * These are ignored from the remaining symbols a
  * random one is selected.
  *
- * @param {Number} row The table row.
- * @param {Number} column The table column.
+ * @param {Number} m The table m.
+ * @param {Number} n The table n.
  */
-function getReplacementSymbol(row, column) {
+function getReplacementSymbol(m, n) {
     var neighborhood = [];
     for (var i = 0; i < MAX_SYMBOLS; i++) {
         neighborhood.push(true);
     }
 
     % Save which symbols are disallowed
-    if (column > 0) {
-        neighborhood[complBoard[row][column - 1][0]] = false;
+    if (m > 0) {
+        neighborhood[complBoard[m - 1][n][0]] = false;
     }
-    if (column < BOARD_WIDTH - 1) {
-        neighborhood[complBoard[row][column + 1][0]] = false;
+    if (m < BOARD_HEIGHT - 1) {
+        neighborhood[complBoard[m + 1][n][0]] = false;
     }
-    if (row > 0) {
-        neighborhood[complBoard[row - 1][column][0]] = false;
+    if (n > 0) {
+        neighborhood[complBoard[m][n - 1][0]] = false;
     }
-    if (row < BOARD_HEIGHT - 1) {
-        neighborhood[complBoard[row + 1][column][0]] = false;
+    if (n < BOARD_WIDTH - 1) {
+        neighborhood[complBoard[m][n + 1][0]] = false;
     }
-    neighborhood[complBoard[row][column][0]] = false;
+    neighborhood[complBoard[m][n][0]] = false;
 
     % Save the indices of the allowed symbols
     var indices = [];
@@ -537,27 +540,27 @@ function getReplacementSymbol(row, column) {
  * Save and highlight the last cell the user clicked on.
  * Selection is only removed after clicking on the same cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function cellClicked(x, y, ignore=false) {
+function cellClicked(m, n, ignore=false) {
     % Allow for multiple clicks on the same cell
     this.getField("restart").setFocus();
     if (inChainReaction && !ignore) {
         printInfoText("Input not possible while in chain reaction!");
         return;
     }
-    if (complBoard[y][x][2] === OBSTACLE) {
+    if (complBoard[m][n][2] === OBSTACLE) {
         printInfoText("Cant select an obstacle!");
         return;
     }
 
     if (currentCell === null) {
-        currentCell = [x, y];
-        highlight(x, y, true);
-    } else if (currentCell[0] == x && currentCell[1] == y) {
+        currentCell = [m, n];
+        highlight(m, n, true);
+    } else if (currentCell[M] == m && currentCell[N] == n) {
         currentCell = null;
-        highlight(x, y, false);
+        highlight(m, n, false);
     }
 }
 
@@ -568,14 +571,14 @@ function cellClicked(x, y, ignore=false) {
  * 3. The swap would lead to a stone removal
  * Lifts highlight after swap.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function swap(x, y) {
+function swap(m, n) {
     if (currentCell !== null) {
-        var x2 = currentCell[0];
-        var y2 = currentCell[1];
-        var type = complBoard[y][x][2] | complBoard[y2][x2][2];
+        var m2 = currentCell[M];
+        var n2 = currentCell[N];
+        var type = complBoard[m][n][2] | complBoard[m2][n2][2];
         if (type > NORMAL) {
             if ((type & BOMB) > 0) {
                 printInfoText("Swap not possible! ITS A BOMB!");
@@ -585,37 +588,37 @@ function swap(x, y) {
                 printInfoText("Swap not possible! Unmoveable stone.");
             }
             % Remove last click and highlight
-            cellClicked(x2, y2, true);
+            cellClicked(m2, n2, true);
             return;
         }
 
         % Check that only the 4-neighborhood is valid
-        if (Math.abs(x - x2) + Math.abs(y - y2) == 1) {
+        if (Math.abs(m - m2) + Math.abs(n - n2) == 1) {
             % Swap contents
-            var tmp = complBoard[y2][x2][0];
-            complBoard[y2][x2][0] = complBoard[y][x][0];
-            complBoard[y][x][0] = tmp;
+            var tmp = complBoard[m2][n2][0];
+            complBoard[m2][n2][0] = complBoard[m][n][0];
+            complBoard[m][n][0] = tmp;
 
             % Check if the swap was valid
             % Bitwise or so that both methods are executed
             % and the direction counts are updated
-            if (hasMatch(x, y) | hasMatch(x2, y2)) {
+            if (hasMatch(m, n) | hasMatch(m2, n2)) {
                 printInfoText("Swapped stones!");
                 % Redraw
-                draw(x, y);
-                draw(x2, y2);
+                draw(m, n);
+                draw(m2, n2);
                 % Start replacing stones
                 replaceStones()
             % If it was not, revert the swap
             } else {
                 printInfoText("Swap not allowed!");
                 % Swap contents back
-                tmp = complBoard[y2][x2][0];
-                complBoard[y2][x2][0] = complBoard[y][x][0];
-                complBoard[y][x][0] = tmp;
+                tmp = complBoard[m2][n2][0];
+                complBoard[m2][n2][0] = complBoard[m][n][0];
+                complBoard[m][n][0] = tmp;
             }
             % Remove last click and highlight
-            cellClicked(x2, y2, true);
+            cellClicked(m2, n2, true);
         }
     }
 }
@@ -626,24 +629,24 @@ function swap(x, y) {
  * obtain the amount of identical neighbors.
  * If no match is found the original direction counts are reassigned.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @return {Boolean} true if a match is found false else.
  */
-function hasMatch(x, y) {
+function hasMatch(m, n) {
     % Save the current direction count for a potential reset
-    var tmpDirCounts = complBoard[y][x][1];
-    calcDirCounts(x, y);
+    var tmpDirCounts = complBoard[m][n][1];
+    calcDirCounts(m, n);
 
-    var countXPos = complBoard[y][x][1][0] + complBoard[y][x][1][2];
-    var countYPos = complBoard[y][x][1][1] + complBoard[y][x][1][3];
+    var countMPos = complBoard[m][n][1][0] + complBoard[m][n][1][2];
+    var countNPos = complBoard[m][n][1][1] + complBoard[m][n][1][3];
 
     % If it is a match ...
-    if (countXPos > 1 || countYPos > 1) {
+    if (countMPos > 1 || countNPos > 1) {
         return true;
     } else {
         % Reset the direction counts
-        complBoard[y][x][1] = tmpDirCounts;
+        complBoard[m][n][1] = tmpDirCounts;
         return false;
     }
 }
@@ -721,24 +724,24 @@ function chainReaction() {
  * are no spaces left. Top most spaces are refilled
  * using a random symbol.
  *
- * @param {Number} x The column position.
+ * @param {Number} n The column position.
  */
-function dropAndAddStones(x) {
+function dropAndAddStones(n) {
     % Iterate each cell of a column
-    for (var y = BOARD_HEIGHT - 1; y >= 0; y--) {
+    for (var m = BOARD_HEIGHT - 1; m >= 0; m--) {
         % If there is no symbol in this cell
-        if (complBoard[y][x][0] === EMPTY && complBoard[y][x][2] !== OBSTACLE) {
+        if (complBoard[m][n][0] === EMPTY && complBoard[m][n][2] !== OBSTACLE) {
             % Check all cells above the current cell
-            var y2 = y - 1;
-            for (; y2 >= 0; y2--) {
+            var m2 = m - 1;
+            for (; m2 >= 0; m2--) {
                 % If there is a non emtpy, moveable cell swap values
-                var type = complBoard[y2][x][2];
-                if (complBoard[y2][x][0] !== EMPTY && type < UNBREAKABLE) {
-                    complBoard[y][x][0] = complBoard[y2][x][0];
-                    complBoard[y2][x][0] = EMPTY;
+                var type = complBoard[m2][n][2];
+                if (complBoard[m2][n][0] !== EMPTY && type < UNBREAKABLE) {
+                    complBoard[m][n][0] = complBoard[m2][n][0];
+                    complBoard[m2][n][0] = EMPTY;
                     if (type !== NORMAL) {
-                        complBoard[y][x][2] = type;
-                        complBoard[y2][x][2] = NORMAL;
+                        complBoard[m][n][2] = type;
+                        complBoard[m2][n][2] = NORMAL;
                     }
 
                     % Cancel loop to prevent override
@@ -746,26 +749,26 @@ function dropAndAddStones(x) {
                 }
             }
             % If the loop did not find a symbol a new one is needed
-            if (y2 === -1) {
+            if (m2 === -1) {
                 % Generate randomly new stone
                 var rnd = getRandomInt(cur_symbols.length);
-                complBoard[y][x][0] = rnd;
+                complBoard[m][n][0] = rnd;
                 % Respawn bombs
                 if (bombEnable) {
                     rnd = getRandomInt(1000);
                     if (rnd <= BOMB_PROBABILITY) {
-                        complBoard[y][x][2] = BOMB;
+                        complBoard[m][n][2] = BOMB;
                     }
                 }
                 if (bkTwiceEnable) {
                     rnd = getRandomInt(1000);
                     if (rnd <= BKTWICE_PROBABILITY) {
-                        complBoard[y][x][2] = BREAKTWICE;
+                        complBoard[m][n][2] = BREAKTWICE;
                     }
                 }
             }
             % Redraw only cells that changed
-            draw(x, y);
+            draw(m, n);
         }
     }
 }
@@ -774,9 +777,9 @@ function dropAndAddStones(x) {
  * Check all stones if they should be removed.
  */
 function checkAllForStoneRemoval() {
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            removeStone(column, row);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            removeStone(m, n);
         }
     }
 }
@@ -785,19 +788,19 @@ function checkAllForStoneRemoval() {
  * Removes the cell for the given position
  * from the board if it is part of a match.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function removeStone(x, y) {
+function removeStone(m, n) {
     % Get directions in which a match can be found
-    var countXPos = complBoard[y][x][1][0] + complBoard[y][x][1][2];
-    var countYPos = complBoard[y][x][1][1] + complBoard[y][x][1][3];
+    var countMPos = complBoard[m][n][1][0] + complBoard[m][n][1][2];
+    var countNPos = complBoard[m][n][1][1] + complBoard[m][n][1][3];
 
     % If a match is found in this direction remove the stone values
-    if (countXPos > 1 || countYPos > 1) {
-        clearPos(x, y);
+    if (countMPos > 1 || countNPos > 1) {
+        clearPos(m, n);
         % Process bombs
-        processIfBomb(x, y);
+        processIfBomb(m, n);
     }
 }
 
@@ -805,21 +808,21 @@ function removeStone(x, y) {
  * Helper function:
  * Remove symbol and redrawing a cell.
  * Marks the columns which were removed.
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function clearPos(x, y) {
+function clearPos(m, n) {
     % Only cells with content give points
-    if (complBoard[y][x][0] !== EMPTY) {
+    if (complBoard[m][n][0] !== EMPTY) {
         points++;
     }
-    if (complBoard[y][x][2] === BREAKTWICE) {
-        complBoard[y][x][2] = NORMAL;
-        draw(x, y);
-    } else if (complBoard[y][x][2] < UNBREAKABLE) {
-        complBoard[y][x][0] = EMPTY;
-        draw(x, y);
-        changedColumns[x] = CHANGED;
+    if (complBoard[m][n][2] === BREAKTWICE) {
+        complBoard[m][n][2] = NORMAL;
+        draw(m, n);
+    } else if (complBoard[m][n][2] < UNBREAKABLE) {
+        complBoard[m][n][0] = EMPTY;
+        draw(m, n);
+        changedColumns[n] = CHANGED;
         stonesRemoved = true;
     }
 }
@@ -827,21 +830,21 @@ function clearPos(x, y) {
 /**
  * Helper function:
  * If the cell is a bomb delete the surrounding cells.
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function processIfBomb(x, y) {
-    if (complBoard[y][x][2] == BOMB) {
+function processIfBomb(m, n) {
+    if (complBoard[m][n][2] == BOMB) {
         for (var j = 0; j < BOMB_POSITIONS.length; j++) {
-            var nX = x + BOMB_POSITIONS[j][0];
-            var nY = y + BOMB_POSITIONS[j][1];
+            var nM = m + BOMB_POSITIONS[j][M];
+            var nN = n + BOMB_POSITIONS[j][N];
             % Border check
-            if (nX >= 0 && nY >= 0 && nX < BOARD_WIDTH && nY < BOARD_HEIGHT) {
-                clearPos(nX, nY);
+            if (nM >= 0 && nN >= 0 && nM < BOARD_HEIGHT && nN < BOARD_WIDTH) {
+                clearPos(nM, nN);
             }
         }
         % Reset the cell state
-        complBoard[y][x][2] = NORMAL;
+        complBoard[m][n][2] = NORMAL;
     }
 }
 
@@ -852,9 +855,9 @@ function processIfBomb(x, y) {
  * @param {Boolean} enable Enables or disables highlight.
  */
 function highlightAllMatches(enable) {
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            highlightStones(column, row, enable);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            highlightStones(m, n, enable);
         }
     }
 }
@@ -862,29 +865,29 @@ function highlightAllMatches(enable) {
 /**
  * Enables or disables highlight of the given cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @param {Boolean} enable Enables or disables highlight.
  */
-function highlightStones(x, y, enable) {
+function highlightStones(m, n, enable) {
     % Get directions in which a match can be found
-    var countXPos = complBoard[y][x][1][0] + complBoard[y][x][1][2];
-    var countYPos = complBoard[y][x][1][1] + complBoard[y][x][1][3];
+    var countMPos = complBoard[m][n][1][0] + complBoard[m][n][1][2];
+    var countNPos = complBoard[m][n][1][1] + complBoard[m][n][1][3];
 
     % If a match is found in this direction highlight the stones
-    if (countXPos > 1) {
-        % Just iterate from one side of the given position to the other
-        for (var i = -complBoard[y][x][1][2]; i < complBoard[y][x][1][0] + 1; i++) {
-            var tmpX = x + i;
-            highlight(tmpX, y, enable);
-            highlightBomb(tmpX, y, enable);
+    if (countMPos > 1) {
+        for (var i = -complBoard[m][n][1][3]; i < complBoard[m][n][1][1] + 1; i++) {
+            var tmpM = m + i;
+            highlight(tmpM, n, enable);
+            highlightBomb(tmpM, n, enable);
         }
     }
-    if (countYPos > 1) {
-        for (var i = -complBoard[y][x][1][3]; i < complBoard[y][x][1][1] + 1; i++) {
-            var tmpY = y + i;
-            highlight(x, tmpY, enable);
-            highlightBomb(x, tmpY, enable);
+    if (countNPos > 1) {
+        % Just iterate from one side of the given position to the other
+        for (var i = -complBoard[m][n][1][2]; i < complBoard[m][n][1][0] + 1; i++) {
+            var tmpN = n + i;
+            highlight(m, tmpN, enable);
+            highlightBomb(m, tmpN, enable);
         }
     }
 }
@@ -892,18 +895,18 @@ function highlightStones(x, y, enable) {
 /**
  * Helperfunction:
  * If the cell is a bomb highlight the surrounding cells.
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @param {Boolean} enable Enables or disables highlight.
  */
-function highlightBomb(x, y, enable) {
-    if (complBoard[y][x][2] == BOMB) {
+function highlightBomb(m, n, enable) {
+    if (complBoard[m][n][2] == BOMB) {
         for (var j = 0; j < BOMB_POSITIONS.length; j++) {
-            var nX = x + BOMB_POSITIONS[j][0];
-            var nY = y + BOMB_POSITIONS[j][1];
+            var nM = m + BOMB_POSITIONS[j][M];
+            var nN = n + BOMB_POSITIONS[j][N];
             % Border check
-            if (nX >= 0 && nY >= 0 && nX < BOARD_WIDTH && nY < BOARD_HEIGHT) {
-                highlight(nX, nY, enable, true);
+            if (nM >= 0 && nN >= 0 && nM < BOARD_HEIGHT && nN < BOARD_WIDTH) {
+                highlight(nM, nN, enable, true);
             }
         }
     }
@@ -918,9 +921,9 @@ function highlightBomb(x, y, enable) {
  * of the four directions.
  */
 function calcAllDirCounts() {
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            calcDirCounts(column, row);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            calcDirCounts(m, n);
         }
     }
 }
@@ -930,14 +933,14 @@ function calcAllDirCounts() {
  * meaning the amount of identical symbols in each
  * of the four directions.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function calcDirCounts(x, y) {
-    complBoard[y][x][1][0] = calcDirCount(x, y, 1, 0);
-    complBoard[y][x][1][1] = calcDirCount(x, y, 0, 1);
-    complBoard[y][x][1][2] = calcDirCount(x, y, -1, 0);
-    complBoard[y][x][1][3] = calcDirCount(x, y, 0, -1);
+function calcDirCounts(m, n) {
+    complBoard[m][n][1][0] = calcDirCount(m, n, 1, 0);
+    complBoard[m][n][1][1] = calcDirCount(m, n, 0, 1);
+    complBoard[m][n][1][2] = calcDirCount(m, n, -1, 0);
+    complBoard[m][n][1][3] = calcDirCount(m, n, 0, -1);
 }
 
 /**
@@ -945,32 +948,32 @@ function calcDirCounts(x, y) {
  * in the given direction, by iterating over the board
  * in that direction.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
- * @param {Number} dirX The x direction.
- * @param {Number} dirY The y direction.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ * @param {Number} dirM The m direction.
+ * @param {Number} dirN The n direction.
  */
-function calcDirCount(x, y, dirX, dirY) {
+function calcDirCount(m, n, dirM, dirN) {
     % Get the symbols
-    var symb = complBoard[y][x][0];
+    var symb = complBoard[m][n][0];
 
     var count = 0;
 
     % Calc init position
-    var nX = x + dirX;
-    var nY = y + dirY;
+    var nM = m + dirM;
+    var nN = n + dirN;
     % Check for out of bounds
-    while (nX >= 0 && nX < BOARD_WIDTH &&
-        nY >= 0 && nY < BOARD_HEIGHT
+    while (nM >= 0 && nM < BOARD_HEIGHT &&
+        nN >= 0 && nN < BOARD_WIDTH
     ) {
         % Check the symbol
-        if (complBoard[nY][nX][0] === symb) {
+        if (complBoard[nM][nN][0] === symb) {
             count++;
         } else {
             break;
         }
-        nX += dirX;
-        nY += dirY;
+        nM += dirM;
+        nN += dirN;
     }
     return count;
 }
@@ -982,9 +985,9 @@ function calcDirCount(x, y, dirX, dirY) {
  * Draw all cells.
  */
 function drawAll() {
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
@@ -993,18 +996,18 @@ function drawAll() {
  * Since only one cell is updated with each input,
  * only this cell needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function draw(x, y) {
-    var cell = this.getField("pos" + x + "-" + y);
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
 
     % Get backgroundcolor
-    var cType = complBoard[y][x][2];
+    var cType = complBoard[m][n][2];
     cell.fillColor = BACKGROUND_COLORS[cType];
 
-    var val = complBoard[y][x][0];
+    var val = complBoard[m][n][0];
     if (val != EMPTY) {
         cell.value = cur_symbols[val];
 
@@ -1024,13 +1027,13 @@ function draw(x, y) {
 /**
  * Enables or disables the highlight of the given cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @param {Boolean} enable If true enables the highlight
  * @param {Boolean} bomb If true enables the bomb highlight
  */
-function highlight(x, y, enable, bomb=false) {
-    var cell = this.getField("pos" + x + "-" + y);
+function highlight(m, n, enable, bomb=false) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
     % Highlight the current taken move
     if (enable) {
@@ -1111,10 +1114,10 @@ function printInfoText(text) {
 
             \begin{center}
                 \tiny
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, align=1%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
