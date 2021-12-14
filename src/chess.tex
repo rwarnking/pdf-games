@@ -25,7 +25,7 @@
 \def\boardHeight{\boardWidth}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{chess}
 
@@ -102,7 +102,7 @@ var promotionIndex = 0;
 
 % Game Data
 % The symbol array, each piece gets one symbol.
-% Since the utf8 chess pieces do not work default asccii letters are used. (0x2654 ...)
+% Since the UTF8 chess pieces do not work default ASCII letters are used. (0x2654 ...)
 const PIECE_SYMBOLS = new Array(
     "K", "Q", "B", "N", "R", "P"
 );
@@ -155,8 +155,8 @@ const CHECK_COLOR = [ "RGB", 0.9, 0.100, 0.176 ];
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound.
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound.
  * @param {Number} Return a random integer.
  */
 function getRandomInt(max) {
@@ -174,13 +174,13 @@ function sign(x) {
 };
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Fill the array with the default content and infos
+function initialize() {
+    % Fill the array with the default content and information
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         var row = new Array();
         for (var n = 0; n < BOARD_WIDTH; n++) {
@@ -192,22 +192,22 @@ function initialise() {
     % Add the pieces for both players
     addPieces();
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     drawAll();
     printInfoText("Ready to play, good luck.");
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Set the callbacks and attributes of each selectable cell
+    % Set the callbacks and attributes of each select able cell
     var funcName = "move";
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         for (var n = 0; n < BOARD_WIDTH; n++) {
@@ -241,7 +241,7 @@ function initialiseButtons() {
 }
 
 /**
- * Restart the game by reseting everything to default.
+ * Restart the game by resetting everything to default.
  */
 function restart() {
     % Remove focus so the cursor is not shown
@@ -544,7 +544,7 @@ function validMove(m, n) {
         return false;
     }
 
-    % Sadly the equality test (==) does not work, since the borderColor has
+    % Sadly the equality test (==) does not work, since the bordercolor has
     % more digits after the comma then POSS_MOVE_COLOR
     const EPSILON = 0.001;
     var equal = function(col1, col2) {
@@ -1271,10 +1271,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

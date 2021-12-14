@@ -28,7 +28,7 @@
 \def\playerCount{2}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{tic-tac-toe}
 
@@ -83,7 +83,7 @@ const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 /**
  * Initialize the default game state.
  */
-function initialise() {
+function initialize() {
     % Initlialize the array with a zeros
     for (var row = 0; row < BOARD_HEIGHT; row++) {
         var zArr = new Array();
@@ -94,14 +94,14 @@ function initialise() {
     }
 
     % Initialize the GUI
-    initialiseButtons();
+    initializeButtons();
 }
 
 /**
  * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -366,10 +366,10 @@ function printInfoText(text, col=color.black) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

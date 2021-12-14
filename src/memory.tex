@@ -29,7 +29,7 @@
 \def\playerCount{3}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{memory}
 
@@ -94,12 +94,12 @@ function getRandomInt(max) {
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
  * Initialize the default game state.
  */
-function initialise() {
+function initialize() {
     % Create an array that contains all symbols twice
     var symbols = [];
     for (var i = 0; i < MAX_PAIRS; i++) {
@@ -124,19 +124,19 @@ function initialise() {
         playerPoints.push(0);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 }
 
 /**
  * Initialize all buttons from the GUI.
  * For example add callbacks.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     var funcName = "revealField";
@@ -305,7 +305,7 @@ function revealField(x, y) {
         } else {
             playerPoints[playerIdx - 1]++;
         }
-        % Print whos turn it is
+        % Print who's turn it is
         printInfoText("Your Turn: Player " + playerIdx);
     } else {
         lastCell = [x, y];
@@ -369,10 +369,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

@@ -25,7 +25,7 @@
 \def\boardHeight{\boardWidth}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{crossword}
 
@@ -50,7 +50,7 @@ const M = 0;
 const N = 1;
 const ORI_IDX = 2;
 
-% The game allows for upto 4 directions (up, down, left, right)
+% The game allows for up to 4 directions (up, down, left, right)
 % Diagonals also work, but are not supported by the arrows and the hint system
 var ORIENTATIONS = [
     [1, 0], [0, 1]%,
@@ -92,7 +92,7 @@ const HINT_LIST = [
     ["duel to gain", "recurring yearly"] % 11
 ]
 
-% A modifyable copy of the WORD_LIST
+% A modifiable copy of the WORD_LIST
 var wordList = [];
 
 % Allows to save the currently available positions
@@ -118,22 +118,22 @@ const SYMBOLS = [
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Init the GUI
-    initialiseButtons();
+function initialize() {
+    % Initialize the GUI
+    initializeButtons();
 
     % Create an empty board
     for (var m = 0; m < BOARD_HEIGHT; m++) {
@@ -162,10 +162,10 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -322,7 +322,7 @@ function createBoard() {
     % if there was not valid position the word is removed and not used again.
     % This could be changed by moving the splice-method from getWordWithLen()
     % into this loop after adding a word, but in that case the word would be
-    % marked anotherway to prevent testing a word multiple times.
+    % marked another way to prevent testing a word multiple times.
     for (var i = 0; i < wordCount; i++) {
         % Get a word with the current length
         var word = getWordWithLen(lengthList[i]);
@@ -435,7 +435,7 @@ function addWord(word) {
  * can be found on the board.
  * Select a position if placing the word there would not be out of bounds and
  * would not collide with other words. All options are tested, while the one
- * having the most occurrences is chossen.
+ * having the most occurrences is chosen.
  * Example: if there would be 3x "e", 2x "f" - "e" would be chosen, unless
  * none of these are valid due to collisions.
  *
@@ -496,10 +496,10 @@ function getValidPosition(word) {
  * Checks for collisions and out of bounds.
  * Collision would be if a cell is already occupied by a character
  * different from the one that shall be placed.
- * Furthermore a word can collide if a neighbouring cell is occupied,
- * since this would alter the neighbouring word.
+ * Furthermore a word can collide if a neighboring cell is occupied,
+ * since this would alter the neighboring word.
  *
- * @param {String} word The word to test for collsion.
+ * @param {String} word The word to test for collision.
  * @param {Array} posInfo The start position and the orientation.
  * @return {Boolean} True if there is no collision, else false.
  */
@@ -552,13 +552,13 @@ function checkCollisionAndOOB(word, posInfo) {
 }
 
 /**
- * Checks the two neighbouring cells in the +- direction of the given
- * orientation for beeing empty.
+ * Checks the two neighboring cells in the +- direction of the given
+ * orientation for being empty.
  *
  * @param {Number} m The row index.
  * @param {Number} n The column index.
  * @param {Number} oriIdx The orientation index.
- * @return {Boolean} True if neighbouring cells are empty, else false.
+ * @return {Boolean} True if neighboring cells are empty, else false.
  */
 function checkNeighbourhood(m, n, oriIdx) {
     var neighOri = ORIENTATIONS[oriIdx];
@@ -586,7 +586,7 @@ function checkNeighbourhood(m, n, oriIdx) {
 % Gamelogic %
 %%%%%%%%%%%%%
 /**
- * Assignes the current cell value to the complBoard array.
+ * Assigns the current cell value to the complBoard array.
  * Used for updating the array after an input (OnBlur event).
  * @param {Number} m The row index.
  * @param {Number} n The column index.
@@ -659,7 +659,7 @@ function checkAll() {
  * Checks if a cell is an starting cell for a word (arrow cell).
  * If so activate the overlay.
  * For this the word index is used to get the rect of the first and
- * last cell and adjust the dimensions of the overlayfield.
+ * last cell and adjust the dimensions of the overlay field.
  * The hint text is rotated if necessary.
  *
  * @param {Number} m The row index.
@@ -843,10 +843,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

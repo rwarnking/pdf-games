@@ -27,7 +27,7 @@
 \def\boardHeight{10}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{match-three}
 
@@ -48,7 +48,7 @@ var MAX_SYMBOLS = 5;
 % To mark modified columns
 const UNCHANGED = false;
 const CHANGED = true;
-% For the chain reation state
+% For the chain reaction state
 const HIGHLIGHT = true;
 % For empty cells
 const EMPTY = -1;
@@ -66,7 +66,7 @@ const BREAKTWICE_COUNT = 5;
 const BOMB_COUNT = 3;
 const UNBREAKABLE_COUNT = 5;
 const OBSTACLE_COUNT = 5;
-% Pobabilities (out of 1000)
+% Probabilities (out of 1000)
 const BKTWICE_PROBABILITY = 40;
 const BOMB_PROBABILITY = 10;
 % Bomb area of effect
@@ -138,7 +138,7 @@ var colors = new Array();
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 const HIGHLIGHT_BOMB_COLOR = [ "RGB", 0.984, 0.0, 0.0 ];
 
-% Array with all bg colors, has empty spaces due to indexing vars
+% Array with all background colors, has empty spaces due to indexing vars
 const BACKGROUND_COLORS = [
     [ "G", 1.0 ], % normal
     [ "G", 0.5 ], % breaktwice
@@ -153,8 +153,8 @@ const BACKGROUND_COLORS = [
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
@@ -218,14 +218,14 @@ function generateColors(saturation, lightness, amount) {
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
  * Initialize the default game state.
  */
-function initialise() {
-    % Init the GUI
-    initialiseButtons();
+function initialize() {
+    % Initialize the GUI
+    initializeButtons();
 
     % Generate different colors for each symbol
     generateColors(1.0, 0.5, MAX_SYMBOLS);
@@ -257,7 +257,7 @@ function initialise() {
     % Remove matches due to generation
     cleanupBoard();
 
-    % Initialise direction counts
+    % Initialize direction counts
     % Meaning the amount of identical symbols in each direction
     % saved in a four component array (each dir one entry)
     calcAllDirCounts();
@@ -269,7 +269,7 @@ function initialise() {
  * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -277,7 +277,7 @@ function initialiseButtons() {
     this.getField("cmSymbol").checkThisBox(0);
     this.getField("cmSymbolC").currentValueIndices = 0;
 
-    % Assign each button the coresponding function and set the highlights
+    % Assign each button the corresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     % Each cell needs to be connected to an input function
@@ -310,7 +310,7 @@ function initialiseButtons() {
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
     printInfoText("Restart");
@@ -358,7 +358,7 @@ function restart() {
     addSpecialCells();
     % Remove matches due to generation
     cleanupBoard();
-    % Initialise direction counts
+    % Initialize direction counts
     calcAllDirCounts();
 
     drawAll();
@@ -408,6 +408,14 @@ function tooltip(on) {
 %%%%%%%%%%%%%%%%%%%%
 % Board Generation %
 %%%%%%%%%%%%%%%%%%%%
+/**
+ * Adds special value and attributes to some cells.
+ * If enabled a random cell might be modified to be
+ * - a bomb
+ * - indestructible
+ * - an obstacle
+ * - breakable twice
+ */
 function addSpecialCells() {
     var modCell = function modCell(type, count) {
         var x, y;
@@ -449,12 +457,11 @@ function addSpecialCells() {
  * the same symbol directly above or in front.
  * In that case change the symbol to one that is not in the neighborhood.
  * OBACHT: Does not work with MAX_SYMBOLS < 5.
- * TODO replace this?
  */
 function cleanupBoard() {
     % Cleanup is not possible below 5 symbols, since it would be
     % possible that there is no replacement symbol if each
-    % neighbour is a different symbol
+    % neighbor is a different symbol
     if (MAX_SYMBOLS < 5) {
         return;
     }
@@ -491,30 +498,30 @@ function cleanupBoard() {
  * @param {Number} column The table column.
  */
 function getReplacementSymbol(row, column) {
-    var neighbourhood = [];
+    var neighborhood = [];
     for (var i = 0; i < MAX_SYMBOLS; i++) {
-        neighbourhood.push(true);
+        neighborhood.push(true);
     }
 
     % Save which symbols are disallowed
     if (column > 0) {
-        neighbourhood[complBoard[row][column - 1][0]] = false;
+        neighborhood[complBoard[row][column - 1][0]] = false;
     }
     if (column < BOARD_WIDTH - 1) {
-        neighbourhood[complBoard[row][column + 1][0]] = false;
+        neighborhood[complBoard[row][column + 1][0]] = false;
     }
     if (row > 0) {
-        neighbourhood[complBoard[row - 1][column][0]] = false;
+        neighborhood[complBoard[row - 1][column][0]] = false;
     }
     if (row < BOARD_HEIGHT - 1) {
-        neighbourhood[complBoard[row + 1][column][0]] = false;
+        neighborhood[complBoard[row + 1][column][0]] = false;
     }
-    neighbourhood[complBoard[row][column][0]] = false;
+    neighborhood[complBoard[row][column][0]] = false;
 
     % Save the indices of the allowed symbols
     var indices = [];
     for (var i = 0; i < MAX_SYMBOLS; i++) {
-        if (neighbourhood[i]) {
+        if (neighborhood[i]) {
             indices.push(i);
         }
     }
@@ -1059,11 +1066,11 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 \newdimen\longline
 \longline=\textwidth\advance\longline-6em
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

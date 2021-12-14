@@ -25,7 +25,7 @@
 \def\boardHeight{9}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{solo-noble}
 
@@ -273,9 +273,9 @@ function generateColors(saturation, lightness, amount) {
 /**
  * Initialize the default game state.
  */
-function initialise() {
-    % Init the GUI
-    initialiseButtons();
+function initialize() {
+    % Initialize the GUI
+    initializeButtons();
     % Get the value of the choise menu
     boardIdx = this.getField("cmLayout").currentValueIndices;
     currentMarbleCount = MARBLE_COUNTS[boardIdx];
@@ -308,13 +308,13 @@ function initialise() {
  * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
     this.getField("cbColor").checkThisBox(0);
 
-    % Assign each button the coresponding function and set the highlights
+    % Assign each button the corresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     this.getField("showSol").setAction("MouseUp", "showSolution();");
@@ -349,7 +349,7 @@ function initialiseButtons() {
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
     printInfoText("Restart");
@@ -674,7 +674,7 @@ function animateMoves() {
  * The string needs to refer to the cells via character notation.
  * Obacht: Does only work for English and European layout!
  * @param {String} moveSequence The sequence of moves to convert.
- * @return {Array} An array of fromTo positions or [[0]] if not parseable.
+ * @return {Array} An array of fromTo positions or [[0]] if not parse able.
  */
 function stringToSolution(moveSequence) {
     var toIdx = function toIdx(cell) {
@@ -1014,11 +1014,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
-\newdimen\longline
-\longline=\textwidth\advance\longline-6em
+\OpenAction{/S /JavaScript /JS (initialize();)}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

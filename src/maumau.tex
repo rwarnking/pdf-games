@@ -23,7 +23,7 @@
 \def\colors{4}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{maumau}
 
@@ -172,22 +172,22 @@ const BACK_COLOR = [ "RGB", 0.047, 0.349, 0.047 ];
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random integer between 0 and the param.
- * @param {Number} max The upperbound.
+ * Returns a random integer between 0 and the parameter.
+ * @param {Number} max The upper bound.
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Init the GUI
-    initialiseButtons();
+function initialize() {
+    % Initialize the GUI
+    initializeButtons();
 
     % Push all cards to the graveyard
     for (var i = 0; i < CARD_COUNT; i++) {
@@ -207,10 +207,10 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -282,7 +282,7 @@ function initialiseButtons() {
         }
     }
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     % Tooltip setup
@@ -293,7 +293,7 @@ function initialiseButtons() {
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
     % While an animation is running disable restart
@@ -575,7 +575,7 @@ function skip() {
         printInfoText("Player " + (curPlayer + 1) + " was skipped.");
         nextPlayer();
         showCurHidePrev();
-        % Disable skipping for the eight ontop of the graveyard,
+        % Disable skipping for the eight on top of the graveyard,
         % otherwise following player could all skip until another card is played
         gameState.skip8 = false;
     } else if (stack.length == 0) {
@@ -902,7 +902,7 @@ function showCurHidePrev() {
  * Updates the card positions of the selected player.
  * This is used after drawing or playing a card, since then
  * the area for each card changes and they need to be re-positioned.
- * The area for each card is dependent on the cardamount and the complete areawidth.
+ * The area for each card is dependent on the number of cards and the complete area width.
  *
  * @param {Number} pIdx The player index.
  */
@@ -949,7 +949,7 @@ function redrawPlayerCards(pIdx) {
 
 /**
  * Drawmode for the front side. In reality the textelements do not have
- * multiple sides therefore two states are needed in which the visualisation changes.
+ * multiple sides therefore two states are needed in which the visualization changes.
  * The frontside changes the color to white, rotates the card if necessary and
  * add the value of the selected card.
  *
@@ -966,7 +966,7 @@ function drawCardFront(cardIdx) {
 
 /**
  * Drawmode for the back side. In reality the textelements do not have
- * multiple sides therefore two states are needed in which the visualisation changes.
+ * multiple sides therefore two states are needed in which the visualization changes.
  * The backside changes the color and removes the value.
  *
  * @param {Number} cardIdx The selected card.
@@ -1041,10 +1041,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

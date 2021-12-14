@@ -26,7 +26,7 @@
 \def\boardHeight{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{minesweeper}
 
@@ -91,8 +91,8 @@ function getRandomInt(max) {
 /**
  * Initialize the default game state.
  */
-function initialise() {
-    % Fill the array with the default content and infos
+function initialize() {
+    % Fill the array with the default content and information
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         var row = new Array();
         for (var n = 0; n < BOARD_WIDTH; n++) {
@@ -101,8 +101,8 @@ function initialise() {
         complBoard.push(row);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     fillMines();
     drawAll();
@@ -113,7 +113,7 @@ function initialise() {
  * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -137,7 +137,7 @@ function initialiseButtons() {
     this.getField("lock").setAction("MouseUp", "changeMode();");
     this.getField("locktxt").value = "Off";
 
-    % Restat button setup
+    % Restart button setup
     this.getField("restart").setAction("MouseDown", "restart();");
 
     this.getField("percentage").currentValueIndices = 2;
@@ -208,7 +208,7 @@ function fillMines() {
         }
     }
 
-    % For each cell that is not a mine calc the mine count
+    % For each cell that is not a mine calculate the mine count
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         for (var n = 0; n < BOARD_WIDTH; n++) {
             % Ignore cells with mine on it
@@ -433,10 +433,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

@@ -29,7 +29,7 @@
 \def\playerCount{5}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{set}
 
@@ -109,7 +109,7 @@ function getRandomInt(max) {
  * Initialize the default game state.
  * Distribute initial cards.
  */
-function initialise() {
+function initialize() {
     % Create all card combinations and indices
     var idx = 0;
     for (var s = 0; s < SYMBOLS.length; s++) {
@@ -123,7 +123,7 @@ function initialise() {
         }
     }
 
-    % Initialize the array with a cardindex
+    % Initialize the array with a card index
     for (var row = 0; row < BOARD_HEIGHT; row++) {
         var zArr = new Array();
         for (var column = 0; column < BOARD_WIDTH; column++) {
@@ -140,8 +140,8 @@ function initialise() {
         points.push(0);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     drawAll();
 }
@@ -150,7 +150,7 @@ function initialise() {
  * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -683,10 +683,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

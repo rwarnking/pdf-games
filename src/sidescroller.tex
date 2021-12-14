@@ -25,7 +25,7 @@
 \def\obstacleCount{5}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{sidescroller}
 
@@ -142,28 +142,28 @@ function getRandomInt(max) {
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
  * Initialize the default game state.
  */
-function initialise() {
+function initialize() {
     % Initialize the GUI
-    initialiseButtons();
+    initializeButtons();
 
     % Player rendering
     drawPlayer();
 
     % Draw continuously
     gameInterval = app.setInterval("gameLoop()", ANIMATION_SPEED);
-    printInfoText("Initialised game!");
+    printInfoText("Initialized game!");
 }
 
 /**
  * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
@@ -178,13 +178,13 @@ function initialiseButtons() {
         line.textFont = font.Cour;
     }
 
-    % Init player
+    % Initialize player
     var cell = this.getField("player");
     cell.value = String.fromCharCode(0x261B);
     cell.textSize = TEXT_SIZE;
     cell.hidden = false;
 
-    % Init obstacles
+    % Initialize obstacles
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
         obstacles.push([-1, -1, "#"]);
         cell = this.getField("obstacle" + i);
@@ -200,7 +200,7 @@ function initialiseButtons() {
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
     % If in animation do not restart
@@ -649,10 +649,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

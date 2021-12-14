@@ -25,14 +25,14 @@
 \def\boardHeight{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{gameoflife}
 
 const GAME_DESC = "Conways game of life is a cellular automaton.\
 After the initial input the application will run on itself and without further interaction.\
 Dependent on the state the board will evolve based on certain rules.\
-The rules use the neighbourhood of a cell to determine the state of it in the next step.";
+The rules use the neighborhood of a cell to determine the state of it in the next step.";
 
 % Outside variables
 const BOARD_WIDTH = AFMakeNumber(\boardWidth);
@@ -104,20 +104,20 @@ const SHAPES = new Array(
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
+function initialize() {
     for (var row = 0; row < BOARD_HEIGHT; row++) {
         var tmp1 = new Array();
         var tmp2 = new Array();
@@ -129,22 +129,22 @@ function initialise() {
         complBoard2.push(tmp2);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     % Initial run
     runAll();
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     var funcName = "addShape";
     for (var x = 0; x < BOARD_WIDTH; x++) {
         for (var y = 0; y < BOARD_HEIGHT; y++) {
@@ -427,7 +427,7 @@ function addShape(x, y) {
 }
 
 /**
- * Randomise the content of the complete board given the
+ * Randomize the content of the complete board given the
  * percentage specified in the GUI.
  */
 function fillRandom() {
@@ -453,7 +453,7 @@ function fillRandom() {
 % Draw %
 %%%%%%%%
 /**
- * Redraw all cells..
+ * Redraw all cells.
  *
  * @param {Number} idx The index of the array to draw.
  */
@@ -494,10 +494,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

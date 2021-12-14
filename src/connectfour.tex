@@ -26,12 +26,12 @@
 \def\boardHeight{\boardWidth}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{connectfour}
 
 const GAME_DESC = "Connect four is a connection board game. The goal is to place a set amount\
-of stones (4) with the given playercolor in such a way that they lie on a strait line.\
+of stones (4) with the given player color in such a way that they lie on a strait line.\
 Each turn a player can choose a column in which his stone should be placed.\
 The stones will be placed at the bottom of the column or on top of the current top stone.";
 
@@ -72,12 +72,12 @@ const COLORS = new Array(
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.960, 0.176 ];
 
 %%%%%%%%%%%%%%%%%%
-% Initialisation %
+% Initialization %
 %%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
+function initialize() {
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         var row = new Array();
         for (var n = 0; n < BOARD_WIDTH; n++) {
@@ -88,21 +88,21 @@ function initialise() {
 
     printInfoText("Player " + (activePlayer + 1) + ": Please select a column.");
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     drawAll();
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     % Each cell needs to be connected to an input function
@@ -115,7 +115,7 @@ function initialiseButtons() {
     this.getField("cmPlayer").currentValueIndices = 1;
     this.getField("cmWin").currentValueIndices = 1;
     % Get the number of players and the number of pieces to win
-    % from the choise menus
+    % from the choice menus
     playerCount = this.getField("cmPlayer").value;
     winningPieces = this.getField("cmWin").value;
 
@@ -233,7 +233,7 @@ function getMFromN(n) {
 
 /**
  * Checks whether the current move concludes the game and someone won.
- * The position of the last move is used to check the neighbourhood for
+ * The position of the last move is used to check the neighborhood for
  * potential lines in all possible directions. Sets gameover if
  * a line was found.
  *
@@ -348,10 +348,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

@@ -24,7 +24,7 @@
 \def\particleCount{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{particles}
 
@@ -95,11 +95,11 @@ function getRandomInt(max) {
 /**
  * Initialize the default particle state.
  */
-function initialise() {
-    % Initialise all particles as dead
+function initialize() {
+    % Initialize all particles as dead
     var particle;
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        % Lifestate, position, symbolindex
+        % Lifestate, position, symbol index
         particles.push([DEAD, [0, 0], 0]);
 
         particle = this.getField("particle" + idx);
@@ -108,8 +108,8 @@ function initialise() {
         particle.delay = false;
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     % Start the animation interval
     run = app.setInterval("runAll()", 100);
@@ -119,11 +119,11 @@ function initialise() {
  * Initialize all buttons from the GUI.
  * For example add callbacks.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     this.getField("particleType").currentValueIndices = 0;
@@ -142,7 +142,7 @@ function restart() {
 
     var particle;
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        % Lifestate, position, symbolindex
+        % Lifestate, position, symbol index
         particles[idx] = [DEAD, [0, 0], 0];
 
         particle = this.getField("particle" + idx);
@@ -223,7 +223,7 @@ function emitParticle(idx) {
     } else {
         var pos_x = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
         var pos_y = getRandomInt(UPPER_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
-        % Lifestate, position, symbolindex
+        % Lifestate, position, symbol index
         particles[idx] = [ALIVE, [pos_x, pos_y], 0];
     }
 }
@@ -279,10 +279,10 @@ function moveParticles(idx) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

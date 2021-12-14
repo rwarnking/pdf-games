@@ -27,7 +27,7 @@
 \def\boardHeight{12}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{dbti}
 
@@ -46,7 +46,7 @@ const EMPTY = 0;
 const REACHABLE = 1;
 const FORBIDDEN = -1;
 const IS_PATH = -2;
-% For the visualisation
+% For the visualization
 const HIDDEN = 0;
 const R_REVEAL = 1;
 const W_REVEAL = -1;
@@ -59,7 +59,7 @@ var complBoard = new Array();
 var freePath = new Array();
 % Lock if the game has ended
 var gameover = false;
-% Indicater which piece was last animated
+% Indicator which piece was last animated
 var drawPiece = 0;
 % Needed for so one cant play before the animation is finished
 var play = false;
@@ -79,20 +79,20 @@ const COLORS = new Array(
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
+function initialize() {
     for (var row = 0; row < BOARD_HEIGHT; row++) {
         var tmp = new Array();
         for (var column = 0; column < BOARD_WIDTH; column++) {
@@ -103,21 +103,21 @@ function initialise() {
 
     printInfoText("Select cells and find a way across.");
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     createPath();
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     var funcName = "revealCell";
@@ -221,7 +221,7 @@ function createPath() {
     var startX = getRandomInt(BOARD_WIDTH);
     var endX = getRandomInt(BOARD_WIDTH);
 
-    % Mark bottom and top rowas unselectable
+    % Mark bottom and top row as not select able
     for (var ix = 0; ix < BOARD_WIDTH; ix++) {
         complBoard[0][ix] = FORBIDDEN;
         complBoard[BOARD_HEIGHT - 1][ix] = FORBIDDEN;
@@ -236,7 +236,7 @@ function createPath() {
     }
     cellList.push([startX, BOARD_HEIGHT - 1]);
 
-    % Loop as long as there are entrys in the list
+    % Loop as long as there are entries in the list
     while (cellList.length !== 0) {
         % Get one random entry
         % Exclude the last entry since the algorithm does not
@@ -284,7 +284,7 @@ function createPath() {
  */
 function getPath(start, end, board) {
     var pathList = [start];
-    % While the target is not reached search neighbourhood
+    % While the target is not reached search neighborhood
     while (pathList[pathList.length - 1][0] !== end[0] ||
         pathList[pathList.length - 1][1] !== end[1]
     ) {
@@ -403,7 +403,7 @@ function revealCell(x, y) {
         return;
     }
 
-    % Is the cell a neighbour of the current or first line
+    % Is the cell a neighbor of the current or first line
     if (currentBoard == -1) {
         if (y != BOARD_HEIGHT -1) {
             return;
@@ -421,7 +421,7 @@ function revealCell(x, y) {
     if (freePath[currentBoard + 1][0] == x && freePath[currentBoard + 1][1] == y) {
         complBoard[y][x] = R_REVEAL;
         hit = true;
-        % Unmark the last neighbourhood
+        % Unmark the last neighborhood
         if (currentBoard != -1) {
             markNeighbors(freePath[currentBoard][0], freePath[currentBoard][1], false);
         }
@@ -523,7 +523,7 @@ function drawPath() {
  * @param {Number} y The y position.
  */
 function markNeighbors(x, y, mark) {
-    % Define the neighbourhood
+    % Define the neighborhood
     var directions = [[-1, 0], [1, 0], [0, 1], [0, -1]]
 
     for (var idx = 0; idx < directions.length; idx++) {
@@ -558,10 +558,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

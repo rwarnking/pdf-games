@@ -27,7 +27,7 @@
 \def\atkAnimCells{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{asciimon}
 
@@ -764,9 +764,7 @@ const ATTACK_LIST = new Array(
 );
 
 % Item access constants
-% NAME = 0
 const DESC = 1;
-% const COUNT = 1; % TODO
 
 % Array of all available items
 const ITEM_LIST = new Array(
@@ -785,32 +783,32 @@ const EXP_TABLE = [];
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Init the GUI
-    initialiseButtons();
+function initialize() {
+    % Initialize the GUI
+    initializeButtons();
     updateButtontxt();
 
-    % Init exp table
+    % Initialize exp table
     for (var i = 0; i < MAX_LVL + 1; i++) {
         % original formula 250 * i * (i + 1)
         EXP_TABLE.push((START_EXP + 65 * (i - 5)) * (i - 5 + 1));
     }
     EXP_TABLE.push(Infinity);
 
-    % Initialise the player and enemy creature
+    % Initialize the player and enemy creature
     % Player items are already initialized to empty
     curCreatureIdx = 0;
     curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
@@ -830,14 +828,14 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct font and text size.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function
+    % Assign each button the corresponding function
     this.getField("restart").setAction("MouseUp", "restart();");
 
     % Hide the damage table
@@ -872,11 +870,11 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 
-    printInfoText("Initialised the game. Beat the current enemy creature.");
+    printInfoText("Initialized the game. Beat the current enemy creature.");
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
     % Restart only if no animation is running
@@ -892,7 +890,7 @@ function restart() {
     gameover = false;
     guiState = MENU;
 
-    % Initialise the player and enemy creature
+    % Initialize the player and enemy creature
     for (var i = 0; i < curPlayerCreatures.length; i++) {
         curPlayerCreatures[i] = ["Empty"];
     }
@@ -900,7 +898,7 @@ function restart() {
     curPlayerCreatures[curCreatureIdx] = getCreature(MIN_LVL);
     curEnemy = getEnemy();
 
-    % Initialise the player items to empty
+    % Initialize the player items to empty
     for (var i = 0; i < curPlayerItems.length; i++) {
         curPlayerItems[i] = [0, 0];
     }
@@ -1551,7 +1549,7 @@ function getCreature(curLvl) {
 
     var hp = Math.ceil(CREATURE_LIST[creature][HP_GAIN] * curLvl);
 
-    % TODO dont copy everything, have an id to the original list and
+    % TODO do not copy everything, have an id to the original list and
     % extra attributes for the instance variables
     return [
         CREATURE_LIST[creature][NAME],
@@ -1628,7 +1626,6 @@ function updatePlayerTxt() {
 
     var resStr = "";
     for (var i = 0; i < MAX_HP_SYMBS * (creature[CUR_HP] / creature[MAX_HP]); i++) {
-        %resStr += "#";
         resStr += String.fromCharCode(0x2588);
     }
 
@@ -1647,7 +1644,6 @@ function updateEnemyTxt() {
 
     var resStr = "";
     for (var i = 0; i < MAX_HP_SYMBS * (curEnemy[CUR_HP] / curEnemy[MAX_HP]); i++) {
-        %resStr += "#";
         resStr += String.fromCharCode(0x2588);
     }
     this.getField("enemystatus").value = resStr;
@@ -1788,7 +1784,7 @@ function setCanvasData() {
 }
 
 /**
- * Alters the position of the given particlce by using gravity.
+ * Alters the position of the given particle by using gravity.
  * The floor can be used to achieve a jumping motion.
  * Very similar the implementation found here:
  * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
@@ -1887,7 +1883,7 @@ function waterParticles(target) {
 
         const w = particles[p][WIDTH];
         var xPos = canvas.l[target] + w + (p - 1) * w * 2.0;
-        % Init particle - rotation ...
+        % Initialize particle - rotation ...
         particles[p][STATE]++;
         particles[p][POS] = [xPos, 0];
         particles[p][SYMB] = p \% (particleSys.particleSymbols.length - 1);
@@ -1962,7 +1958,7 @@ function airParticles(target) {
                 return false;
             }
 
-            % Get random y pos
+            % Get random y position
             yPos = bot + particles[p][HEIGHT] +
                 getRandomInt((canvas.halfHeight - particles[p][HEIGHT]) * 2.0);
             pos = [left + particles[p][WIDTH], yPos];
@@ -1977,7 +1973,7 @@ function airParticles(target) {
             }
         }
 
-        % Init particle
+        % Initialize particle
         particles[p][STATE]++;
         particles[p][POS] = pos;
         particles[p][SYMB] = getRandomInt(particleSys.particleSymbols.length);
@@ -2006,7 +2002,7 @@ function airParticles(target) {
         } else {
             % Take the x position of the leader particle
             pos = [particles[p - 1][POS][X], particles[p][POS][Y]];
-            % If the leader is already outofbounds
+            % If the leader is already out of bounds
             if (pos[X] >= right - particles[p][WIDTH]) {
                 pos[X] -= 2.0 * particles[p][WIDTH];
                 % If the particle is near the leader, move to max
@@ -2220,7 +2216,7 @@ function fluffParticles(target) {
 }
 
 /**
- * Sets up a fire particle system, in which ascii-fire
+ * Sets up a fire particle system, in which ASCII-fire
  * is overlayed over the target canvas.
  * @param {Number} target The target-idx of the canvas.
  */
@@ -2651,10 +2647,10 @@ function addInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 

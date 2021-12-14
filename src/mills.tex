@@ -26,7 +26,7 @@
 \def\columns{8}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{mills}
 
@@ -136,9 +136,9 @@ const BOX_POSITIONS = [
 ];
 
 %%%%%%%%%%%%%%
-% NEIGHBOURS %
+% NEIGHBORS %
 %%%%%%%%%%%%%%
-const NEIGHBOURS = [
+const NEIGHBORS = [
     [[[0, 7], [0, 1]], [[0, 0], [1, 1], [0, 2]],
      [[0, 1], [0, 3]], [[0, 2], [1, 3], [0, 4]],
      [[0, 3], [0, 5]], [[0, 4], [1, 5], [0, 6]],
@@ -172,28 +172,28 @@ const PLAYER_STR = [
 %%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Init the GUI
-    initialiseButtons();
+function initialize() {
+    % Initialize the GUI
+    initializeButtons();
 
     refreshGUIstoneCounts();
     drawAll();
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     % Set the callbacks and attributes of each cell
@@ -221,11 +221,11 @@ function initialiseButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 
-    printInfoText("Initialised game. " + PLAYER_STR[turn] + ": Your turn!");
+    printInfoText("Initialized game. " + PLAYER_STR[turn] + ": Your turn!");
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
     % Reset array to be empty
@@ -323,7 +323,7 @@ function place(m, n) {
 
 /**
  * Places a player stone on the given position.
- * If placeing the stone leads to a mill the removing state
+ * If placing the stone leads to a mill the removing state
  * is enabled. If there are no further stones to place the
  * moving state is enabled.
  *
@@ -361,7 +361,7 @@ function placing(m, n) {
 /**
  * Processes the given position as a move operation.
  * Two inputs are needed, the source and the target position.
- * If the positions are in a neighbourhood or the player has only
+ * If the positions are in a neighborhood or the player has only
  * three stones left the piece is moved.
  * The source piece must be of the player type, while the
  * target position needs to be empty.
@@ -371,7 +371,7 @@ function placing(m, n) {
  */
 function moving(m, n) {
     if (lastClick != null) {
-        % Unselect if clicked on the same cell again
+        % Deselect if clicked on the same cell again
         if (m == lastClick[0] && n == lastClick[1]) {
             % Disable highlight
             highlight(lastClick[0], lastClick[1], false);
@@ -383,7 +383,7 @@ function moving(m, n) {
             printInfoText(PLAYER_STR[turn] + ": Please select an empty position.");
             return;
         }
-        % Only allow moves to neighbouring cells, unless the player has 3 pieces left
+        % Only allow moves to neighboring cells, unless the player has 3 pieces left
         if (!isNeighbour(m, n) &&
             !(
                 ((turn == P_1) && (stones[P_1] + stonesToPlace[P_1] == 3)) ||
@@ -401,7 +401,7 @@ function moving(m, n) {
         run = app.setInterval(callback, ANIMATION_SPEED);
         lastClick = null;
     } else {
-        % Ensure selection of an actuall stone
+        % Ensure selection of an actual stone
         if (complBoard[m][n] == EMPTY) {
             printInfoText(PLAYER_STR[turn] + ": Please select non empty position.");
             return;
@@ -421,7 +421,7 @@ function moving(m, n) {
 /**
  * Function for an animated cell. The cell is moved between two
  * given positions by linear interpolation.
- * The startposition and the center position are redrawn at
+ * The start position and the center position are redrawn at
  * appropriate times.
  *
  * @param {Number} m1 The source x position.
@@ -433,7 +433,7 @@ function moveAnimation(m1, n1, m2, n2) {
     % Get animation cell
     var cell = this.getField("animationCell");
 
-    % Stop animation and reset if timelimit is reached
+    % Stop animation and reset if time limit is reached
     if (timestep >= 1.0) {
         % Redraw
         complBoard[m2][n2] = turn;
@@ -505,16 +505,16 @@ function removing(m, n) {
 }
 
 /**
- * Checks the neighbourhood of a position for
- * beeing in the vacinity of the lastClick position.
+ * Checks the neighborhood of a position for
+ * being in the vicinity of the lastClick position.
 
  * @param {Number} m The m position.
  * @param {Number} n The n position.
- * @return {Boolen} True if the position is in the vacinity, else false.
+ * @return {Boolen} True if the position is in the vicinity, else false.
  */
 function isNeighbour(m, n) {
-    for (var i = 0; i < NEIGHBOURS[m][n].length; i++) {
-        var neighbour = NEIGHBOURS[m][n][i];
+    for (var i = 0; i < NEIGHBORS[m][n].length; i++) {
+        var neighbour = NEIGHBORS[m][n][i];
         if (neighbour[0] == lastClick[0] && neighbour[1] == lastClick[1]) {
             return true;
         }
@@ -523,7 +523,7 @@ function isNeighbour(m, n) {
 }
 
 /**
- * Checks the given position for beeing part of a mill.
+ * Checks the given position for being part of a mill.
 
  * @param {Number} m The m position.
  * @param {Number} n The n position.
@@ -531,9 +531,9 @@ function isNeighbour(m, n) {
  */
 function checkMills(m, n) {
     var p = complBoard[m][n];
-    % Check differ depending on arrayposition beeing even or odd
+    % Check differ depending on array position being even or odd
     if (n \% 2 == 0) {
-        % Check in a line up and down with m, n beeing at the end of the line
+        % Check in a line up and down with m, n being at the end of the line
         var n_m2 = (n + 8 - 2) \% 8;
         if (complBoard[m][n + 1] == p && complBoard[m][(n + 2) \% 8] == p ||
             complBoard[m][n_m2 + 1] == p && complBoard[m][n_m2] == p
@@ -541,7 +541,7 @@ function checkMills(m, n) {
             return true;
         }
     } else {
-        % Check in a line up and down with m, n beeing at the center of the line
+        % Check in a line up and down with m, n being at the center of the line
         var m_m1 = (m + 3 - 1) \% 3;
         var m_p1 = (m + 1) \% 3;
         if (complBoard[m][n - 1] == p && complBoard[m][(n + 1) \% 8] == p ||
@@ -556,7 +556,7 @@ function checkMills(m, n) {
 
 /**
  * Checks if a given player has any moves left.
- * Iterates all cells and checks its neighbourhood for empty cells.
+ * Iterates all cells and checks its neighborhood for empty cells.
  * @param {Number} player The player value in the complBoard.
  * @return {Boolen} True if no moves are left, else false.
  */
@@ -572,9 +572,9 @@ function hasNoMoves(player) {
             if (complBoard[m][n] != player) {
                 continue;
             }
-            % Check all neighbours for beeing empty
-            for (var i = 0; i < NEIGHBOURS[m][n].length; i++) {
-                var neighbour = NEIGHBOURS[m][n][i];
+            % Check all neighbors for being empty
+            for (var i = 0; i < NEIGHBORS[m][n].length; i++) {
+                var neighbour = NEIGHBORS[m][n][i];
                 if (complBoard[neighbour[0]][neighbour[1]] == EMPTY) {
                     return false;
                 }
@@ -670,10 +670,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
