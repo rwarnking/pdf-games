@@ -711,7 +711,7 @@ function printInfoText(text) {
         % Calculate the max height of a text cell
         % 2pt for each TextField, 5pt for distance between cards, 2 * 5pt for margin inside a card
         \FPeval{\resultH}{\boardHeight * 4 * 2 + \boardHeight * 5 + \boardHeight * 5 * 2}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt) / (\boardHeight * 5) \relax}
+        \def\cellHeight{\dimexpr (500 pt -\resultH pt) / (\boardHeight * 5) \relax}
 
         \begin{center}
             \tiny
@@ -725,15 +725,15 @@ function printInfoText(text) {
                                 \centering%
                                 % Sadly xintFor* does not work inside a PushButton
                                 % so the elements need to be copy pasted
-                                \TextField[name=field0#1#2, height=\blocksizeH,%
+                                \TextField[name=field0#1#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
-                                \TextField[name=field1#1#2, height=\blocksizeH,%
+                                \TextField[name=field1#1#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
-                                \TextField[name=field2#1#2, height=\blocksizeH,%
+                                \TextField[name=field2#1#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
-                                \TextField[name=field3#1#2, height=\blocksizeH,%
+                                \TextField[name=field3#1#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
-                                \TextField[name=field4#1#2, height=\blocksizeH,%
+                                \TextField[name=field4#1#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\%
                             \end{tcolorbox}%
                         }%
