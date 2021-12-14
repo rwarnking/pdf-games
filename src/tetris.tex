@@ -22,8 +22,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % TODO needs to be atleast 4
 % Can be changed but impacts the performance
-\def\fieldWidth{10}
-\def\fieldHeight{16}
+\def\boardWidth{10}
+\def\boardHeight{16}
 % Higher means slower
 \def\GAMESPEED{5}
 
@@ -35,13 +35,13 @@
 const GAME_DESC = "Tetris is a puzzle game where you get stones of a specific shape.\
 These must be placed in such a manner that they build a complete line.\
 A line will be removed to make space for more stones. With increasing amount\
-of removed lines the gamespeed will increase. When the top of the field\
+of removed lines the game speed will increase. When the top of the board\
 is reached the game is over.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const HALF_FIELD_WIDTH = Math.floor(FIELD_WIDTH / 2.0);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const HALF_BOARD_WIDTH = Math.floor(BOARD_WIDTH / 2.0);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 
 % Constants
 const EMPTY = 0;
@@ -49,8 +49,8 @@ const EMPTY = 0;
 % Globals
 % Animation interval variable
 var run;
-% The game field
-var complField = new Array();
+% The game board
+var complBoard = new Array();
 
 var focus = true;
 var loopTimer = 0;
@@ -62,52 +62,52 @@ var shouldEmitStone = true;
 const STONES = new Array(
     % Bar
     new Array(
-        new Array(HALF_FIELD_WIDTH - 2, 0),
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(HALF_BOARD_WIDTH - 2, 0),
+        new Array(HALF_BOARD_WIDTH - 1, 0),
+        new Array(HALF_BOARD_WIDTH, 0),
+        new Array(HALF_BOARD_WIDTH + 1, 0)
     ),
     % Cube
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1)
+        new Array(HALF_BOARD_WIDTH - 1, 0),
+        new Array(HALF_BOARD_WIDTH - 1, 1),
+        new Array(HALF_BOARD_WIDTH, 0),
+        new Array(HALF_BOARD_WIDTH, 1)
     ),
     % T
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(HALF_BOARD_WIDTH - 1, 0),
+        new Array(HALF_BOARD_WIDTH, 0),
+        new Array(HALF_BOARD_WIDTH, 1),
+        new Array(HALF_BOARD_WIDTH + 1, 0)
     ),
     % Z
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH + 1, 1)
+        new Array(HALF_BOARD_WIDTH - 1, 0),
+        new Array(HALF_BOARD_WIDTH, 0),
+        new Array(HALF_BOARD_WIDTH, 1),
+        new Array(HALF_BOARD_WIDTH + 1, 1)
     ),
     % L
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 1)
+        new Array(HALF_BOARD_WIDTH - 1, 0),
+        new Array(HALF_BOARD_WIDTH, 0),
+        new Array(HALF_BOARD_WIDTH + 1, 0),
+        new Array(HALF_BOARD_WIDTH + 1, 1)
     ),
     % J
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(HALF_BOARD_WIDTH - 1, 1),
+        new Array(HALF_BOARD_WIDTH - 1, 0),
+        new Array(HALF_BOARD_WIDTH, 0),
+        new Array(HALF_BOARD_WIDTH + 1, 0)
     ),
     % S
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(HALF_BOARD_WIDTH - 1, 1),
+        new Array(HALF_BOARD_WIDTH, 1),
+        new Array(HALF_BOARD_WIDTH, 0),
+        new Array(HALF_BOARD_WIDTH + 1, 0)
     )
 );
 
@@ -122,21 +122,21 @@ const COLORS = new Array(
 );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
 function initialise() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
         var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
             tmp.push(EMPTY);
         }
-        complField.push(tmp);
+        complBoard.push(tmp);
     }
 
-    % Init the GUI
+    % Initialize the GUI
     initialiseButtons();
 
     % Start the animation interval
@@ -144,14 +144,14 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("input1").setFocus();
 
     this.getField("left").setAction("MouseUp", "move('a');");
@@ -170,13 +170,13 @@ function initialiseButtons() {
 }
 
 /**
- * Resets the gamefield to an empty field and restarts the game.
+ * Resets the board to empty and restarts the game.
  */
 function restart() {
     this.getField("points").value = 0;
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            complField[row][column] = EMPTY;
+    for (var row = 0; row < BOARD_HEIGHT; row++) {
+        for (var column = 0; column < BOARD_WIDTH; column++) {
+            complBoard[row][column] = EMPTY;
         }
     }
 
@@ -223,13 +223,13 @@ function tooltip(on) {
 % Loop %
 %%%%%%%%
 /**
- * Main loop, responsible for processing the input, updating the field
+ * Main loop, responsible for processing the input, updating the board
  * and drawing.
  */
 function runAll() {
     loopTimer++;
     processInput();
-    updateField();
+    updateBoard();
     if (!shouldEmitStone) {
         drawAll();
         % Stone needs to be removed so the gameover detection does not
@@ -249,8 +249,8 @@ function runAll() {
  * @return {Boolean} If the game is over true else false.
  */
 function gameover() {
-    for (var column = 0; column < FIELD_WIDTH; column++) {
-        if (complField[0][column] != 0) {
+    for (var column = 0; column < BOARD_WIDTH; column++) {
+        if (complBoard[0][column] != 0) {
             return true;
         }
     }
@@ -258,7 +258,7 @@ function gameover() {
 }
 
 /**
- * Emits a new random stone by adding it to the field.
+ * Emits a new random stone by adding it to the board.
  */
 function emitStone() {
     % Random color
@@ -272,21 +272,21 @@ function emitStone() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        complField[y][x] = stoneColor;
+        complBoard[y][x] = stoneColor;
     }
     shouldEmitStone = false;
 }
 
 /**
  * Check if the stone collides with something below it or if it
- * reached the bottom of the field.
+ * reached the bottom of the board.
  * @return {Boolean} True when colliding else false
  */
 function collidesOrHeight() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        if (y + 1 >= FIELD_HEIGHT || complField[y + 1][x] != EMPTY) {
+        if (y + 1 >= BOARD_HEIGHT || complBoard[y + 1][x] != EMPTY) {
             return true;
         }
     }
@@ -295,14 +295,14 @@ function collidesOrHeight() {
 
 /**
  * Check if the stone collides with something on the left or if it
- * reached the left border of the field.
+ * reached the left border of the board.
  * @return {Boolean} True when colliding else false
  */
 function collidesOrLeft() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        if (x - 1 < 0 || complField[y][x - 1] != EMPTY) {
+        if (x - 1 < 0 || complBoard[y][x - 1] != EMPTY) {
             return true;
         }
     }
@@ -311,14 +311,14 @@ function collidesOrLeft() {
 
 /**
  * Check if the stone collides with something on the right or if it
- * reached the right border of the field.
+ * reached the right border of the board.
  * @return {Boolean} True when colliding else false
  */
 function collidesOrRight() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        if (x + 1 >= FIELD_WIDTH || complField[y][x + 1] != EMPTY) {
+        if (x + 1 >= BOARD_WIDTH || complBoard[y][x + 1] != EMPTY) {
             return true;
         }
     }
@@ -326,19 +326,19 @@ function collidesOrRight() {
 }
 
 /**
- * Removes all full lines of the field if there are any by
+ * Removes all full lines of the board if there are any by
  * moving all lines above them down by one.
  * Add a new line at the top.
  */
 function removeLines() {
-    for (var y = FIELD_HEIGHT - 1; y >= 0; y--) {
-        for (var x = 0; x < FIELD_WIDTH; x++) {
-            % Line is not completly full
-            if (complField[y][x] == EMPTY) {
-                x = FIELD_WIDTH;
+    for (var y = BOARD_HEIGHT - 1; y >= 0; y--) {
+        for (var x = 0; x < BOARD_WIDTH; x++) {
+            % Line is not completely full
+            if (complBoard[y][x] == EMPTY) {
+                x = BOARD_WIDTH;
             }
-            % Last field of line is reached and it is not empty
-            else if (x == FIELD_WIDTH - 1 && complField[y][x] > EMPTY) {
+            % Last cell of line is reached and it is not empty
+            else if (x == BOARD_WIDTH - 1 && complBoard[y][x] > EMPTY) {
 
                 this.getField("points").value += 1000;
                 lineCount++;
@@ -349,14 +349,14 @@ function removeLines() {
                 }
                 % Remove the line by shifting all the lines above one down
                 for (var move_y = y; move_y > 0; move_y--) {
-                    complField[move_y] = complField[move_y - 1];
+                    complBoard[move_y] = complBoard[move_y - 1];
                 }
                 % Override the top line with a new one
                 var tmp = new Array();
-                for (var column = 0; column < FIELD_WIDTH; column++) {
+                for (var column = 0; column < BOARD_WIDTH; column++) {
                     tmp.push(EMPTY);
                 }
-                complField[0] = tmp;
+                complBoard[0] = tmp;
                 % Adjust y such that the shifted line is also tested
                 y++;
 
@@ -367,9 +367,9 @@ function removeLines() {
 
 /**
  * Emits new stone if needed or moves the current one unless there is a
- * collision then the stone is added to the field as unmoveable.
+ * collision then the stone is added to the board as unmovable.
  */
-function updateField() {
+function updateBoard() {
     if (shouldEmitStone) {
         emitStone();
     }
@@ -384,21 +384,21 @@ function updateField() {
                     stone[pice][1]++;
                     var x = stone[pice][0];
                     var y = stone[pice][1];
-                    complField[y][x] = stoneColor;
+                    complBoard[y][x] = stoneColor;
                 }
             } else {
                 for (var pice = 0; pice < stone.length; pice++) {
                     var x = stone[pice][0];
                     var y = stone[pice][1];
-                    complField[y][x] = stoneColor;
+                    complBoard[y][x] = stoneColor;
                 }
             }
         } else {
-            % Add the stone to the field array
+            % Add the stone to the board array
             for (var pice = 0; pice < stone.length; pice++) {
                 var x = stone[pice][0];
                 var y = stone[pice][1];
-                complField[y][x] = stoneColor;
+                complBoard[y][x] = stoneColor;
             }
             removeLines();
             shouldEmitStone = true;
@@ -407,14 +407,14 @@ function updateField() {
 }
 
 /**
- * Removes the stone from the field.
+ * Removes the stone from the board.
  * Should be used temporary.
  */
 function removeStone() {
     for (var pice = 0; pice < stone.length; pice++) {
         var x = stone[pice][0];
         var y = stone[pice][1];
-        complField[y][x] = EMPTY;
+        complBoard[y][x] = EMPTY;
     }
 }
 
@@ -536,11 +536,11 @@ function move(dir) {
  */
 function collidesOrOOB(x, y) {
     % Collides
-    if (complField[y][x] > EMPTY) {
+    if (complBoard[y][x] > EMPTY) {
          return true;
     }
     % Out of bounds
-    if (x < 0 || x >= FIELD_WIDTH || y < 0 || y >= FIELD_HEIGHT) {
+    if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT) {
         return true;
     }
     return false;
@@ -569,32 +569,32 @@ function rotate(cx, cy, x, y, angle) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draw all fields.
+ * Draw all cells.
  */
 function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var x = 0; x < BOARD_WIDTH; x++) {
+        for (var y = 0; y < BOARD_HEIGHT; y++) {
             draw(x, y);
         }
     }
 }
 
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
  *
  * @param {Number} x The x position.
  * @param {Number} y The y position.
  */
 function draw(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    if (complField[y][x] > 0) {
-        field.fillColor = COLORS[complField[y][x] - 1];
+    var cell = this.getField("pos" + x + "-" + y);
+    cell.delay = true;
+    if (complBoard[y][x] > 0) {
+        cell.fillColor = COLORS[complBoard[y][x] - 1];
     } else {
-        field.fillColor = color.white;
+        cell.fillColor = color.white;
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 \end{insDLJS}
@@ -624,29 +624,29 @@ function draw(x, y) {
         \end{multicols}
 
         % Dynamically adjust the cell width and height to the number of cells
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 3 - 2)} % chktex 8
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 3 + 3)}
-        \def\blocksizeH{\dimexpr (0.55\paperheight -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (0.55\paperheight -\resultH pt)/\boardHeight \relax}
 
         % The game board
         \begin{tcolorbox}
-            % Define the cellsize via the smaller amount
+            % Define the cell size via the smaller amount
             % Must be done here so the \linewidth has the correct value
-            \ifdim\blocksizeW<\blocksizeH
-                \def\blocksize{\blocksizeW}
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
             \else
-                \def\blocksize{\blocksizeH}
+                \def\cellsize{\cellHeight}
             \fi
 
             \begin{center}
                 \tiny
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\blocksize, height=\blocksize,%
+                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%

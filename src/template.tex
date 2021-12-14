@@ -24,7 +24,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
+% Obacht: It is discouraged to use a board with size bigger than 15x15 since the PDF might get
 % to slow to play
 \def\boardWidth{4}
 \def\boardHeight{3}
@@ -50,8 +50,8 @@ const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 % Constants
 
 % Globals
-% The game field
-%var complField = new Array();
+% The game board
+%var complBoard = new Array();
 
 % Color data
 const COLORS = new Array(
@@ -65,27 +65,27 @@ const COLORS = new Array(
 %%%%%%%%%%
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Init the GUI
-    initialiseButtons();
+function initialize() {
+    % Initialize the GUI
+    initializeButtons();
 
     %drawAll();
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     % app.focusRect = false;
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
     % this.getField("restart").highlight="none";
 
@@ -98,7 +98,7 @@ function initialiseButtons() {
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
     printInfoText("Restart");
@@ -180,7 +180,7 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Dokument
@@ -205,12 +205,12 @@ function printInfoText(text) {
         \end{multicols}
 
         % Dynamically adjust the cell width and height to the number of cells
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\boardWidth * 3 - 2)} % chktex 8
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\boardHeight * 3 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
 
         %%%%%%%%%%%%%%%%%%%%%%%
         % Commandredifinition %

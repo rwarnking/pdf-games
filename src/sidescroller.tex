@@ -20,8 +20,8 @@
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % These variables should not be changed
-\def\fieldWidth{80}
-\def\fieldHeight{30}
+\def\canvasCharWidth{80}
+\def\canvasCharHeight{30}
 \def\obstacleCount{5}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -36,8 +36,8 @@ The player is only able to move up by pressing either w or space on his keyboard
 If nothing is pressed the player will move downwards automatically.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const CANVAS_CHAR_W = AFMakeNumber(\canvasCharWidth);
+const CANVAS_CHAR_H = AFMakeNumber(\canvasCharHeight);
 const OBSTACLE_COUNT = AFMakeNumber(\obstacleCount);
 const SCREEN_TEXT_SIZE = 800;
 const TEXT_SIZE = 40;
@@ -46,7 +46,7 @@ const ANIMATION_SPEED = 5;
 % Constants
 const LINE_OFFSET = 2;
 const START_TOP_LINE = LINE_OFFSET;
-const START_BOT_LINE = FIELD_HEIGHT - LINE_OFFSET - 1;
+const START_BOT_LINE = CANVAS_CHAR_H - LINE_OFFSET - 1;
 
 % Access constants
 const X = 0;
@@ -65,9 +65,9 @@ const CANVAS_WIDTH = CANVAS_LTRB[RIGHT] - CANVAS_LTRB[LEFT];
 const CANVAS_CENTER_H = CANVAS_HEIGHT * 0.5 + CANVAS_LTRB[BOT];
 const CANVAS_CENTER_W = CANVAS_WIDTH * 0.5 + CANVAS_LTRB[LEFT];
 % Calculate units per char
-const PER_CHAR = CANVAS_WIDTH / FIELD_WIDTH;
+const PER_CHAR = CANVAS_WIDTH / CANVAS_CHAR_W;
 % Calculate units per line
-const PER_LINE = CANVAS_HEIGHT / FIELD_HEIGHT;
+const PER_LINE = CANVAS_HEIGHT / CANVAS_CHAR_H;
 % Gravity stats
 const GRAVITY = [0.0, -0.25];
 var force = [0.0, 0.0];
@@ -81,7 +81,7 @@ const PLAYER_MASS = 0.5;
 var gameInterval;
 var gameover = false;
 % The game duration
-var fieldCounter = 0;
+var charCounter = 0;
 % Indicator which input element is focused currently
 var focus = true;
 % Player attributes
@@ -125,17 +125,17 @@ const SYMBOLS = [
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random float between the param min and the param max.
- * @param {Number} min The lowerbound.
- * @param {Number} max The upperbound.
+ * Returns a random float between the parameter min and the parameter max.
+ * @param {Number} min The lower bound.
+ * @param {Number} max The upper bound.
  */
 function getRandomFloat(min, max) {
     return min + Math.random() * (max - min);
 }
 
 /**
- * Returns a random integer between 0 and the param.
- * @param {Number} max The upperbound.
+ * Returns a random integer between 0 and the parameter.
+ * @param {Number} max The upper bound.
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
@@ -145,10 +145,10 @@ function getRandomInt(max) {
 % Initialisation and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
 function initialise() {
-    % Init the GUI
+    % Initialize the GUI
     initialiseButtons();
 
     % Player rendering
@@ -160,7 +160,7 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
 function initialiseButtons() {
@@ -172,26 +172,26 @@ function initialiseButtons() {
 
     % Adjust text size and font
     var line;
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
+    for (var m = 0; m < CANVAS_CHAR_H; m++) {
         line = this.getField("line" + m);
-        line.textSize = SCREEN_TEXT_SIZE / FIELD_WIDTH;
+        line.textSize = SCREEN_TEXT_SIZE / CANVAS_CHAR_W;
         line.textFont = font.Cour;
     }
 
     % Init player
-    var field = this.getField("player");
-    field.value = String.fromCharCode(0x261B);
-    field.textSize = TEXT_SIZE;
-    field.hidden = false;
+    var cell = this.getField("player");
+    cell.value = String.fromCharCode(0x261B);
+    cell.textSize = TEXT_SIZE;
+    cell.hidden = false;
 
     % Init obstacles
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
         obstacles.push([-1, -1, "#"]);
-        field = this.getField("obstacle" + i);
-        field.textSize = TEXT_SIZE;
+        cell = this.getField("obstacle" + i);
+        cell.textSize = TEXT_SIZE;
     }
 
-    % Assign each button the coresponding function and disable the highlights
+    % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
 
     % Tooltip setup
@@ -204,7 +204,7 @@ function initialiseButtons() {
  */
 function restart() {
     % If in animation do not restart
-    if (fieldCounter < FIELD_WIDTH) {
+    if (charCounter < CANVAS_CHAR_W) {
         return;
     }
     % In case the user restarted without gameover
@@ -212,15 +212,15 @@ function restart() {
         app.clearInterval(gameInterval);
     }
     gameover = false;
-    fieldCounter = 0;
+    charCounter = 0;
 
     % Reset for input
     focus = true;
     this.getField("input1").setFocus();
 
     % Reset canvas
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
-        setField("line" + m,  "");
+    for (var m = 0; m < CANVAS_CHAR_H; m++) {
+        setLine("line" + m,  "");
     }
 
     % Reset player
@@ -279,8 +279,8 @@ function tooltip(on) {
 %%%%%%%%%%%%%
 /**
  * The game loop. This is called repeatedly until the game is over.
- * It handels all game events like input, movement, spawning and
- * game-field adjustments. Each iteration is similar to one frame.
+ * It handles all game events like input, movement, spawning and
+ * canvas adjustments. Each iteration is similar to one frame.
  */
 function gameLoop() {
     % Cancel the interval
@@ -290,8 +290,8 @@ function gameLoop() {
         return;
     }
 
-    % Player movement, starts after the game-field is generated
-    if (fieldCounter >= FIELD_WIDTH) {
+    % Player movement, starts after the canvas is filled
+    if (charCounter >= CANVAS_CHAR_W) {
         processInput();
         applyGravityToPlayer();
     }
@@ -310,11 +310,11 @@ function gameLoop() {
         return;
     }
 
-    % Draw the field
-    drawField();
+    % Draw the canvas
+    drawCanvas();
 
-    % Starts after the game-field is generated
-    if (fieldCounter >= FIELD_WIDTH) {
+    % Starts after the canvas is filled
+    if (charCounter >= CANVAS_CHAR_W) {
         % Refresh obstacles
         refreshObstacles();
         % Draw the obstacles
@@ -325,10 +325,10 @@ function gameLoop() {
     drawPlayer();
 
     % Show current points or indicate that the game has not started yet.
-    if (fieldCounter < FIELD_WIDTH) {
+    if (charCounter < CANVAS_CHAR_W) {
         printInfoText("Wait for the game to finish generating.");
     } else {
-        printInfoText("You have currently " + (fieldCounter - FIELD_WIDTH) + " points.");
+        printInfoText("You have currently " + (charCounter - CANVAS_CHAR_W) + " points.");
     }
 }
 
@@ -342,7 +342,7 @@ function gameLoop() {
  */
 function refreshObstacles() {
     % Calculate units per line
-    const PER_LINE = CANVAS_HEIGHT / FIELD_HEIGHT;
+    const PER_LINE = CANVAS_HEIGHT / CANVAS_CHAR_H;
 
     var spawn = getRandomFloat(0.0, 1.0) > 0.9;
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
@@ -351,11 +351,11 @@ function refreshObstacles() {
             var x = CANVAS_LTRB[RIGHT] + OBSTACLE_WIDTH;
             % Calculate the Y-area in which spawning is allowed
             % Get current lines
-            var curTop = getLine(fieldCounter, START_TOP_LINE);
-            var curBot = getLine(fieldCounter, START_BOT_LINE);
+            var curTop = getLine(charCounter, START_TOP_LINE);
+            var curBot = getLine(charCounter, START_BOT_LINE);
             % Get bounds in units while keeping the lines in mind
             var uBound = CANVAS_LTRB[TOP] - curTop * PER_LINE - OBSTACLE_WIDTH;
-            var lBound = CANVAS_LTRB[BOT] + (FIELD_HEIGHT - curBot) * PER_LINE + OBSTACLE_WIDTH;
+            var lBound = CANVAS_LTRB[BOT] + (CANVAS_CHAR_H - curBot) * PER_LINE + OBSTACLE_WIDTH;
             var y = getRandomFloat(lBound, uBound);
 
             var symb = String.fromCharCode(SYMBOLS[getRandomInt(SYMBOLS.length)]);
@@ -363,7 +363,7 @@ function refreshObstacles() {
             % Only allow spawning once per frame
             spawn = false;
         } else {
-            % Move obstacle such that the speed matches the movement of the game-field
+            % Move obstacle such that the speed matches the movement of the boundary
             const OBSTACLE_MOVE_SPEED = 6;
             obstacles[i][X] -= OBSTACLE_MOVE_SPEED;
         }
@@ -399,7 +399,7 @@ function testCollisionObstacle() {
 
 %
 /**
- * Checks the current player hitbox against the top and bottom line.
+ * Checks the current player hit box against the top and bottom line.
  * If a collision was detected true is returned.
  * @return {Boolean} True if collision was detected, else false.
  */
@@ -410,12 +410,12 @@ function testCollisionLine() {
     const pBot = playerPos[Y] - PLAYER_WIDTH;
     const pMid = (pRight - pLeft) * 0.5 + pLeft;
 
-    % Approximate the current char postion at the center of the player
+    % Approximate the current char position at the center of the player
     % and get the top and bot line at that position.
     % Sample-positions does not move horizontally
     const sample = Math.round(pMid / PER_CHAR);
-    var curTop = getLine(fieldCounter - FIELD_WIDTH + sample, START_TOP_LINE);
-    var curBot = getLine(fieldCounter - FIELD_WIDTH + sample, START_BOT_LINE);
+    var curTop = getLine(charCounter - CANVAS_CHAR_W + sample, START_TOP_LINE);
+    var curBot = getLine(charCounter - CANVAS_CHAR_W + sample, START_BOT_LINE);
 
     % Compare the player height with the top and bot line height
     if (CANVAS_LTRB[TOP] - curTop * PER_LINE < pTop) {
@@ -499,7 +499,7 @@ function applyGravityToPlayer() {
  */
 function getLine(xPos, baseline) {
     const period = 1;
-    var rad = (xPos / FIELD_WIDTH) * Math.PI * 2.0 * period;
+    var rad = (xPos / CANVAS_CHAR_W) * Math.PI * 2.0 * period;
     return Math.round(Math.sin(rad) * LINE_OFFSET + baseline);
 }
 
@@ -508,26 +508,26 @@ function getLine(xPos, baseline) {
  * shifting all lines one to the left.
  * For the top and bot line a * is printed all other lines get a space.
  */
-function drawField() {
+function drawCanvas() {
     % Get the top and bot line
-    var tL = getLine(fieldCounter, START_TOP_LINE);
-    var bL = getLine(fieldCounter, START_BOT_LINE);
+    var tL = getLine(charCounter, START_TOP_LINE);
+    var bL = getLine(charCounter, START_BOT_LINE);
 
     % Shift all lines
-    for (var m = 0; m < FIELD_HEIGHT; m++) {
+    for (var m = 0; m < CANVAS_CHAR_H; m++) {
         var symb = " ";
         if (m == tL || m == bL) {
             symb = "*";
         }
 
-        addToField("line" + m,  symb);
+        addToLine("line" + m,  symb);
 
-        % Shift only after the field was filled once
-        if (fieldCounter >= FIELD_WIDTH) {
-            shiftFieldLeft("line" + m);
+        % Shift only after the canvas was filled once
+        if (charCounter >= CANVAS_CHAR_W) {
+            shiftLineLeft("line" + m);
         }
     }
-    fieldCounter++;
+    charCounter++;
 }
 
 /**
@@ -535,35 +535,35 @@ function drawField() {
  * adding the PLAYER_WIDTH to it.
  */
 function drawPlayer() {
-    var field = this.getField("player");
-    field.delay = true;
+    var player = this.getField("player");
+    player.delay = true;
 
     % upper-left x, upper-left y, lower-right x and lower-right y
-    field.rect = [
+    player.rect = [
         playerPos[X] - PLAYER_WIDTH,
         playerPos[Y] + PLAYER_WIDTH,
         playerPos[X] + PLAYER_WIDTH,
         playerPos[Y] - PLAYER_WIDTH
     ];
 
-    field.delay = false;
+    player.delay = false;
 }
 
 /**
  * Draws all obstacles by iterating through them and adjusting their rectangle.
  * The rectangle is capped at the left border and gradually appears at the right
- * border of the canvas. Sets also the value of the field to the obstacle symbol.
+ * border of the canvas. Sets also the value of the cell to the obstacle symbol.
  */
 function drawObstacles() {
     for (var i = 0; i < OBSTACLE_COUNT; i++) {
-        var field = this.getField("obstacle" + i);
-        field.delay = true;
-        field.value = obstacles[i][SYMB];
+        var obstacle = this.getField("obstacle" + i);
+        obstacle.delay = true;
+        obstacle.value = obstacles[i][SYMB];
 
         % upper-left x, upper-left y, lower-right x and lower-right y
         % Min and max are used to cap the rectangle at the borders.
         % This leads to a gradually (dis-)appearance at the borders.
-        field.rect = [
+        obstacle.rect = [
             Math.min(
                 Math.max(obstacles[i][X] - PLAYER_WIDTH, CANVAS_LTRB[LEFT]),
                 CANVAS_LTRB[RIGHT]
@@ -576,7 +576,7 @@ function drawObstacles() {
             obstacles[i][Y] - PLAYER_WIDTH
         ];
 
-        field.delay = false;
+        obstacle.delay = false;
     }
 }
 
@@ -586,55 +586,55 @@ function drawObstacles() {
  * @param {Boolen} enable True for enabling, else false.
  */
 function markObstacle(obs, enable) {
-    var field = this.getField("obstacle" + obs);
-    field.delay = true;
+    var obstacle = this.getField("obstacle" + obs);
+    obstacle.delay = true;
     if (enable) {
-        field.borderColor = color.blue;
+        obstacle.borderColor = color.blue;
     } else {
-        field.borderColor = color.transparent;
+        obstacle.borderColor = color.transparent;
     }
-    field.delay = false;
+    obstacle.delay = false;
 }
 
-%%%%%%%%%%%%%%%%%%%%%%
-% Modify cell values %
-%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Modify cell/line values %
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Shift the value of the given field.
+ * Shift the value of the given line.
  *
- * @param {Number} id The id of the field.
+ * @param {Number} id The id of the line.
  */
-function shiftFieldLeft(id) {
-    var cell = this.getField(id);
-    cell.delay = true;
-    cell.value = cell.value.substring(1);
-    cell.delay = false;
+function shiftLineLeft(id) {
+    var line = this.getField(id);
+    line.delay = true;
+    line.value = line.value.substring(1);
+    line.delay = false;
 }
 
 /**
- * Set string of the given field.
+ * Set string of the given line.
  *
- * @param {Number} id The id of the field.
+ * @param {Number} id The id of the line.
  * @param {String} value The value to set.
  */
-function setField(id, value) {
-    var cell = this.getField(id);
-    cell.delay = true;
-    cell.value = value;
-    cell.delay = false;
+function setLine(id, value) {
+    var line = this.getField(id);
+    line.delay = true;
+    line.value = value;
+    line.delay = false;
 }
 
 /**
- * Add string to the given field.
+ * Add string to the given line.
  *
- * @param {Number} id The id of the field.
+ * @param {Number} id The id of the line.
  * @param {String} value The value to add.
  */
-function addToField(id, value) {
-    var cell = this.getField(id);
-    cell.delay = true;
-    cell.value += value;
-    cell.delay = false;
+function addToLine(id, value) {
+    var line = this.getField(id);
+    line.delay = true;
+    line.value += value;
+    line.delay = false;
 }
 
 /**
@@ -673,13 +673,13 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max width and height of a block
-        \def\blocksizeH{\dimexpr (500 pt)/\fieldHeight \relax}
-        \def\blocksizeW{\dimexpr (500 pt) \relax}
+        % Calculate the max width and height of a cell
+        \def\lineHeight{\dimexpr (500 pt)/\canvasCharHeight \relax}
+        \def\lineWidth{\dimexpr (500 pt) \relax}
 
         \begin{center}
-            \xintFor* #1 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                \TextField[name=line#1, width=\blocksizeW, height=\blocksizeH,%
+            \xintFor* #1 in {\xintSeq{0}{\canvasCharHeight-1}} \do {%
+                \TextField[name=line#1, width=\lineWidth, height=\lineHeight,%
                     bordercolor=, readonly%
                 ]{}%
                 \\[0pt]%
