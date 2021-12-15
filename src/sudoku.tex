@@ -41,8 +41,11 @@ const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const SCREEN_TEXT_SIZE = 300;
 
 % Constants
+const M = 0;
+const N = 1;
+
 const NUMBERS = 9;
-const BOX_WIDTH = 3;
+const BOX_SIZE = 3;
 const EMPTY = 0;
 
 % Globals
@@ -101,19 +104,19 @@ function shuffle(a) {
  * generating a Sudoku.
  */
 function initialize() {
-    % Initlialise all arrays with a zero array
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var zArr1 = new Array();
-        var zArr2 = new Array();
-        var zArr3 = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            zArr1.push(EMPTY);
-            zArr2.push(EMPTY);
-            zArr3.push(EMPTY);
+    % Initialize all arrays with a zero array
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row1 = new Array();
+        var row2 = new Array();
+        var row3 = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row1.push(EMPTY);
+            row2.push(EMPTY);
+            row3.push(EMPTY);
         }
-        complBoard.push(zArr1);
-        solution.push(zArr2);
-        original.push(zArr3);
+        complBoard.push(row1);
+        solution.push(row2);
+        original.push(row3);
     }
 
     % Initialize the GUI
@@ -146,10 +149,10 @@ function initializeButtons() {
     % Define text style
     var funcName = "checkInput";
     var cell;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            cell = this.getField("pos" + x + "-" + y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
             cell.setAction("OnBlur", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
@@ -197,11 +200,11 @@ function tooltip(on) {
  */
 function enterSudoku() {
     % Clear all arrays to zero
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            complBoard[y][x] = EMPTY;
-            solution[y][x] = EMPTY;
-            original[y][x] = EMPTY;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
+            solution[m][n] = EMPTY;
+            original[m][n] = EMPTY;
         }
     }
 
@@ -232,9 +235,9 @@ function generateSudoku() {
     customMode = false;
 
     % Clear array
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            complBoard[y][x] = EMPTY;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
         }
     }
 
@@ -247,9 +250,9 @@ function generateSudoku() {
     % % Fill top left
     fillQuad(numberArray, 0, 0);
     % Fill middle
-    fillQuad(numberArray, BOX_WIDTH, BOX_WIDTH);
+    fillQuad(numberArray, BOX_SIZE, BOX_SIZE);
     % Fill bot right
-    fillQuad(numberArray, BOX_WIDTH * 2, BOX_WIDTH * 2);
+    fillQuad(numberArray, BOX_SIZE * 2, BOX_SIZE * 2);
 
     % Fill rest of the non-diagonal matrices.
     % For every cell to be filled, try all numbers until
@@ -261,9 +264,9 @@ function generateSudoku() {
     % Remove K elements randomly
     % Get all possible position combinations
     var positions = [];
-    for (var x = 0; x < NUMBERS; x++) {
-        for (var y = 0; y < NUMBERS; y++) {
-            positions.push([x, y]);
+    for (var m = 0; m < NUMBERS; m++) {
+        for (var n = 0; n < NUMBERS; n++) {
+            positions.push([m, n]);
         }
     }
     var num_elements = this.getField("elemcount").value;
@@ -272,15 +275,15 @@ function generateSudoku() {
         % Draw and remove one random element from the positions array
         rnd = getRandomInt(positions.length);
         var elem = positions[rnd];
-        complBoard[elem[1]][elem[0]] = EMPTY;
+        complBoard[elem[M]][elem[N]] = EMPTY;
         positions.splice(rnd, 1);
     }
 
     % Save the current board into the original array,
     % to allow for easy reset
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            original[y][x] = complBoard[y][x];
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            original[m][n] = complBoard[m][n];
         }
     }
 
@@ -295,20 +298,20 @@ function generateSudoku() {
  * achieve randomness.
  *
  * @param {Array} numberArray Array of numbers to fill the quad with
- * @param {Number} offsetX Select the x position of the quad
- * @param {Number} offsetY Select the y position of the quad
+ * @param {Number} offsetM Select the m position of the quad
+ * @param {Number} offsetN Select the n position of the quad
  */
-function fillQuad(numberArray, offsetX, offsetY) {
+function fillQuad(numberArray, offsetM, offsetN) {
     shuffle(numberArray);
 
-    var x = 0;
-    var y = 0;
+    var m = 0;
+    var n = 0;
     % Assign each number to a cell
     for (var idx = 0; idx < numberArray.length; idx++) {
         % Wrap to next line - expects the lines to be 3 in length
-        x = offsetX + (idx \% BOX_WIDTH);
-        y = offsetY + Math.floor(idx / BOX_WIDTH);
-        complBoard[y][x] = numberArray[idx];
+        m = offsetM + Math.floor(idx / BOX_SIZE);
+        n = offsetN + (idx \% BOX_SIZE);
+        complBoard[m][n] = numberArray[idx];
     }
 }
 
@@ -349,10 +352,10 @@ function solveSudoku() {
 
     % Apply candidates
     for (var idx = 0; idx < spaces.length; idx++) {
-        complBoard[spaces[idx][1]][spaces[idx][0]] = candidates[idx][indices[idx]];
+        complBoard[spaces[idx][M]][spaces[idx][N]] = candidates[idx][indices[idx]];
 
         % When the cell value is not valid increase indices and reset complBoard and idx
-        if (!isCellValid(spaces[idx][0], spaces[idx][1])) {
+        if (!isCellValid(spaces[idx][M], spaces[idx][N])) {
 
             var tmpIdx = idx;
             % Increment the current index
@@ -374,7 +377,7 @@ function solveSudoku() {
 
             % Reverse not valid solution
             for (var idx2 = 0; idx2 <= idx; idx2++) {
-                complBoard[spaces[idx2][1]][spaces[idx2][0]] = EMPTY;
+                complBoard[spaces[idx2][M]][spaces[idx2][N]] = EMPTY;
             }
 
             % Restart the idx counter since the solution for the spaces did not work
@@ -383,9 +386,9 @@ function solveSudoku() {
     }
 
     % Save complete solution since we already generated it here
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            solution[y][x] = complBoard[y][x];
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            solution[m][n] = complBoard[m][n];
         }
     }
 
@@ -393,17 +396,17 @@ function solveSudoku() {
 }
 
 /**
- * Returns an array of positions ([x, y]) at which
+ * Returns an array of positions ([m, n]) at which
  * the complBoard contains a zero (0) and is therefore EMPTY.
  *
  * @return {Array} Array of empty spaces
  */
 function getEmptySpaces() {
     var spaces = [];
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            if (complBoard[y][x] == EMPTY) {
-                spaces.push([x, y]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n] == EMPTY) {
+                spaces.push([m, n]);
             }
         }
     }
@@ -430,27 +433,27 @@ function getCandidates(spaces) {
     % Iterate all spaces that need to be filled
     for (var idx = 0; idx < spaces.length; idx++) {
         % Check the row for all numbers that are set
-        for (var x = 0; x < BOARD_WIDTH; x++) {
-            num = complBoard[spaces[idx][1]][x];
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            num = complBoard[spaces[idx][M]][n];
             if (num > EMPTY) {
                 disallowed[num - 1] = false;
             }
         }
 
         % Check the column for all numbers that are set
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            num = complBoard[y][spaces[idx][0]];
+        for (var m = 0; m < BOARD_HEIGHT; m++) {
+            num = complBoard[m][spaces[idx][N]];
             if (num > EMPTY) {
                 disallowed[num - 1] = false;
             }
         }
 
         % Check the box for all numbers that are set
-        var xQuad = Math.floor(spaces[idx][0] / BOX_WIDTH);
-        var yQuad = Math.floor(spaces[idx][1] / BOX_WIDTH);
-        for (var x = xQuad * BOX_WIDTH; x < xQuad * BOX_WIDTH + BOX_WIDTH; x++) {
-            for (var y = yQuad * BOX_WIDTH; y < yQuad * BOX_WIDTH + BOX_WIDTH; y++) {
-                num = complBoard[y][x];
+        var mQuad = Math.floor(spaces[idx][M] / BOX_SIZE);
+        var nQuad = Math.floor(spaces[idx][N] / BOX_SIZE);
+        for (var m = mQuad * BOX_SIZE; m < mQuad * BOX_SIZE + BOX_SIZE; m++) {
+            for (var n = nQuad * BOX_SIZE; n < nQuad * BOX_SIZE + BOX_SIZE; n++) {
+                num = complBoard[m][n];
                 if (num > EMPTY) {
                     disallowed[num - 1] = false;
                 }
@@ -479,35 +482,35 @@ function getCandidates(spaces) {
  * for conflicts with the Sudoku rules
  * given the current numbers on the board.
  *
- * @param {Number} valX X-coordinate of the cell
- * @param {Number} valY Y-coordinate of the cell
+ * @param {Number} valM M-coordinate of the cell
+ * @param {Number} valM N-coordinate of the cell
  * @return {Boolean} Returns true if cell value is valid else false.
  */
-function isCellValid(valX, valY) {
+function isCellValid(valM, valN) {
     % Get the value
-    var value = complBoard[valY][valX];
+    var value = complBoard[valM][valN];
 
     % Check all possibly conflicting cells for the same value
     % Check the row
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        if (complBoard[valY][x] == value && x != valX) {
+    for (var n = 0; n < BOARD_WIDTH; n++) {
+        if (complBoard[valM][n] == value && n != valN) {
             return false;
         }
     }
 
     % Check the column
-    for (var y = 0; y < BOARD_HEIGHT; y++) {
-        if (complBoard[y][valX] == value && y != valY) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        if (complBoard[m][valN] == value && m != valM) {
             return false;
         }
     }
 
     % Check the box
-    var xQuad = Math.floor(valX / BOX_WIDTH);
-    var yQuad = Math.floor(valY / BOX_WIDTH);
-    for (var x = xQuad * BOX_WIDTH; x < xQuad * BOX_WIDTH + BOX_WIDTH; x++) {
-        for (var y = yQuad * BOX_WIDTH; y < yQuad * BOX_WIDTH + BOX_WIDTH; y++) {
-            if (complBoard[y][x] == value && (y != valY || x != valX)) {
+    var mQuad = Math.floor(valM / BOX_SIZE);
+    var nQuad = Math.floor(valN / BOX_SIZE);
+    for (var m = mQuad * BOX_SIZE; m < mQuad * BOX_SIZE + BOX_SIZE; m++) {
+        for (var n = nQuad * BOX_SIZE; n < nQuad * BOX_SIZE + BOX_SIZE; n++) {
+            if (complBoard[m][n] == value && (m != valM || n != valN)) {
                 return false;
             }
         }
@@ -522,15 +525,15 @@ function isCellValid(valX, valY) {
  * If the value is not allowed by the Sudoku rules
  * the cell is marked red and green otherwise.
  *
- * @param {Number} x X-coordinate
- * @param {Number} y Y-coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  */
-function checkInput(x, y) {
+function checkInput(m, n) {
     % Get the value that was committed
-    var cell = this.getField("pos" + x + "-" + y);
+    var cell = this.getField("cell" + m + "-" + n);
 
     % If the value did not change do not do anything
-    if (complBoard[y][x] == cell.value) {
+    if (complBoard[m][n] == cell.value) {
         return;
     }
     cell.delay = true;
@@ -538,8 +541,8 @@ function checkInput(x, y) {
     % When the value is inside the bounds
     % validate it and color the cell correspondingly.
     if (cell.value > 0 && cell.value < 10) {
-        complBoard[y][x] = cell.value;
-        if (isCellValid(x, y)) {
+        complBoard[m][n] = cell.value;
+        if (isCellValid(m, n)) {
             cell.fillColor = COLORS[2];
         } else {
             cell.fillColor = COLORS[3];
@@ -561,10 +564,10 @@ function checkInput(x, y) {
  * Resets the Sudoku to the original generated one.
  */
 function resetSudoku() {
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            complBoard[y][x] = original[y][x];
-            refreshCell(x, y, COLORS[1]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = original[m][n];
+            refreshCell(m, n, COLORS[1]);
         }
     }
 }
@@ -579,11 +582,11 @@ function showHint() {
         solveSudoku();
     }
 
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            if (complBoard[y][x] == EMPTY) {
-                complBoard[y][x] = solution[y][x];
-                refreshCell(x, y, COLORS[1]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n] == EMPTY) {
+                complBoard[m][n] = solution[m][n];
+                refreshCell(m, n, COLORS[1]);
                 return;
             }
         }
@@ -602,11 +605,11 @@ function showSolution() {
     }
 
     % Just copy all values from the solution array
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            if (complBoard[y][x] == EMPTY || customMode) {
-                complBoard[y][x] = solution[y][x];
-                refreshCell(x, y, COLORS[0]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n] == EMPTY || customMode) {
+                complBoard[m][n] = solution[m][n];
+                refreshCell(m, n, COLORS[0]);
             }
         }
     }
@@ -615,17 +618,17 @@ function showSolution() {
 /**
  * Refreshes value of one input cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @param {Array} color The RGB color.
  *              Gray for given cells, green for correct cells,
  *              Red for wrong cells, white for empty cells.
  */
-function refreshCell(x, y, color) {
-    var cell = this.getField("pos" + x + "-" + y);
+function refreshCell(m, n, color) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
-    if (complBoard[y][x] > EMPTY) {
-        cell.value = complBoard[y][x];
+    if (complBoard[m][n] > EMPTY) {
+        cell.value = complBoard[m][n];
         cell.fillColor = color;
     } else {
         cell.value = "";
@@ -640,12 +643,12 @@ function refreshCell(x, y, color) {
  * @param {Boolean} color Should the cells be colored.
  */
 function drawAll(color) {
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            cell = this.getField("pos" + x + "-" + y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            cell = this.getField("cell" + m + "-" + n);
             cell.delay = true;
-            if (complBoard[y][x] > EMPTY) {
-                cell.value = complBoard[y][x];
+            if (complBoard[m][n] > EMPTY) {
+                cell.value = complBoard[m][n];
                 if (color) {
                     cell.fillColor = COLORS[1];
                     cell.readonly = true;
@@ -717,27 +720,27 @@ function printInfoText(text) {
             \fi
 
             \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \ifnum#2=3%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \ifnum#1=3%
                         \vspace{-12pt}%
                         \noindent\rule[13pt]{\linewidth}{1pt}
                     \fi%
-                    \ifnum#2=6%
+                    \ifnum#1=6%
                         \vspace{-12pt}%
                         \noindent\rule[13pt]{\linewidth}{1pt}
                     \fi%
                     \vspace{1pt}%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, align=1%
                         ]{}%
                         \hspace{2pt}%
-                        \ifnum#1=2%
+                        \ifnum#2=2%
                             %\vspace{1pt}%
                             \vrule width 1pt%
                         \fi%
-                        \ifnum#1=5%
+                        \ifnum#2=5%
                             %\vspace{1pt}%
                             \vrule width 1pt%
                         \fi%

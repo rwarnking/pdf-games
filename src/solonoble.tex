@@ -41,13 +41,18 @@ const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const SCREEN_TEXT_SIZE = 300;
 
 % Constants
+const M = 0;
+const N = 1;
+const STATE = 0;
+const C_IDX = 1;
+
 const ANIMATION_SPEED = 33;
 const ANIMATION_OFFSET = 0.05;
 % Index of the animation cell x and y
 const ANIM_POS = BOARD_WIDTH - 1;
 % Index of the cell that counts as a win
-const W_POS_X = [4, 4, 4, 4, 4];
-const W_POS_Y = [4, 2, 4, 4, 4];
+const W_POS_M = [4, 2, 4, 4, 4];
+const W_POS_N = [4, 4, 4, 4, 4];
 % For empty cells
 const NONE = -1;
 const EMPTY = 0;
@@ -135,53 +140,53 @@ const BOARDS = [
 %%%%%%%%%% Solutions %%%%%%%%%%
 var solMoves = [
     [ % English
-        [6, 4, 4, 4], [5, 6, 5, 4], [7, 5, 5, 5], [7, 3, 7, 5], [5, 4, 5, 6],
-        [5, 7, 5, 5], [5, 3, 7, 3], [5, 1, 5, 3], [4, 5, 6, 5], [7, 5, 5, 5],
-        [4, 7, 4, 5], [4, 5, 6, 5], [4, 3, 4, 5], [4, 1, 4, 3], [4, 3, 6, 3],
-        [7, 3, 5, 3], [3, 5, 5, 5], [6, 5, 4, 5], [3, 7, 3, 5], [3, 4, 3, 6],
-        [2, 3, 4, 3], [3, 1, 3, 3], [1, 5, 3, 5], [4, 5, 2, 5], [1, 3, 1, 5],
-        [1, 5, 3, 5], [3, 6, 3, 4], [3, 4, 3, 2], [5, 3, 3, 3], [3, 2, 3, 4],
-        [2, 4, 4, 4]
+        [4, 6, 4, 4], [6, 5, 4, 5], [5, 7, 5, 5], [3, 7, 5, 7], [4, 5, 6, 5],
+        [7, 5, 5, 5], [3, 5, 3, 7], [1, 5, 3, 5], [5, 4, 5, 6], [5, 7, 5, 5],
+        [7, 4, 5, 4], [5, 4, 5, 6], [3, 4, 5, 4], [1, 4, 3, 4], [3, 4, 3, 6],
+        [3, 7, 3, 5], [5, 3, 5, 5], [5, 6, 5, 4], [7, 3, 5, 3], [4, 3, 6, 3],
+        [3, 2, 3, 4], [1, 3, 3, 3], [5, 1, 5, 3], [5, 4, 5, 2], [3, 1, 5, 1],
+        [5, 1, 5, 3], [6, 3, 4, 3], [4, 3, 2, 3], [3, 5, 3, 3], [2, 3, 4, 3],
+        [4, 2, 4, 4]
     ],
     [ % European
-        [2, 3, 4, 3], [3, 1, 3, 3], [2, 5, 2, 3], [4, 5, 2, 5], [4, 3, 4, 5],
-        [5, 2, 3, 2], [2, 3, 4, 3], [5, 1, 3, 1], [5, 5, 3, 5], [5, 4, 5, 2],
-        [4, 7, 4, 5], [2, 2, 4, 2], [7, 5, 5, 5], [2, 6, 2, 4], [7, 3, 5, 3],
-        [5, 2, 3, 2], [3, 1, 3, 3], [7, 4, 5, 4], [4, 5, 2, 5], [3, 7, 3, 5],
-        [4, 3, 2, 3], [2, 5, 4, 5], [6, 6, 4, 6], [1, 3, 3, 3], [3, 3, 3, 5],
-        [5, 4, 5, 6], [4, 5, 2, 5], [1, 4, 3, 4], [5, 7, 5, 5], [1, 5, 3, 5],
-        [3, 4, 3, 6], [3, 6, 5, 6], [5, 6, 5, 4], [5, 4, 5, 2], [6, 2, 4, 2]
+        [3, 2, 3, 4], [1, 3, 3, 3], [5, 2, 3, 2], [5, 4, 5, 2], [3, 4, 5, 4],
+        [2, 5, 2, 3], [3, 2, 3, 4], [1, 5, 1, 3], [5, 5, 5, 3], [4, 5, 2, 5],
+        [7, 4, 5, 4], [2, 2, 2, 4], [5, 7, 5, 5], [6, 2, 4, 2], [3, 7, 3, 5],
+        [2, 5, 2, 3], [1, 3, 3, 3], [4, 7, 4, 5], [5, 4, 5, 2], [7, 3, 5, 3],
+        [3, 4, 3, 2], [5, 2, 5, 4], [6, 6, 6, 4], [3, 1, 3, 3], [3, 3, 5, 3],
+        [4, 5, 6, 5], [5, 4, 5, 2], [4, 1, 4, 3], [7, 5, 5, 5], [5, 1, 5, 3],
+        [4, 3, 6, 3], [6, 3, 6, 5], [6, 5, 4, 5], [4, 5, 2, 5], [2, 6, 2, 4]
     ],
     [ % German
-        [4, 2, 4, 4], [2, 3, 4, 3], [3, 5, 3, 3], [3, 2, 3, 4], [3, 0, 3, 2],
-        [1, 5, 3, 5], [3, 5, 3, 3], [3, 3, 3, 1], [0, 3, 2, 3], [2, 3, 2, 5],
-        [5, 5, 3, 5], [3, 5, 1, 5], [3, 7, 3, 5], [5, 6, 3, 6], [5, 8, 5, 6],
-        [7, 5, 5, 5], [5, 5, 5, 7], [3, 8, 5, 8], [5, 8, 5, 6], [6, 3, 6, 5],
-        [8, 3, 6, 3], [5, 3, 7, 3], [8, 5, 8, 3], [8, 3, 6, 3], [0, 5, 2, 5],
-        [2, 5, 4, 5], [5, 0, 3, 0], [3, 0, 3, 2], [5, 1, 3, 1], [3, 1, 3, 3],
-        [3, 3, 5, 3], [5, 3, 7, 3], [7, 3, 7, 5], [7, 5, 5, 5], [5, 5, 3, 5],
-        [3, 5, 3, 7], [3, 7, 5, 7], [5, 7, 5, 5], [5, 5, 5, 3], [5, 2, 5, 4],
-        [5, 4, 3, 4], [0, 4, 2, 4], [2, 4, 4, 4]
+        [2, 4, 4, 4], [3, 2, 3, 4], [5, 3, 3, 3], [2, 3, 4, 3], [0, 3, 2, 3],
+        [5, 1, 5, 3], [5, 3, 3, 3], [3, 3, 1, 3], [3, 0, 3, 2], [3, 2, 5, 2],
+        [5, 5, 5, 3], [5, 3, 5, 1], [7, 3, 5, 3], [6, 5, 6, 3], [8, 5, 6, 5],
+        [5, 7, 5, 5], [5, 5, 7, 5], [8, 3, 8, 5], [8, 5, 6, 5], [3, 6, 5, 6],
+        [3, 8, 3, 6], [3, 5, 3, 7], [5, 8, 3, 8], [3, 8, 3, 6], [5, 0, 5, 2],
+        [5, 2, 5, 4], [0, 5, 0, 3], [0, 3, 2, 3], [1, 5, 1, 3], [1, 3, 3, 3],
+        [3, 3, 3, 5], [3, 5, 3, 7], [3, 7, 5, 7], [5, 7, 5, 5], [5, 5, 5, 3],
+        [5, 3, 7, 3], [7, 3, 7, 5], [7, 5, 5, 5], [5, 5, 3, 5], [2, 5, 4, 5],
+        [4, 5, 4, 3], [4, 0, 4, 2], [4, 2, 4, 4]
     ],
     [ % Asymmetrical
-        [4, 2, 4, 4], [4, 0, 4, 2], [6, 3, 4, 3], [8, 3, 6, 3], [8, 5, 8, 3],
-        [7, 5, 7, 3], [5, 4, 7, 4], [5, 5, 7, 5], [7, 3, 5, 3], [7, 5, 7, 3],
-        [8, 3, 6, 3], [5, 2, 5, 4], [3, 3, 5, 3], [6, 3, 4, 3], [4, 4, 6, 4],
-        [2, 4, 4, 4], [1, 3, 3, 3], [3, 2, 3, 4], [3, 0, 3, 2], [4, 4, 2, 4],
-        [1, 4, 3, 4], [3, 5, 3, 3], [5, 0, 5, 2], [3, 7, 3, 5], [3, 5, 5, 5],
-        [1, 5, 3, 5], [5, 7, 3, 7], [3, 2, 3, 4], [3, 4, 3, 6], [3, 7, 3, 5],
-        [5, 6, 3, 6], [3, 6, 3, 4], [4, 2, 4, 4], [3, 4, 5, 4], [5, 5, 5, 3],
-        [5, 2, 5, 4], [6, 4, 4, 4]
+        [2, 4, 4, 4], [0, 4, 2, 4], [3, 6, 3, 4], [3, 8, 3, 6], [5, 8, 3, 8],
+        [5, 7, 3, 7], [4, 5, 4, 7], [5, 5, 5, 7], [3, 7, 3, 5], [5, 7, 3, 7],
+        [3, 8, 3, 6], [2, 5, 4, 5], [3, 3, 3, 5], [3, 6, 3, 4], [4, 4, 4, 6],
+        [4, 2, 4, 4], [3, 1, 3, 3], [2, 3, 4, 3], [0, 3, 2, 3], [4, 4, 4, 2],
+        [4, 1, 4, 3], [5, 3, 3, 3], [0, 5, 2, 5], [7, 3, 5, 3], [5, 3, 5, 5],
+        [5, 1, 5, 3], [7, 5, 7, 3], [2, 3, 4, 3], [4, 3, 6, 3], [7, 3, 5, 3],
+        [6, 5, 6, 3], [6, 3, 4, 3], [2, 4, 4, 4], [4, 3, 4, 5], [5, 5, 3, 5],
+        [2, 5, 4, 5], [4, 6, 4, 4]
     ],
     [ % Diamond http://recmath.org/pegsolitaire/gif/Hermarys23Move.gif
-        [4, 2, 4, 4], [4, 5, 4, 3], [4, 7, 4, 5], [6, 2, 4, 2], [6, 6, 4, 6],
-        [5, 4, 5, 2], [4, 5, 4, 7], [5, 1, 5, 3], [2, 6, 4, 6], [3, 4, 3, 6],
-        [3, 7, 3, 5], [3, 2, 3, 4], [3, 4, 3, 6], [3, 6, 5, 6], [5, 6, 5, 4],
-        [5, 4, 5, 2], [5, 2, 3, 2], [1, 5, 3, 5], [7, 5, 5, 5], [7, 3, 5, 3],
-        [3, 1, 3, 3], [4, 0, 4, 2], [1, 4, 3, 4], [3, 4, 3, 2], [3, 2, 5, 2],
-        [5, 2, 5, 4], [5, 4, 5, 6], [1, 3, 3, 3], [5, 7, 5, 5], [4, 8, 4, 6],
-        [7, 4, 5, 4], [5, 4, 5, 6], [5, 6, 3, 6], [3, 6, 3, 4], [3, 4, 3, 2],
-        [2, 2, 4, 2], [4, 2, 4, 4]
+        [2, 4, 4, 4], [5, 4, 3, 4], [7, 4, 5, 4], [2, 6, 2, 4], [6, 6, 6, 4],
+        [4, 5, 2, 5], [5, 4, 7, 4], [1, 5, 3, 5], [6, 2, 6, 4], [4, 3, 6, 3],
+        [7, 3, 5, 3], [2, 3, 4, 3], [4, 3, 6, 3], [6, 3, 6, 5], [6, 5, 4, 5],
+        [4, 5, 2, 5], [2, 5, 2, 3], [5, 1, 5, 3], [5, 7, 5, 5], [3, 7, 3, 5],
+        [1, 3, 3, 3], [0, 4, 2, 4], [4, 1, 4, 3], [4, 3, 2, 3], [2, 3, 2, 5],
+        [2, 5, 4, 5], [4, 5, 6, 5], [3, 1, 3, 3], [7, 5, 5, 5], [8, 4, 6, 4],
+        [4, 7, 4, 5], [4, 5, 6, 5], [6, 5, 6, 3], [6, 3, 4, 3], [4, 3, 2, 3],
+        [2, 2, 2, 4], [2, 4, 4, 4]
     ]
 ];
 
@@ -191,7 +196,7 @@ const EMPTY_SYMBOL = String.fromCharCode(0x25CB);
 
 % How many marbles need to be placed
 const MARBLE_COUNTS = [
-    32, 36, 44, 38, 40
+    32, 36, 44, 38, 38
 ]
 
 % Color data
@@ -282,18 +287,18 @@ function initialize() {
 
     % Create the board using the BOARDS array data
     var idx = 0;
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             var colorIdx = -1;
-            var cell = BOARDS[boardIdx][row][column];
+            var cell = BOARDS[boardIdx][m][n];
             if (cell == FULL) {
                 colorIdx = idx;
                 idx++;
             }
-            tmp.push([cell, colorIdx]);
+            row.push([cell, colorIdx]);
         }
-        complBoard.push(tmp);
+        complBoard.push(row);
     }
 
     % Hide all cells that are not part of the board
@@ -329,10 +334,10 @@ function initializeButtons() {
     % Each cell needs to be connected to an input function
     var cell;
     var funcName = "cellClicked";
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            cell = this.getField("pos" + x + "-" + y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
             cell.setAction("MouseDown", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
@@ -345,7 +350,7 @@ function initializeButtons() {
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 
-    printInfoText("Init");
+    printInfoText("Initialization finished.");
 }
 
 /**
@@ -367,21 +372,21 @@ function restart() {
 
     % Reset the board
     var colorIdx = 0;
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            var cell = BOARDS[boardIdx][row][column];
-            complBoard[row][column][0] = cell;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var cell = BOARDS[boardIdx][m][n];
+            complBoard[m][n][STATE] = cell;
             if (cell == FULL) {
-                complBoard[row][column][1] = colorIdx;
+                complBoard[m][n][C_IDX] = colorIdx;
                 colorIdx++;
             }
         }
     }
 
     % Disable left over highlights
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            highlight(column, row, false);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            highlight(m, n, false);
         }
     }
 
@@ -437,10 +442,10 @@ function tooltip(on) {
  * Save and highlight the last cell the user clicked on.
  * Selection is only removed after clicking on the same cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function cellClicked(x, y, ignore=false) {
+function cellClicked(m, n, ignore=false) {
     this.getField("exporttxt").setFocus();
 
     if (timestep != 0.0) {
@@ -450,32 +455,32 @@ function cellClicked(x, y, ignore=false) {
 
     % Select cell if none selected
     if (currentCell === null) {
-        if (complBoard[y][x][0] == FULL) {
-            currentCell = [x, y];
-            highlight(x, y, true);
+        if (complBoard[m][n][STATE] == FULL) {
+            currentCell = [m, n];
+            highlight(m, n, true);
         } else {
             printInfoText("Cell empty and not selectable.");
         }
     } % Deselect cell
-    else if (currentCell[0] == x && currentCell[1] == y) {
+    else if (currentCell[M] == m && currentCell[N] == n) {
         currentCell = null;
-        highlight(x, y, false);
+        highlight(m, n, false);
     } else {
         % If a cell if selected the new click is interpreted as the target cell
         % Calculate wether it is a valid target
-        var diffX = currentCell[0] - x;
-        var diffY = currentCell[1] - y;
-        var absX = Math.abs(diffX);
-        var absY = Math.abs(diffY);
+        var diffM = currentCell[M] - m;
+        var diffN = currentCell[N] - n;
+        var absM = Math.abs(diffM);
+        var absN = Math.abs(diffN);
 
-        if (absX == 2 && absY == 0 || absX == 0 && absY == 2) {
-            if (complBoard[y][x][0] == EMPTY) {
-                var x2 = x + diffX / 2;
-                var y2 = y + diffY / 2;
+        if (absM == 2 && absN == 0 || absM == 0 && absN == 2) {
+            if (complBoard[m][n][STATE] == EMPTY) {
+                var m2 = m + diffM / 2;
+                var n2 = n + diffN / 2;
                 % Actually do stuff
-                if (complBoard[y2][x2][0] == FULL) {
-                    highlight(currentCell[0], currentCell[1], false);
-                    jump(x, y);
+                if (complBoard[m2][n2][STATE] == FULL) {
+                    highlight(currentCell[M], currentCell[N], false);
+                    jump(m, n);
                     currentCell = null;
                 } else {
                     printInfoText("No cell to jump over.");
@@ -493,36 +498,36 @@ function cellClicked(x, y, ignore=false) {
  * Place the currentCell content into the new cell
  * and remove the cell content in between.
  *
- * @param {Number} x1 The x position.
- * @param {Number} y1 The y position.
+ * @param {Number} m1 The m position.
+ * @param {Number} n1 The n position.
  */
-function jump(x1, y1) {
+function jump(m1, n1) {
     currentMarbleCount--;
 
-    var x2 = currentCell[0];
-    var y2 = currentCell[1];
+    var m2 = currentCell[M];
+    var n2 = currentCell[N];
 
     % Calculate cell in between
-    var diffX = x2 - x1;
-    var diffY = y2 - y1;
-    var x3 = x1 + diffX / 2;
-    var y3 = y1 + diffY / 2;
+    var diffM = m2 - m1;
+    var diffN = n2 - n1;
+    var m3 = m1 + diffM / 2;
+    var n3 = n1 + diffN / 2;
 
-    complBoard[y3][x3][0] = EMPTY;
-    complBoard[y2][x2][0] = EMPTY;
-    complBoard[y1][x1][0] = FULL;
+    complBoard[m3][n3][STATE] = EMPTY;
+    complBoard[m2][n2][STATE] = EMPTY;
+    complBoard[m1][n1][STATE] = FULL;
     % Rewrite color information
-    complBoard[y1][x1][1] = complBoard[y2][x2][1];
-    complBoard[y3][x3][1] = -1;
-    complBoard[y2][x2][1] = -1;
+    complBoard[m1][n1][C_IDX] = complBoard[m2][n2][C_IDX];
+    complBoard[m3][n3][C_IDX] = -1;
+    complBoard[m2][n2][C_IDX] = -1;
 
     % Prepare the animation cell
-    complBoard[ANIM_POS][ANIM_POS][0] = FULL;
-    complBoard[ANIM_POS][ANIM_POS][1] = complBoard[y1][x1][1];
+    complBoard[ANIM_POS][ANIM_POS][STATE] = FULL;
+    complBoard[ANIM_POS][ANIM_POS][C_IDX] = complBoard[m1][n1][C_IDX];
     draw(ANIM_POS, ANIM_POS);
 
     % Start animation
-    var callback = "jumpAnimation(" + x1 + "," + y1 + "," + x2 + "," + y2 + "," + x3 + "," + y3 + ")";
+    var callback = "jumpAnimation(" + m1 + "," + n1 + "," + m2 + "," + n2 + "," + m3 + "," + n3 + ")";
     run = app.setInterval(callback, ANIMATION_SPEED);
 }
 
@@ -532,27 +537,27 @@ function jump(x1, y1) {
  * The start position and the center position are redrawn at
  * appropriate times.
  *
- * @param {Number} x1 The target x position.
- * @param {Number} y1 The target y position.
- * @param {Number} x2 The source x position.
- * @param {Number} y2 The source y position.
- * @param {Number} x3 The center x position.
- * @param {Number} y3 The center y position.
+ * @param {Number} m1 The target m position.
+ * @param {Number} n1 The target n position.
+ * @param {Number} m2 The source m position.
+ * @param {Number} n2 The source n position.
+ * @param {Number} m3 The center m position.
+ * @param {Number} n3 The center n position.
  */
-function jumpAnimation(x1, y1, x2, y2, x3, y3) {
+function jumpAnimation(m1, n1, m2, n2, m3, n3) {
     % Get animation cell
-    var cell = this.getField("pos" + ANIM_POS + "-" + ANIM_POS);
+    var cell = this.getField("cell" + ANIM_POS + "-" + ANIM_POS);
 
     % Stop animation and reset if time limit is reached
     if (timestep >= 1.0) {
         timestep = 0.0;
-        draw(x1, y1);
+        draw(m1, n1);
         cell.hidden = true;
-        complBoard[ANIM_POS][ANIM_POS][0] = NONE;
+        complBoard[ANIM_POS][ANIM_POS][STATE] = NONE;
         if (getAllMoves().length > 0) {
             printInfoText("Jump successfull!");
         } else {
-            var lastPos = complBoard[W_POS_Y[boardIdx]][W_POS_X[boardIdx]][0] == FULL;
+            var lastPos = complBoard[W_POS_M[boardIdx]][W_POS_N[boardIdx]][STATE] == FULL;
             if (currentMarbleCount == 1 && lastPos) {
                 printInfoText("Game over, you won!");
             } else {
@@ -564,18 +569,18 @@ function jumpAnimation(x1, y1, x2, y2, x3, y3) {
     }
     % If precisely at the center of the line draw pos 3 (remove marble)
     if (timestep >= 0.5 && timestep <= 0.5 + ANIMATION_OFFSET) {
-        draw(x3, y3);
+        draw(m3, n3);
     } % Draw (remove) the start marble in the beginning
     else if (timestep >= 0.0 && timestep <= 0.0 + ANIMATION_OFFSET) {
-        draw(x2, y2);
+        draw(m2, n2);
     }
 
     % Show the animation cell
     cell.hidden = false;
 
     % Get the cells for the rectangle
-    var src = this.getField("pos" + x2 + "-" + y2);
-    var tgt = this.getField("pos" + x1 + "-" + y1);
+    var src = this.getField("cell" + m2 + "-" + n2);
+    var tgt = this.getField("cell" + m1 + "-" + n1);
     % Move the rectangle
     var rect = [0, 0, 0, 0];
     for (var i = 0; i < 4; i++) {
@@ -632,7 +637,7 @@ function executeMoves() {
     var moveSequence = this.getField("exmovestxt").value;
     exeMoves = stringToSolution(moveSequence);
     % Check for error
-    if (exeMoves[0][0] == 0) {
+    if (exeMoves[0][0] == NONE) {
         printInfoText("Moves not parseable!");
         return;
     }
@@ -692,15 +697,15 @@ function stringToSolution(moveSequence) {
         ];
         % Search for the currently wanted char in the table
         % and return its coordinates
-        for (var y = 0; y < charRep.length; y++) {
-            for (var x = 0; x < charRep[y].length; x++) {
-                if (cell == charRep[y][x]) {
-                    return [x, y];
+        for (var m = 0; m < charRep.length; m++) {
+            for (var n = 0; n < charRep[m].length; n++) {
+                if (cell == charRep[m][n]) {
+                    return [m, n];
                 }
             }
         }
         % Indicate error if not found
-        return [0];
+        return [NONE];
     }
 
     var result = [];
@@ -708,27 +713,26 @@ function stringToSolution(moveSequence) {
 
     % Check for notation type
     if (moves[0][0] >= '0' && moves[0][0] <= '9') {
-        for (var x = 0; x < moves.length; x++) {
+        for (var i = 0; i < moves.length; i++) {
             % Get both positions
-            var pos = moves[x].split("-");
+            var pos = moves[i].split("-");
             % Indicate error
             if (pos.length != 2) {
-                return [[0]];
+                return [[NONE]];
             }
             % Get coordinates
             var from = pos[0].split(":");
             var to = pos[1].split(":");
             % Indicate error
             if (from.length != 2 || to.length != 2) {
-                return [[0]];
+                return [[NONE]];
             }
 
-            % Care input x, y are swapped
             result.push([
-                parseInt(from[1], 10) + 1,
-                parseInt(from[0], 10) + 1,
-                parseInt(to[1], 10) + 1,
-                parseInt(to[0], 10) + 1
+                parseInt(from[M], 10),
+                parseInt(from[N], 10),
+                parseInt(to[M], 10),
+                parseInt(to[N], 10)
             ]);
         }
     } else {
@@ -736,11 +740,11 @@ function stringToSolution(moveSequence) {
             var from = toIdx(moves[i][0]);
             var to = toIdx(moves[i][1]);
             % Indicate error if not found
-            if (from[0] == 0 || to[0] == 0 || moves[i].length != 2) {
-                return [[0]];
+            if (from[M] == NONE || to[M] == NONE || moves[i].length != 2) {
+                return [[NONE]];
             }
             % Create a fromTo move array
-            result.push([from[0], from[1], to[0], to[1]]);
+            result.push([from[M], from[N], to[M], to[N]]);
         }
     }
 
@@ -755,10 +759,10 @@ function stringToSolution(moveSequence) {
 function getAllMoves() {
     % Get movesToTry for all marbles
     var movesToTry = [];
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            if (complBoard[y][x][0] == FULL) {
-                movesToTry = movesToTry.concat(getMoves([x, y]));
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n][STATE] == FULL) {
+                movesToTry = movesToTry.concat(getMoves([m, n]));
             }
         }
     }
@@ -773,22 +777,34 @@ function getAllMoves() {
  * @param {Array} marble The position to check.
  */
 function getMoves(marble) {
-    var x = marble[0];
-    var y = marble[1];
+    var m = marble[M];
+    var n = marble[N];
     var moves = [];
 
     % Check each of the four directions + out of bounds
-    if (x + 2 < BOARD_WIDTH && complBoard[y][x + 2][0] == EMPTY && complBoard[y][x + 1][0] == FULL) {
-        moves.push([x, y, x + 2, y]);
+    if (m + 2 < BOARD_HEIGHT &&
+        complBoard[m + 2][n][STATE] == EMPTY &&
+        complBoard[m + 1][n][STATE] == FULL
+    ) {
+        moves.push([m, n, m, m + 2]);
     }
-    if (x - 2 >= 0 && complBoard[y][x - 2][0] == EMPTY && complBoard[y][x - 1][0] == FULL) {
-        moves.push([x, y, x - 2, y]);
+    if (m - 2 >= 0 &&
+        complBoard[m - 2][n][STATE] == EMPTY &&
+        complBoard[m - 1][n][STATE] == FULL
+    ) {
+        moves.push([m, n, m, n - 2]);
     }
-    if (y + 2 < BOARD_HEIGHT && complBoard[y + 2][x][0] == EMPTY && complBoard[y + 1][x][0] == FULL) {
-        moves.push([x, y, x, y + 2]);
+    if (n + 2 < BOARD_WIDTH &&
+        complBoard[m][n + 2][STATE] == EMPTY &&
+        complBoard[m][n + 1][STATE] == FULL
+    ) {
+        moves.push([m, n, m + 2, n]);
     }
-    if (y - 2 >= 0 && complBoard[y - 2][x][0] == EMPTY && complBoard[y - 1][x][0] == FULL) {
-        moves.push([x, y, x, y - 2]);
+    if (n - 2 >= 0 &&
+        complBoard[m][n - 2][STATE] == EMPTY &&
+        complBoard[m][n - 1][STATE] == FULL
+    ) {
+        moves.push([m, n, m - 2, n]);
     }
     return moves;
 }
@@ -817,14 +833,14 @@ function exportBoard() {
  */
 function getUniqueCombination() {
     var arrayNum = 0;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            if (complBoard[y][x][0] == NONE) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n][STATE] == NONE) {
                 continue;
             }
             % Shift operation do not work - to many bits needed
             arrayNum *= 2;
-            if (complBoard[y][x][0] == FULL) {
+            if (complBoard[m][n][STATE] == FULL) {
                 arrayNum += 1;
             }
         }
@@ -863,19 +879,21 @@ function importBoard() {
  */
 function toBoard(combination) {
     var res = combination;
+    var colorIdx = 0;
     % Iterate from back to front because of leading zeros
-    for (var x = BOARD_WIDTH - 1; x >= 0; x--) {
-        for (var y = BOARD_HEIGHT - 1; y >= 0 ; y--) {
-            if (complBoard[y][x][0] == NONE) {
+    for (var m = BOARD_HEIGHT - 1; m >= 0 ; m--) {
+        for (var n = BOARD_WIDTH - 1; n >= 0; n--) {
+            if (complBoard[m][n][STATE] == NONE) {
                 continue;
             }
 
             var val = res \% 2;
             if (val == 1) {
-                complBoard[y][x][0] = FULL;
+                complBoard[m][n][STATE] = FULL;
+                complBoard[m][n][C_IDX] = colorIdx++;
                 res -= 1;
             } else {
-                complBoard[y][x][0] = EMPTY;
+                complBoard[m][n][STATE] = EMPTY;
             }
             res = res / 2;
         }
@@ -910,10 +928,10 @@ function cellCount(combination) {
  */
 function hideCells() {
     var cell;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            cell = this.getField("pos" + x + "-" + y);
-            if (complBoard[y][x][0] == NONE) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            cell = this.getField("cell" + m + "-" + n);
+            if (complBoard[m][n][STATE] == NONE) {
                 cell.hidden = true;
             } else {
                 cell.hidden = false;
@@ -926,9 +944,9 @@ function hideCells() {
  * Draw all cells.
  */
 function drawAll() {
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
@@ -937,18 +955,18 @@ function drawAll() {
  * Since only one cell is updated with each input,
  * only this cell needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function draw(x, y) {
-    var cell = this.getField("pos" + x + "-" + y);
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
 
-    var val = complBoard[y][x][0];
+    var val = complBoard[m][n][STATE];
     if (val == FULL) {
         cell.value = MARBLE_SYMBOL;
         if (colorEnabled) {
-            cell.textColor = colors[complBoard[y][x][1]];
+            cell.textColor = colors[complBoard[m][n][C_IDX]];
         } else {
             cell.textColor = color.black;
         }
@@ -966,9 +984,9 @@ function draw(x, y) {
  * @param {Boolean} enable Enables or disables highlight.
  */
 function highlightAll(enable) {
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            highlight(column, row, enable);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            highlight(m, n, enable);
         }
     }
 }
@@ -976,12 +994,12 @@ function highlightAll(enable) {
 /**
  * Enables or disables the highlight of the given cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @param {Boolean} enable If true enables the highlight
  */
-function highlight(x, y, enable) {
-    var cell = this.getField("pos" + x + "-" + y);
+function highlight(m, n, enable) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
     % Highlight the current taken move
     if (enable) {
@@ -1058,10 +1076,10 @@ function printInfoText(text) {
 
             \begin{center}
                 \tiny
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=, backgroundcolor=, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%

@@ -220,7 +220,7 @@ function restart() {
 
     % Reset canvas
     for (var m = 0; m < CANVAS_CHAR_H; m++) {
-        setLine("line" + m,  "");
+        setLine("line" + m, "");
     }
 
     % Reset player
@@ -520,7 +520,7 @@ function drawCanvas() {
             symb = "*";
         }
 
-        addToLine("line" + m,  symb);
+        addToLine("line" + m, symb);
 
         % Shift only after the canvas was filled once
         if (charCounter >= CANVAS_CHAR_W) {

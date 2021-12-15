@@ -42,6 +42,9 @@ const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 const SCREEN_TEXT_SIZE = 300;
 
 % Constants
+const M = 0;
+const N = 1;
+
 const MINE = -1;
 const EMPTY = 0;
 const HIDDEN = false;
@@ -333,11 +336,11 @@ function reveal(m, n) {
         % Iterate the stack and reveal the cells.
         while (stack.length > 0) {
             var elem = stack.pop();
-            for (var mm = elem[0] - 1; mm <= elem[0] + 1; mm++) {
-                for (var nn = elem[1] - 1; nn <= elem[1] + 1; nn++) {
+            for (var mm = elem[M] - 1; mm <= elem[M] + 1; mm++) {
+                for (var nn = elem[N] - 1; nn <= elem[N] + 1; nn++) {
                     % Ignore out of bounds, same cells and already visible
                     if (nn < 0 || mm < 0 || nn >= BOARD_WIDTH || mm >= BOARD_HEIGHT ||
-                        (mm == elem[0] && nn == elem[1]) || complBoard[mm][nn][0] == VISIBLE) {
+                        (mm == elem[M] && nn == elem[N]) || complBoard[mm][nn][0] == VISIBLE) {
                         continue;
                     }
                     % Reveal the cell

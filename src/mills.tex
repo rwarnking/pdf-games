@@ -47,6 +47,9 @@ const PLAYER_COUNT = 2;
 const TEXT_SIZE = 25;
 
 % Constants
+const M = 0;
+const N = 1;
+
 const EMPTY = -1;
 const P_1 = 0;
 const P_2 = 1;
@@ -202,7 +205,7 @@ function initializeButtons() {
     for (var m = 0; m < ROWS; m++) {
         for (var n = 0; n < COLUMNS; n++) {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
-            cell = this.getField("pos" + m + "-" + n);
+            cell = this.getField("cell" + m + "-" + n);
             cell.setAction("MouseDown", callbackName);
 
             cell.textSize = TEXT_SIZE;
@@ -372,9 +375,9 @@ function placing(m, n) {
 function moving(m, n) {
     if (lastClick != null) {
         % Deselect if clicked on the same cell again
-        if (m == lastClick[0] && n == lastClick[1]) {
+        if (m == lastClick[M] && n == lastClick[N]) {
             % Disable highlight
-            highlight(lastClick[0], lastClick[1], false);
+            highlight(lastClick[M], lastClick[N], false);
             lastClick = null;
             return;
         }
@@ -394,10 +397,10 @@ function moving(m, n) {
             return;
         }
         % Disable highlight
-        highlight(lastClick[0], lastClick[1], false);
+        highlight(lastClick[M], lastClick[N], false);
 
         % Start animation
-        var callback = "moveAnimation(" + lastClick[0] + "," + lastClick[1] + "," +m+ "," +n+ ")";
+        var callback = "moveAnimation(" + lastClick[M] + "," + lastClick[N] + "," +m+ "," +n+ ")";
         run = app.setInterval(callback, ANIMATION_SPEED);
         lastClick = null;
     } else {
@@ -424,10 +427,10 @@ function moving(m, n) {
  * The start position and the center position are redrawn at
  * appropriate times.
  *
- * @param {Number} m1 The source x position.
- * @param {Number} n1 The source y position.
- * @param {Number} m2 The target x position.
- * @param {Number} n2 The target y position.
+ * @param {Number} m1 The source m position.
+ * @param {Number} n1 The source n position.
+ * @param {Number} m2 The target m position.
+ * @param {Number} n2 The target n position.
  */
 function moveAnimation(m1, n1, m2, n2) {
     % Get animation cell
@@ -464,8 +467,8 @@ function moveAnimation(m1, n1, m2, n2) {
     cell.hidden = false;
 
     % Get the cells for the rectangle
-    var src = this.getField("pos" + m1 + "-" + n1);
-    var tgt = this.getField("pos" + m2 + "-" + n2);
+    var src = this.getField("cell" + m1 + "-" + n1);
+    var tgt = this.getField("cell" + m2 + "-" + n2);
     % Move the rectangle
     var rect = [0, 0, 0, 0];
     for (var i = 0; i < 4; i++) {
@@ -499,8 +502,10 @@ function removing(m, n) {
 
         draw(m, n);
         printInfoText("Removed stone! " + PLAYER_STR[turn] + ": Your turn!");
+    } else if (complBoard[m][n] == EMPTY) {
+        printInfoText(PLAYER_STR[turn] + ": Select a cell with a stone on it!");
     } else {
-        printInfoText(PLAYER_STR[turn] + ": You cant remove your own stone!");
+        printInfoText(PLAYER_STR[turn] + ": You can not remove your own stone!");
     }
 }
 
@@ -515,7 +520,7 @@ function removing(m, n) {
 function isNeighbour(m, n) {
     for (var i = 0; i < NEIGHBORS[m][n].length; i++) {
         var neighbour = NEIGHBORS[m][n][i];
-        if (neighbour[0] == lastClick[0] && neighbour[1] == lastClick[1]) {
+        if (neighbour[M] == lastClick[M] && neighbour[N] == lastClick[N]) {
             return true;
         }
     }
@@ -534,18 +539,18 @@ function checkMills(m, n) {
     % Check differ depending on array position being even or odd
     if (n \% 2 == 0) {
         % Check in a line up and down with m, n being at the end of the line
-        var n_m2 = (n + 8 - 2) \% 8;
+        var nM2 = (n + 8 - 2) \% 8;
         if (complBoard[m][n + 1] == p && complBoard[m][(n + 2) \% 8] == p ||
-            complBoard[m][n_m2 + 1] == p && complBoard[m][n_m2] == p
+            complBoard[m][nM2 + 1] == p && complBoard[m][nM2] == p
         ) {
             return true;
         }
     } else {
         % Check in a line up and down with m, n being at the center of the line
-        var m_m1 = (m + 3 - 1) \% 3;
-        var m_p1 = (m + 1) \% 3;
+        var mM1 = (m + 3 - 1) \% 3;
+        var mP1 = (m + 1) \% 3;
         if (complBoard[m][n - 1] == p && complBoard[m][(n + 1) \% 8] == p ||
-            complBoard[m_m1][n] == p && complBoard[m_p1][n] == p
+            complBoard[mM1][n] == p && complBoard[mP1][n] == p
         ) {
             return true;
         }
@@ -575,7 +580,7 @@ function hasNoMoves(player) {
             % Check all neighbors for being empty
             for (var i = 0; i < NEIGHBORS[m][n].length; i++) {
                 var neighbour = NEIGHBORS[m][n][i];
-                if (complBoard[neighbour[0]][neighbour[1]] == EMPTY) {
+                if (complBoard[neighbour[M]][neighbour[N]] == EMPTY) {
                     return false;
                 }
             }
@@ -617,7 +622,7 @@ function refreshGUIstoneCounts() {
  * @param {Boolean} enable If true enables the highlight
  */
 function highlight(m, n, enable) {
-    var cell = this.getField("pos" + m + "-" + n);
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
     % Highlight the current taken move
     if (enable) {
@@ -647,7 +652,7 @@ function drawAll() {
  * @param {Number} n The n position.
  */
 function draw(m, n) {
-    var cell = this.getField("pos" + m + "-" + n);
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
     if (complBoard[m][n] != EMPTY) {
         cell.value = PIECE_SYMBOL;
@@ -731,7 +736,7 @@ function printInfoText(text) {
         % Create the cells
         \xintFor* #1 in {\xintSeq{0}{\rows-1}} \do {%
             \xintFor* #2 in {\xintSeq{0}{\columns-1}} \do {%
-                \TextField[name=pos#1-#2, width=1.0cm, height=1.0cm,%
+                \TextField[name=cell#1-#2, width=1.0cm, height=1.0cm,%
                     backgroundcolor=white, bordercolor=gray, align=1, readonly]{}%
             }
         }%
@@ -776,7 +781,7 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth,
+                    \TextField[name=info, width=\textwidth,
                         bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}

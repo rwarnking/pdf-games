@@ -50,6 +50,10 @@ const NUMBER = 3;
 const SYMB_COUNT = 5;
 
 % Constants
+const M = 0;
+const N = 1;
+const EMPTY = -1;
+
 const ITALIC = 0;
 const UNDERLINE = 1;
 const BOLD = 2;
@@ -64,7 +68,7 @@ var complBoard = new Array();
 % Lock if the game has ended
 var gameover = false;
 % Save player idx so for points
-var playerIdx = -1;
+var playerIdx = EMPTY;
 % Save the points
 var points = [];
 % Save the last moves for set checking
@@ -124,15 +128,15 @@ function initialize() {
     }
 
     % Initialize the array with a card index
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var zArr = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             % Get random element from the cardList and remove the card afterwards
             var rnd = getRandomInt(unusedCards.length);
-            zArr.push(unusedCards[rnd]);
+            row.push(unusedCards[rnd]);
             unusedCards.splice(rnd, 1);
         }
-        complBoard.push(zArr);
+        complBoard.push(row);
     }
 
     % Initialize player points
@@ -161,13 +165,13 @@ function initializeButtons() {
 
     % Each card needs to be connected to an input function
     var funcName = "markCard";
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            this.getField("card" + m + "-" + n).setAction("MouseDown", callbackName);
 
-            for (var z = 0; z < SYMB_COUNT; z++) {
-                var cell = this.getField("field" + z + x + y);
+            for (var i = 0; i < SYMB_COUNT; i++) {
+                var cell = this.getField("cell" + i + "-" + m + "-" + n);
                 cell.setAction("MouseUp", callbackName);
 
                 cell.textSize = SCREEN_TEXT_HEIGHT / (BOARD_HEIGHT * 5);
@@ -208,30 +212,30 @@ function restart() {
     }
 
     % Reset board
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             % Get random element from the cardList and remove the card afterwards
             var rnd = getRandomInt(unusedCards.length);
-            complBoard[y][x] = unusedCards[rnd];
+            complBoard[m][n] = unusedCards[rnd];
             unusedCards.splice(rnd, 1);
-            draw(x, y);
+            draw(m, n);
         }
     }
 
     % Set point-fields back to zero
     for (var p = 1; p <= MAX_PLAYERS; p++) {
         points[p - 1] = 0;
-        var f = this.getField("points" + p);
-        f.delay = true;
-        f.value = 0;
-        f.delay = false;
+        var field = this.getField("points" + p);
+        field.delay = true;
+        field.value = 0;
+        field.delay = false;
     }
 
     % Reset game state
     lastSelections = [];
     gameover = false;
 
-    playerIdx = -1;
+    playerIdx = EMPTY;
 
     printInfoText("Please select the player who found a set!");
 }
@@ -261,9 +265,9 @@ function tooltip(on) {
         % Hide the textelements that lie behind the tooltip
         % so the text is not shown
         for (var z = 0; z < SYMB_COUNT; z++) {
-            field = this.getField("field" + z + 1 + 1);
+            field = this.getField("cell" + z + "-1-1");
             field.hidden = true;
-            field = this.getField("field" + z + 2 + 1);
+            field = this.getField("cell" + z + "-1-2");
             field.hidden = true;
         }
     } else {
@@ -275,9 +279,9 @@ function tooltip(on) {
 
         % Unhide the textelements
         for (var z = 0; z < SYMB_COUNT; z++) {
-            field = this.getField("field" + z + 1 + 1);
+            field = this.getField("cell" + z + "-1-1");
             field.hidden = false;
-            field = this.getField("field" + z + 2 + 1);
+            field = this.getField("cell" + z + "-1-2");
             field.hidden = false;
         }
     }
@@ -294,7 +298,7 @@ function selectPlayer(idx) {
     if (gameover) {
         return;
     }
-    if (playerIdx != -1) {
+    if (playerIdx != EMPTY) {
         printInfoText("Can not switch player after selection. (Player " + playerIdx + ")");
         return;
     }
@@ -308,14 +312,14 @@ function selectPlayer(idx) {
  * Adjusts the points accordingly, end the game when no sets are left
  * and removes found sets.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function markCard(x, y) {
+function markCard(m, n) {
     if (gameover) {
         return;
     }
-    if (playerIdx == -1) {
+    if (playerIdx == EMPTY) {
         printInfoText("Please select the player who found a set!");
         return;
     }
@@ -323,21 +327,26 @@ function markCard(x, y) {
     % Remove blinking cursor after selection
     this.getField("tooltiptxt").setFocus();
 
+    if (complBoard[m][n] == EMPTY) {
+        printInfoText("Player " + playerIdx + ": You need to select a card!");
+        return;
+    }
+
     % If there are not jet 3 cards selected
     var len = lastSelections.length;
     if (len < 3) {
         % Ignore cards that are already selected
-        if (len == 1 && (x == lastSelections[len - 1][0] && y == lastSelections[len - 1][1])) {
+        if (len == 1 && (m == lastSelections[len - 1][M] && n == lastSelections[len - 1][N])) {
             return;
         }
         if (len == 2 && (
-            (x == lastSelections[len - 1][0] && y == lastSelections[len - 1][1]) ||
-            (x == lastSelections[len - 2][0] && y == lastSelections[len - 2][1]))
+            (m == lastSelections[len - 1][M] && n == lastSelections[len - 1][N]) ||
+            (m == lastSelections[len - 2][M] && n == lastSelections[len - 2][N]))
         ) {
             return;
         }
 
-        lastSelections.push([x, y]);
+        lastSelections.push([m, n]);
         printInfoText("Selected " + lastSelections.length + ".");
     }
 
@@ -352,8 +361,8 @@ function markCard(x, y) {
 
         % Clear the selection
         for (var i = 0; i < lastSelections.length; i++) {
-            clear(lastSelections[i][0], lastSelections[i][1]);
-            complBoard[lastSelections[i][1]][lastSelections[i][0]] = -1;
+            clear(lastSelections[i][M], lastSelections[i][N]);
+            complBoard[lastSelections[i][M]][lastSelections[i][N]] = EMPTY;
         }
 
         if (gameOverCheck()) {
@@ -370,7 +379,7 @@ function markCard(x, y) {
     }
 
     % Reset player
-    playerIdx = -1;
+    playerIdx = EMPTY;
 
     % Reset selection
     lastSelections = [];
@@ -386,7 +395,7 @@ function hint() {
         return;
     }
     % Do not give a hint after a player selection
-    if (playerIdx != -1) {
+    if (playerIdx != EMPTY) {
         printInfoText("Hint unavailable while player selected. (Player " + playerIdx + ")");
         return;
     }
@@ -398,12 +407,12 @@ function hint() {
         for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
             for (var e3 = e2 + 1; e3 < cardCount; e3++) {
                 % Reassign
-                posArray[0] = [e1 \% BOARD_WIDTH, Math.floor(e1 / BOARD_WIDTH)];
-                posArray[1] = [e2 \% BOARD_WIDTH, Math.floor(e2 / BOARD_WIDTH)];
-                posArray[2] = [e3 \% BOARD_WIDTH, Math.floor(e3 / BOARD_WIDTH)];
+                posArray[0] = [Math.floor(e1 / BOARD_WIDTH), e1 \% BOARD_WIDTH];
+                posArray[1] = [Math.floor(e2 / BOARD_WIDTH), e2 \% BOARD_WIDTH];
+                posArray[2] = [Math.floor(e3 / BOARD_WIDTH), e3 \% BOARD_WIDTH];
 
                 if (isSet(posArray)) {
-                    printInfoText("Try card " + posArray[0] + " ([x, y]).");
+                    printInfoText("Try card " + posArray[0] + " ([m, n]).");
                     return;
                 }
             }
@@ -420,12 +429,12 @@ function hint() {
  * @return {Boolean} true if is a set false else.
  */
 function isSet(positions) {
-    var idx1 = complBoard[positions[0][1]][positions[0][0]];
-    var idx2 = complBoard[positions[1][1]][positions[1][0]];
-    var idx3 = complBoard[positions[2][1]][positions[2][0]];
+    var idx1 = complBoard[positions[0][M]][positions[0][N]];
+    var idx2 = complBoard[positions[1][M]][positions[1][N]];
+    var idx3 = complBoard[positions[2][M]][positions[2][N]];
 
     % If a card slot is empty there can not be a set
-    if (idx1 == -1 || idx2 == -1 || idx3 == -1) {
+    if (idx1 == EMPTY || idx2 == EMPTY || idx3 == EMPTY) {
         return false;
     }
 
@@ -468,27 +477,27 @@ function isSet(positions) {
 }
 
 /**
- * Refill all slots that are -1 if there are any.
+ * Refill all slots that are EMPTY if there are any.
  * If not refill all slots.
  */
 function refill() {
     if (gameover) {
         return;
     }
-    if (playerIdx != -1) {
+    if (playerIdx != EMPTY) {
         printInfoText("Can not refill while player selected. (Player " + playerIdx + ")");
         return;
     }
 
     % Fill all empty slots and count all occurrences
     var slotCount = 0;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            if (complBoard[y][x] == -1) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n] == EMPTY) {
                 var rnd = getRandomInt(unusedCards.length);
-                complBoard[y][x] = unusedCards[rnd];
+                complBoard[m][n] = unusedCards[rnd];
                 unusedCards.splice(rnd, 1);
-                draw(x, y);
+                draw(m, n);
 
                 slotCount++;
             }
@@ -499,22 +508,22 @@ function refill() {
     % If there are no empty slots refill the complete board.
     if (slotCount == 0) {
         % Remove the current cards and mark them as unused
-        for (var x = 0; x < BOARD_WIDTH; x++) {
-            for (var y = 0; y < BOARD_HEIGHT; y++) {
-                unusedCards.push(complBoard[y][x]);
+        for (var m = 0; m < BOARD_HEIGHT; m++) {
+            for (var n = 0; n < BOARD_WIDTH; n++) {
+                unusedCards.push(complBoard[m][n]);
             }
         }
 
         % Select new cards
-        for (var x = 0; x < BOARD_WIDTH; x++) {
-            for (var y = 0; y < BOARD_HEIGHT; y++) {
+        for (var m = 0; m < BOARD_HEIGHT; m++) {
+            for (var n = 0; n < BOARD_WIDTH; n++) {
                 if (unusedCards.length == 0) {
                     continue;
                 }
                 var rnd = getRandomInt(unusedCards.length);
-                complBoard[y][x] = unusedCards[rnd];
+                complBoard[m][n] = unusedCards[rnd];
                 unusedCards.splice(rnd, 1);
-                draw(x, y);
+                draw(m, n);
             }
         }
         printInfoText("Refilled the complete board.");
@@ -529,9 +538,9 @@ function refill() {
 function gameOverCheck() {
     % Count remaining cards on the board
     var count = 0;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            if (complBoard[y][x] > -1) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n] > EMPTY) {
                 count++;
             }
         }
@@ -549,11 +558,11 @@ function gameOverCheck() {
         % Get all unused cards and push them to the array
         for (var column = 0; column < BOARD_WIDTH; column++) {
             var idx = column + row * BOARD_WIDTH;
-            % Push the index if there is one left. -1 otherwise
+            % Push the index if there is one left. EMPTY otherwise
             if (idx < unusedCards.length) {
                 zArr.push(unusedCards[idx]);
             } else {
-                zArr.push(-1);
+                zArr.push(EMPTY);
             }
         }
         complBoard.push(zArr);
@@ -566,9 +575,9 @@ function gameOverCheck() {
         for (var e2 = e1 + 1; e2 < cardCount - 1; e2++) {
             for (var e3 = e2 + 1; e3 < cardCount; e3++) {
                 % Reassign
-                posArray[0] = [e1 \% BOARD_WIDTH, Math.floor(e1 / BOARD_WIDTH)];
-                posArray[1] = [e2 \% BOARD_WIDTH, Math.floor(e2 / BOARD_WIDTH)];
-                posArray[2] = [e3 \% BOARD_WIDTH, Math.floor(e3 / BOARD_WIDTH)];
+                posArray[0] = [Math.floor(e1 / BOARD_WIDTH), e1 \% BOARD_WIDTH];
+                posArray[1] = [Math.floor(e2 / BOARD_WIDTH), e2 \% BOARD_WIDTH];
+                posArray[2] = [Math.floor(e3 / BOARD_WIDTH), e3 \% BOARD_WIDTH];
 
                 if (isSet(posArray)) {
                     return false;
@@ -592,9 +601,9 @@ function gameOverCheck() {
  * Draw all cards.
  */
 function drawAll() {
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
@@ -603,11 +612,11 @@ function drawAll() {
  * Since only one card is updated with each input,
  * only this card needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function draw(x, y) {
-    var idx = complBoard[y][x];
+function draw(m, n) {
+    var idx = complBoard[m][n];
 
     % Generate the text value that is to be assigned
     var spans = new Array();
@@ -639,12 +648,12 @@ function draw(x, y) {
     var positions = posList[cardList[idx][NUM_P] - 1];
 
     % Assign the text value to the right cells
-    for (var f = 0; f < SYMB_COUNT; f++) {
-        var cell = this.getField("field" + f + x + y);
+    for (var i = 0; i < SYMB_COUNT; i++) {
+        var cell = this.getField("cell" + i + "-" + m + "-" + n);
         cell.delay = true;
         cell.richText = true;
 
-        if (positions[f] == 1) {
+        if (positions[i] == 1) {
             cell.richValue = spans;
         } else {
             % Clear cell from previous element
@@ -657,14 +666,14 @@ function draw(x, y) {
 /**
  * Clear the cell at the given position.
  *
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
+ * @param {Number} m The m coordinate.
+ * @param {Number} n The n coordinate.
  */
-function clear(x, y) {
-    var idx = complBoard[y][x];
+function clear(m, n) {
+    var idx = complBoard[m][n];
 
-    for (var f = 0; f < SYMB_COUNT; f++) {
-        var cell = this.getField("field" + f + x + y);
+    for (var i = 0; i < SYMB_COUNT; i++) {
+        var cell = this.getField("cell" + i + "-" + m + "-" + n);
         cell.delay = true;
         cell.value = "";
         cell.delay = false;
@@ -718,22 +727,22 @@ function printInfoText(text) {
             \renewcommand{\arraystretch}{0.0}
             % Add all cards
             \begin{tabularx}{\textwidth}{@{} *{\boardWidth}{X} @{}}%
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
-                        \PushButton[name=pos#1-#2, bordercolor=, backgroundcolor=, borderwidth=0]{%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                        \PushButton[name=card#1-#2, bordercolor=, backgroundcolor=, borderwidth=0]{%
                             \begin{tcolorbox}%
                                 \centering%
                                 % Sadly xintFor* does not work inside a PushButton
                                 % so the elements need to be copy pasted
-                                \TextField[name=field0#1#2, height=\cellHeight,%
+                                \TextField[name=cell0-#1-#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
-                                \TextField[name=field1#1#2, height=\cellHeight,%
+                                \TextField[name=cell1-#1-#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
-                                \TextField[name=field2#1#2, height=\cellHeight,%
+                                \TextField[name=cell2-#1-#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
-                                \TextField[name=field3#1#2, height=\cellHeight,%
+                                \TextField[name=cell3-#1-#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\[2pt]%
-                                \TextField[name=field4#1#2, height=\cellHeight,%
+                                \TextField[name=cell4-#1-#2, height=\cellHeight,%
                                     bordercolor=, backgroundcolor=, readonly]{}\\%
                             \end{tcolorbox}%
                         }%

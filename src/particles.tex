@@ -47,6 +47,12 @@ const STEP_SIZE = 4;
 const DEAD = false;
 const ALIVE = true;
 
+const X = 0;
+const Y = 1;
+const LIFESTATE = 0;
+const POS = 1;
+const SYMB_IDX = 2;
+
 % Globals
 % Animation interval variable
 var run;
@@ -198,7 +204,9 @@ function runAll() {
 
     % Emit new particle if particle dead and random condition
     for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        if (particles[idx][0] === false && getRandomInt(100) > PROBABILITY[particleType]) {
+        if (particles[idx][LIFESTATE] === false &&
+            getRandomInt(100) > PROBABILITY[particleType]
+        ) {
             emitParticle(idx);
         } else {
             moveParticles(idx);
@@ -221,10 +229,10 @@ function emitParticle(idx) {
         % Lifestate, position, symbol
         particles[idx] = [ALIVE, [pos, UPPER_LIMIT - PARTICLE_SIZE_H], symb];
     } else {
-        var pos_x = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
-        var pos_y = getRandomInt(UPPER_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        var posX = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        var posY = getRandomInt(UPPER_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
         % Lifestate, position, symbol index
-        particles[idx] = [ALIVE, [pos_x, pos_y], 0];
+        particles[idx] = [ALIVE, [posX, posY], 0];
     }
 }
 
@@ -235,42 +243,44 @@ function emitParticle(idx) {
  * @param {Number} idx The index of the particle in the array.
  */
 function moveParticles(idx) {
-    var shift_x = 0;
-    var add_x = 0;
-    var add_y = 0;
+    var shiftX = 0;
+    var addX = 0;
+    var addY = 0;
     var particle = this.getField("particle" + idx);
     particle.delay = true;
 
     if (particleType == 0) {
-        particle.value = String.fromCharCode(particles[idx][2]);
+        particle.value = String.fromCharCode(particles[idx][SYMB_IDX]);
         particle.textSize = PARTICLE_SIZE;
         % Apply shifting motion like waves
-        shift_x = Math.cos((particles[idx][1][0] + particles[idx][1][1]) / 40.0) * 20;
+        shiftX = Math.cos((particles[idx][POS][X] + particles[idx][POS][Y]) / 40.0) * 20;
 
-        particles[idx][1][1] -= STEP_SIZE;
+        particles[idx][POS][Y] -= STEP_SIZE;
         % Ending lifecycle when out of render area
-        if (particles[idx][1][1] < LOWER_LIMIT) {
-            particles[idx][0] = DEAD;
+        if (particles[idx][POS][Y] < LOWER_LIMIT) {
+            particles[idx][LIFESTATE] = DEAD;
         }
     } else {
-        particle.value = String.fromCharCode(CIRCLE_SYMBOLS[Math.floor(particles[idx][2] / 3)]);
-        particle.textSize = PARTICLE_SIZE + particles[idx][2] * 2;
+        particle.value = String.fromCharCode(
+            CIRCLE_SYMBOLS[Math.floor(particles[idx][SYMB_IDX] / 3)]
+        );
+        particle.textSize = PARTICLE_SIZE + particles[idx][SYMB_IDX] * 2;
 
-        particles[idx][2]++;
-        add_x = particles[idx][2];
-        add_y = particles[idx][2];
+        particles[idx][SYMB_IDX]++;
+        addX = particles[idx][SYMB_IDX];
+        addY = particles[idx][SYMB_IDX];
         % Ending lifecycle when all symbols iterated
-        if (particles[idx][2] >= CIRCLE_SYMBOLS.length * 3) {
-            particles[idx][0] = DEAD;
+        if (particles[idx][SYMB_IDX] >= CIRCLE_SYMBOLS.length * 3) {
+            particles[idx][LIFESTATE] = DEAD;
         }
     }
 
     % Adjust the rect position of the TextField
     var rect = [
-        particles[idx][1][0] - PARTICLE_SIZE_H - add_x + shift_x,
-        particles[idx][1][1] + PARTICLE_SIZE_H + add_y,
-        particles[idx][1][0] + PARTICLE_SIZE_H + add_x + shift_x,
-        particles[idx][1][1] - PARTICLE_SIZE_H - add_y
+        particles[idx][POS][X] - PARTICLE_SIZE_H - addX + shiftX,
+        particles[idx][POS][Y] + PARTICLE_SIZE_H + addY,
+        particles[idx][POS][X] + PARTICLE_SIZE_H + addX + shiftX,
+        particles[idx][POS][Y] - PARTICLE_SIZE_H - addY
     ];
     particle.rect = rect;
 

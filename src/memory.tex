@@ -47,7 +47,8 @@ const MAX_PLAYERS = AFMakeNumber(\playerCount);
 const MAX_PAIRS = (BOARD_WIDTH * BOARD_HEIGHT) / 2;
 
 % Constants
-% -
+const M = 0;
+const N = 1;
 
 % Globals
 % The game board array
@@ -108,16 +109,16 @@ function initialize() {
     }
 
     % Create the board by removing one element for each cell
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             var rnd = getRandomInt(symbols.length);
             var elem = symbols[rnd];
             symbols.splice(rnd, 1);
             % UTF8 symbol and is the cell removed
-            tmp.push([elem, false]);
+            row.push([elem, false]);
         }
-        complBoard.push(tmp);
+        complBoard.push(row);
     }
 
     for (var i = 0; i < MAX_PLAYERS; i++) {
@@ -141,10 +142,10 @@ function initializeButtons() {
 
     var funcName = "revealField";
     var cell;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            cell = this.getField("pos" + x + "-" + y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
             cell.setAction("MouseDown", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
@@ -171,14 +172,14 @@ function restart() {
 
     % Create the board by removing one element for each cell
     var cell;
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             var rnd = getRandomInt(symbols.length);
             var elem = symbols[rnd];
             symbols.splice(rnd, 1);
-            complBoard[y][x] = [elem, false];
+            complBoard[m][n] = [elem, false];
 
-            cell = this.getField("pos" + x + "-" + y);
+            cell = this.getField("cell" + m + "-" + n);
             cell.delay = true;
             cell.value = "";
             cell.borderColor = color.white;
@@ -241,10 +242,10 @@ function tooltip(on) {
  * If already two cells are revealed, they are either hidden or removed.
  * Does not do anything if cell is already revealed.
  *
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
+ * @param {Number} m The m coordinate.
+ * @param {Number} n The n coordinate.
  */
-function revealField(x, y) {
+function revealField(m, n) {
     % This removes the cursor and fixes minor bugs
     this.getField("restart").setFocus();
 
@@ -256,15 +257,15 @@ function revealField(x, y) {
     if (beforeLastCell != false && lastCell != false) {
 
         % Test if symbols match
-        var match = complBoard[lastCell[1]][lastCell[0]][0] ==
-            complBoard[beforeLastCell[1]][beforeLastCell[0]][0];
+        var match = complBoard[lastCell[M]][lastCell[N]][0] ==
+            complBoard[beforeLastCell[M]][beforeLastCell[N]][0];
         if (match) {
             % Remove both symbols
-            remove(lastCell[0], lastCell[1]);
-            remove(beforeLastCell[0], beforeLastCell[1]);
+            remove(lastCell[M], lastCell[N]);
+            remove(beforeLastCell[M], beforeLastCell[N]);
 
-            complBoard[lastCell[1]][lastCell[0]][1] = true;
-            complBoard[beforeLastCell[1]][beforeLastCell[0]][1] = true;
+            complBoard[lastCell[M]][lastCell[N]][1] = true;
+            complBoard[beforeLastCell[M]][beforeLastCell[N]][1] = true;
 
             % Check if cell is full or pairs left
             if (++pairsFound == MAX_PAIRS) {
@@ -274,8 +275,8 @@ function revealField(x, y) {
             }
         } else {
             % Hide both symbols
-            draw(lastCell[0], lastCell[1], "");
-            draw(beforeLastCell[0], beforeLastCell[1], "");
+            draw(lastCell[M], lastCell[N], "");
+            draw(beforeLastCell[M], beforeLastCell[N], "");
         }
         beforeLastCell = false;
         lastCell = false;
@@ -283,19 +284,19 @@ function revealField(x, y) {
         return;
     }
 
-    if (complBoard[y][x][1]) {
+    if (complBoard[m][n][1]) {
         return;
     }
 
     % If one cell is selected allow for a second one
-    if (lastCell != false && (lastCell[0] != x || lastCell[1] != y)) {
+    if (lastCell != false && (lastCell[M] != m || lastCell[N] != n)) {
         % Save both selections
         beforeLastCell = lastCell;
-        lastCell = [x, y];
+        lastCell = [m, n];
 
         % Test if symbols match
-        var match = complBoard[lastCell[1]][lastCell[0]][0] ==
-            complBoard[beforeLastCell[1]][beforeLastCell[0]][0];
+        var match = complBoard[lastCell[M]][lastCell[N]][0] ==
+            complBoard[beforeLastCell[M]][beforeLastCell[N]][0];
         if (!match) {
             % Advance player
             playerIdx++;
@@ -308,10 +309,10 @@ function revealField(x, y) {
         % Print who's turn it is
         printInfoText("Your Turn: Player " + playerIdx);
     } else {
-        lastCell = [x, y];
+        lastCell = [m, n];
     }
 
-    draw(x, y, complBoard[y][x][0]);
+    draw(m, n, complBoard[m][n][0]);
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -320,12 +321,12 @@ function revealField(x, y) {
 /**
  * Redraw the given position using the given value.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @param {String} value The text value.
  */
-function draw(x, y, value) {
-    var cell = this.getField("pos" + x + "-" + y);
+function draw(m, n, value) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
     cell.value = value;
     cell.delay = false;
@@ -334,11 +335,11 @@ function draw(x, y, value) {
 /**
  * Remove the value at the given position.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function remove(x, y) {
-    var cell = this.getField("pos" + x + "-" + y);
+function remove(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
     cell.value = "";
     cell.borderColor = color.black;
@@ -412,10 +413,10 @@ function printInfoText(text) {
             \fi
 
             \begin{center}
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
