@@ -44,6 +44,8 @@ const HALF_BOARD_WIDTH = Math.floor(BOARD_WIDTH / 2.0);
 const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 
 % Constants
+const M = 0;
+const N = 1;
 const EMPTY = 0;
 
 % Globals
@@ -62,52 +64,52 @@ var shouldEmitStone = true;
 const STONES = new Array(
     % Bar
     new Array(
-        new Array(HALF_BOARD_WIDTH - 2, 0),
-        new Array(HALF_BOARD_WIDTH - 1, 0),
-        new Array(HALF_BOARD_WIDTH, 0),
-        new Array(HALF_BOARD_WIDTH + 1, 0)
+        new Array(0, HALF_BOARD_WIDTH - 2),
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1)
     ),
     % Cube
     new Array(
-        new Array(HALF_BOARD_WIDTH - 1, 0),
-        new Array(HALF_BOARD_WIDTH - 1, 1),
-        new Array(HALF_BOARD_WIDTH, 0),
-        new Array(HALF_BOARD_WIDTH, 1)
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(1, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(1, HALF_BOARD_WIDTH)
     ),
     % T
     new Array(
-        new Array(HALF_BOARD_WIDTH - 1, 0),
-        new Array(HALF_BOARD_WIDTH, 0),
-        new Array(HALF_BOARD_WIDTH, 1),
-        new Array(HALF_BOARD_WIDTH + 1, 0)
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(1, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1)
     ),
     % Z
     new Array(
-        new Array(HALF_BOARD_WIDTH - 1, 0),
-        new Array(HALF_BOARD_WIDTH, 0),
-        new Array(HALF_BOARD_WIDTH, 1),
-        new Array(HALF_BOARD_WIDTH + 1, 1)
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(1, HALF_BOARD_WIDTH),
+        new Array(1, HALF_BOARD_WIDTH + 1)
     ),
     % L
     new Array(
-        new Array(HALF_BOARD_WIDTH - 1, 0),
-        new Array(HALF_BOARD_WIDTH, 0),
-        new Array(HALF_BOARD_WIDTH + 1, 0),
-        new Array(HALF_BOARD_WIDTH + 1, 1)
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1),
+        new Array(1, HALF_BOARD_WIDTH + 1)
     ),
     % J
     new Array(
-        new Array(HALF_BOARD_WIDTH - 1, 1),
-        new Array(HALF_BOARD_WIDTH - 1, 0),
-        new Array(HALF_BOARD_WIDTH, 0),
-        new Array(HALF_BOARD_WIDTH + 1, 0)
+        new Array(1, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1)
     ),
     % S
     new Array(
-        new Array(HALF_BOARD_WIDTH - 1, 1),
-        new Array(HALF_BOARD_WIDTH, 1),
-        new Array(HALF_BOARD_WIDTH, 0),
-        new Array(HALF_BOARD_WIDTH + 1, 0)
+        new Array(1, HALF_BOARD_WIDTH - 1),
+        new Array(1, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1)
     )
 );
 
@@ -128,12 +130,12 @@ const COLORS = new Array(
  * Initialize the default game state.
  */
 function initialize() {
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            tmp.push(EMPTY);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row.push(EMPTY);
         }
-        complBoard.push(tmp);
+        complBoard.push(row);
     }
 
     % Initialize the GUI
@@ -174,9 +176,9 @@ function initializeButtons() {
  */
 function restart() {
     this.getField("points").value = 0;
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            complBoard[row][column] = EMPTY;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
         }
     }
 
@@ -249,8 +251,8 @@ function runAll() {
  * @return {Boolean} If the game is over true else false.
  */
 function gameover() {
-    for (var column = 0; column < BOARD_WIDTH; column++) {
-        if (complBoard[0][column] != 0) {
+    for (var n = 0; n < BOARD_WIDTH; n++) {
+        if (complBoard[0][n] != 0) {
             return true;
         }
     }
@@ -270,9 +272,9 @@ function emitStone() {
     }
     % Set the stone
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        complBoard[y][x] = stoneColor;
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        complBoard[m][n] = stoneColor;
     }
     shouldEmitStone = false;
 }
@@ -284,9 +286,9 @@ function emitStone() {
  */
 function collidesOrHeight() {
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        if (y + 1 >= BOARD_HEIGHT || complBoard[y + 1][x] != EMPTY) {
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        if (m + 1 >= BOARD_HEIGHT || complBoard[m + 1][n] != EMPTY) {
             return true;
         }
     }
@@ -300,9 +302,9 @@ function collidesOrHeight() {
  */
 function collidesOrLeft() {
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        if (x - 1 < 0 || complBoard[y][x - 1] != EMPTY) {
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        if (n - 1 < 0 || complBoard[m][n - 1] != EMPTY) {
             return true;
         }
     }
@@ -316,9 +318,9 @@ function collidesOrLeft() {
  */
 function collidesOrRight() {
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        if (x + 1 >= BOARD_WIDTH || complBoard[y][x + 1] != EMPTY) {
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        if (n + 1 >= BOARD_WIDTH || complBoard[m][n + 1] != EMPTY) {
             return true;
         }
     }
@@ -331,14 +333,14 @@ function collidesOrRight() {
  * Add a new line at the top.
  */
 function removeLines() {
-    for (var y = BOARD_HEIGHT - 1; y >= 0; y--) {
-        for (var x = 0; x < BOARD_WIDTH; x++) {
+    for (var m = BOARD_HEIGHT - 1; m >= 0; m--) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             % Line is not completely full
-            if (complBoard[y][x] == EMPTY) {
-                x = BOARD_WIDTH;
+            if (complBoard[m][n] == EMPTY) {
+                n = BOARD_WIDTH;
             }
             % Last cell of line is reached and it is not empty
-            else if (x == BOARD_WIDTH - 1 && complBoard[y][x] > EMPTY) {
+            else if (n == BOARD_WIDTH - 1 && complBoard[m][n] > EMPTY) {
 
                 this.getField("points").value += 1000;
                 lineCount++;
@@ -348,17 +350,17 @@ function removeLines() {
                     speed--;
                 }
                 % Remove the line by shifting all the lines above one down
-                for (var move_y = y; move_y > 0; move_y--) {
-                    complBoard[move_y] = complBoard[move_y - 1];
+                for (var rowIdx = m; rowIdx > 0; rowIdx--) {
+                    complBoard[rowIdx] = complBoard[rowIdx - 1];
                 }
                 % Override the top line with a new one
-                var tmp = new Array();
-                for (var column = 0; column < BOARD_WIDTH; column++) {
-                    tmp.push(EMPTY);
+                var row = new Array();
+                for (var n = 0; n < BOARD_WIDTH; n++) {
+                    row.push(EMPTY);
                 }
-                complBoard[0] = tmp;
-                % Adjust y such that the shifted line is also tested
-                y++;
+                complBoard[M] = row;
+                % Adjust m such that the shifted line is also tested
+                m++;
 
             }
         }
@@ -381,24 +383,24 @@ function updateBoard() {
                 this.getField("points").value++;
                 loopTimer = 0;
                 for (var pice = 0; pice < stone.length; pice++) {
-                    stone[pice][1]++;
-                    var x = stone[pice][0];
-                    var y = stone[pice][1];
-                    complBoard[y][x] = stoneColor;
+                    stone[pice][M]++;
+                    var m = stone[pice][M];
+                    var n = stone[pice][N];
+                    complBoard[m][n] = stoneColor;
                 }
             } else {
                 for (var pice = 0; pice < stone.length; pice++) {
-                    var x = stone[pice][0];
-                    var y = stone[pice][1];
-                    complBoard[y][x] = stoneColor;
+                    var m = stone[pice][M];
+                    var n = stone[pice][N];
+                    complBoard[m][n] = stoneColor;
                 }
             }
         } else {
             % Add the stone to the board array
             for (var pice = 0; pice < stone.length; pice++) {
-                var x = stone[pice][0];
-                var y = stone[pice][1];
-                complBoard[y][x] = stoneColor;
+                var m = stone[pice][M];
+                var n = stone[pice][N];
+                complBoard[m][n] = stoneColor;
             }
             removeLines();
             shouldEmitStone = true;
@@ -412,9 +414,9 @@ function updateBoard() {
  */
 function removeStone() {
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        complBoard[y][x] = EMPTY;
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        complBoard[m][n] = EMPTY;
     }
 }
 
@@ -474,55 +476,55 @@ function move(dir) {
         case "s": % One down
             if (!collidesOrHeight()) {
                 for (pice = 0; pice < stone.length; pice++) {
-                    stone[pice][1]++;
+                    stone[pice][M]++;
                 }
             }
             break;
         case " ": % Full down
             while (!collidesOrHeight()) {
                 for (pice = 0; pice < stone.length; pice++) {
-                    stone[pice][1]++;
+                    stone[pice][M]++;
                 }
             }
             break;
         case "a": % Left
             if (!collidesOrLeft()) {
                 for (pice = 0; pice < stone.length; pice++) {
-                    stone[pice][0]--;
+                    stone[pice][N]--;
                 }
             }
             break;
         case "d": % Right
             if (!collidesOrRight()) {
                 for (pice = 0; pice < stone.length; pice++) {
-                    stone[pice][0]++;
+                    stone[pice][N]++;
                 }
             }
             break;
         case "q": % Rotate
             var newPositions = new Array();
             for (var pice = 0; pice < stone.length; pice++) {
-                var res = rotate(stone[0][0], stone[0][1], stone[pice][0], stone[pice][1], 90.0);
-                if (collidesOrOOB(res[0], res[1]))
+                var res = rotate(stone[0][M], stone[0][N], stone[pice][M], stone[pice][N], 90.0);
+                if (collidesOrOOB(res[M], res[N]))
                     return;
                 newPositions.push(res);
             }
             for (var pice = 0; pice < stone.length; pice++) {
-                stone[pice][0] = newPositions[pice][0];
-                stone[pice][1] = newPositions[pice][1];
+                stone[pice][M] = newPositions[pice][M];
+                stone[pice][N] = newPositions[pice][N];
             }
             break;
         case "e": % Rotate
             var newPositions = new Array();
             for (var pice = 0; pice < stone.length; pice++) {
-                var res = rotate(stone[0][0], stone[0][1], stone[pice][0], stone[pice][1], -90.0);
-                if (collidesOrOOB(res[0], res[1]))
+                var res = rotate(stone[0][M], stone[0][N], stone[pice][M], stone[pice][N], -90.0);
+                if (collidesOrOOB(res[M], res[N]))
                     return;
                 newPositions.push(res);
             }
             for (var pice = 0; pice < stone.length; pice++) {
-                stone[pice][0] = newPositions[pice][0];
-                stone[pice][1] = newPositions[pice][1];
+                stone[pice][M] = newPositions[pice][M];
+                stone[pice][N] = newPositions[pice][N];
             }
             break;
     }
@@ -530,17 +532,17 @@ function move(dir) {
 
 /**
  * Check the given position if it is out of bounds or collides.
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
+ * @param {Number} m The m coordinate.
+ * @param {Number} n The n coordinate.
  * @return {Boolean} True if collides else false
  */
-function collidesOrOOB(x, y) {
+function collidesOrOOB(m, n) {
     % Collides
-    if (complBoard[y][x] > EMPTY) {
+    if (complBoard[m][n] > EMPTY) {
          return true;
     }
     % Out of bounds
-    if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT) {
+    if (n < 0 || n >= BOARD_WIDTH || m < 0 || m >= BOARD_HEIGHT) {
         return true;
     }
     return false;
@@ -549,20 +551,20 @@ function collidesOrOOB(x, y) {
 /**
  * Rotate the given coordinate around a given center.
  * https://stackoverflow.com/questions/17410809/how-to-calculate-rotation-in-2d-in-javascript
- * @param {Number} cx The center x coordinate.
- * @param {Number} cy The center y coordinate.
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
+ * @param {Number} cm The center m coordinate.
+ * @param {Number} cn The center n coordinate.
+ * @param {Number} m The m coordinate.
+ * @param {Number} n The n coordinate.
  * @param {Number} angle The angle at which to rotate.
  * @return {Array} The new position.
  */
-function rotate(cx, cy, x, y, angle) {
+function rotate(cm, cn, m, n, angle) {
     var radians = (Math.PI / 180) * angle;
     var cos = Math.cos(radians);
     var sin = Math.sin(radians);
-    var nx = (cos * (x - cx)) + (sin * (y - cy)) + cx;
-    var ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
-    return [Math.round(nx), Math.round(ny)];
+    var nn = (cos * (n - cn)) + (sin * (m - cm)) + cn;
+    var mm = (cos * (m - cm)) - (sin * (n - cn)) + cm;
+    return [Math.round(nn), Math.round(mm)];
 }
 
 %%%%%%%%%%%%%%%%%%%%%
@@ -572,9 +574,9 @@ function rotate(cx, cy, x, y, angle) {
  * Draw all cells.
  */
 function drawAll() {
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
@@ -583,14 +585,14 @@ function drawAll() {
  * Since only one cell is updated with each input,
  * only this cell needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function draw(x, y) {
-    var cell = this.getField("pos" + x + "-" + y);
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
-    if (complBoard[y][x] > 0) {
-        cell.fillColor = COLORS[complBoard[y][x] - 1];
+    if (complBoard[m][n] > 0) {
+        cell.fillColor = COLORS[complBoard[m][n] - 1];
     } else {
         cell.fillColor = color.white;
     }
@@ -643,10 +645,10 @@ function draw(x, y) {
 
             \begin{center}
                 \tiny
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%

@@ -45,6 +45,8 @@ const WINNING_PIECES = AFMakeNumber(\winningPieces);
 const MAX_PLAYERS = AFMakeNumber(\playerCount);
 
 % Constants
+const M = 0;
+const N = 1;
 const EMPTY = 0;
 
 % Globals
@@ -84,13 +86,13 @@ const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
  * Initialize the default game state.
  */
 function initialize() {
-    % Initlialize the array with a zeros
-    for (var row = 0; row < BOARD_HEIGHT; row++) {
-        var zArr = new Array();
-        for (var column = 0; column < BOARD_WIDTH; column++) {
-            zArr.push(EMPTY);
+    % Initialize the array with a zeros
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row.push(EMPTY);
         }
-        complBoard.push(zArr);
+        complBoard.push(row);
     }
 
     % Initialize the GUI
@@ -112,10 +114,10 @@ function initializeButtons() {
     % Define text style
     var cell;
     var funcName = "markCell";
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            cell = this.getField("pos" + x + "-" + y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
             cell.setAction("MouseDown", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
@@ -166,10 +168,10 @@ function tooltip(on) {
  */
 function restart() {
     % Reset board
-    for (var x = 0; x < BOARD_WIDTH; x++) {
-        for (var y = 0; y < BOARD_HEIGHT; y++) {
-            complBoard[y][x] = EMPTY;
-            resetDraw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
+            resetDraw(m, n);
         }
     }
 
@@ -188,21 +190,21 @@ function restart() {
 /**
  * Set the value of the input cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function markCell(x, y) {
+function markCell(m, n) {
     % Remove blinking cursor after selection
     this.getField("info").setFocus();
 
-    if (gameover || complBoard[y][x] != EMPTY) {
+    if (gameover || complBoard[m][n] != EMPTY) {
         return;
     }
 
-    complBoard[y][x] = playerIdx;
+    complBoard[m][n] = playerIdx;
 
     % Check for winner (playerIdx)
-    var winner = checkForWinner(x, y);
+    var winner = checkForWinner(m, n);
 
     playerIdx++;
     if (playerIdx > MAX_PLAYERS) {
@@ -215,12 +217,12 @@ function markCell(x, y) {
     % Check if board full
     var full = true;
     if (winner == 0) {
-        for (var xx = 0; xx < BOARD_WIDTH; xx++) {
-            for (var yy = 0; yy < BOARD_HEIGHT; yy++) {
-                if (complBoard[yy][xx] == EMPTY) {
+        for (var mm = 0; mm < BOARD_HEIGHT; mm++) {
+            for (var nn = 0; nn < BOARD_WIDTH; nn++) {
+                if (complBoard[mm][nn] == EMPTY) {
                     full = false;
-                    yy = BOARD_HEIGHT;
-                    xx = BOARD_WIDTH;
+                    mm = BOARD_HEIGHT;
+                    nn = BOARD_WIDTH;
                 }
             }
         }
@@ -238,10 +240,10 @@ function markCell(x, y) {
         printInfoText("No one did win and the board is full.");
     }
 
-    draw(x, y);
+    draw(m, n);
 
     % Safe the last cell so it can be marked
-    lastCell = [x, y];
+    lastCell = [m, n];
 }
 
 /**
@@ -252,11 +254,11 @@ function markCell(x, y) {
  * Therefore all directions are checked whether a line
  * of a set length with the current player symbol can be formed.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @return {Number} The player index or 0 if no winner
  */
-function checkForWinner(x, y) {
+function checkForWinner(m, n) {
     var count = 0;
     var maxCount = 0;
     % Define directions
@@ -272,12 +274,12 @@ function checkForWinner(x, y) {
         maxCount = 0;
         % Count succeeding cells
         for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
-            var nx = x + directions[dirIdx] * wp;
-            var ny = y + directions[dirIdx + 1] * wp;
+            var mm = m + directions[dirIdx] * wp;
+            var nn = n + directions[dirIdx + 1] * wp;
             % Border check
-            if (nx < 0 || nx >= BOARD_WIDTH ||
-                ny < 0 || ny >= BOARD_HEIGHT ||
-                complBoard[ny][nx] != playerIdx
+            if (mm < 0 || mm >= BOARD_HEIGHT ||
+                nn < 0 || nn >= BOARD_WIDTH ||
+                complBoard[mm][nn] != playerIdx
             ) {
                 % Reset counter when line is broken
                 count = 0;
@@ -301,13 +303,13 @@ function checkForWinner(x, y) {
  * Since only one cell is updated with each input,
  * only this cell needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function draw(x, y) {
-    var cell = this.getField("pos" + x + "-" + y);
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
-    var value = complBoard[y][x];
+    var value = complBoard[m][n];
 
     cell.textColor = COLORS[value - 1];
     cell.value = String.fromCharCode(PLAYER_SYMBOLS[value - 1]);
@@ -318,9 +320,9 @@ function draw(x, y) {
 
     % Reset highlight the last taken move
     if (lastCell !== false) {
-        var xx = lastCell[0];
-        var yy = lastCell[1];
-        cell = this.getField("pos" + xx + "-" + yy);
+        var mm = lastCell[M];
+        var nn = lastCell[N];
+        cell = this.getField("cell" + mm + "-" + nn);
         cell.delay = true;
         cell.borderColor = color.white;
         cell.delay = false;
@@ -330,11 +332,11 @@ function draw(x, y) {
 /**
  * Reset the current cell to its default state.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function resetDraw(x, y) {
-    var cell = this.getField("pos" + x + "-" + y);
+function resetDraw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
     cell.textColor = color.black;
     cell.value = "";
@@ -410,10 +412,10 @@ function printInfoText(text, col=color.black) {
 
             \begin{center}
                 \tiny
-                \xintFor* #2 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            name=pos#1-#2, width=\cellsize, height=\cellsize,%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, align=1, readonly%
                         ]{}%
                         \xintifForLast{}{\hspace{3pt}}%
