@@ -141,7 +141,6 @@ function initializeButtons() {
     this.getField("reset").setAction("MouseUp", "resetSudoku();");
 
     % Selection field for the amount of predefined cells when generating
-    this.getField("elemcount").borderColor = color.white;
     this.getField("elemcount").currentValueIndices = 2;
     this.getField("elemcount").commitOnSelChange = true;
 
@@ -766,7 +765,7 @@ function printInfoText(text) {
         %%%%%%%%%%%%%%%%
         % GUI elements %
         %%%%%%%%%%%%%%%
-        \ChoiceMenu[name=elemcount, bordercolor=gray, width=50mm, combo]
+        \ChoiceMenu[name=elemcount, bordercolor=gray, width=50mm, combo, edit=false]
             {Fullcell count:}{15, 30, 45, 60, 75}
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
         %

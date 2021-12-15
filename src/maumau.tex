@@ -740,7 +740,7 @@ function specialRulesPlay(cardIdx) {
     }
     % Get another turn when played an ass
     else if (rules.cbAcard && c.charAt(0) == "A") {
-        printInfoText("Player " + (curPlayer + 1) + " has played an ass and must play another card.");
+        printInfoText("Player "+(curPlayer + 1)+" has played an ass and must play another card.");
         prevPlayer();
     }
 }
@@ -1149,7 +1149,8 @@ function printInfoText(text) {
                 \CheckBox[name=cbK, bordercolor=gray, checkboxsymbol=5]{King: take 4} &%
                 \CheckBox[name=cbKchain, bordercolor=gray, checkboxsymbol=5]{King: chaining}
                 \\%
-                \CheckBox[name=cbAcard, bordercolor=gray, checkboxsymbol=5]{Ace: play another card} &%
+                \CheckBox[name=cbAcard, bordercolor=gray, checkboxsymbol=5]
+                    {Ace: play another card} &%
                 \CheckBox[name=cbAskip, bordercolor=gray, checkboxsymbol=5]{Ace: skip player}
                 %
             \end{tabularx}

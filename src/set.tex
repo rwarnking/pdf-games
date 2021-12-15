@@ -729,7 +729,7 @@ function printInfoText(text) {
             \begin{tabularx}{\textwidth}{@{} *{\boardWidth}{X} @{}}%
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
-                        \PushButton[name=card#1-#2, bordercolor=, backgroundcolor=, borderwidth=0]{%
+                        \PushButton[name=card#1-#2, bordercolor=, backgroundcolor=,borderwidth=0]{%
                             \begin{tcolorbox}%
                                 \centering%
                                 % Sadly xintFor* does not work inside a PushButton

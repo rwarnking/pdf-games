@@ -514,11 +514,9 @@ function printInfoText(text) {
                 \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \ChoiceMenu[name=percentage, height=0.35cm, width=0.5cm, combo,
-                            commitonselchange=true]{
-                            Restart with mines in \%:}{%
-                            10, 13, 17, 20,%
-                        }%
+                        \ChoiceMenu[name=percentage, height=0.35cm, bordercolor=gray,
+                            backgroundcolor=white, combo, edit=false, commitonselchange=true]
+                            {Restart with mines in \%:}{10, 13, 17, 20}%
                         \strut
                     \end{tcolorbox}
                 } &%

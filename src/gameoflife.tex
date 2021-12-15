@@ -577,8 +577,8 @@ function printInfoText(text) {
                 } &
                 \begin{tcolorbox}
                     \centering
-                    \ChoiceMenu[name=shapeidx, width=0.5cm, height=0.35cm,%
-                        bordercolor=white, backgroundcolor=, combo, commitonselchange=true%
+                    \ChoiceMenu[name=shapeidx, height=0.35cm,%
+                        bordercolor=gray, combo, commitonselchange=true, edit=false%
                     ]{Shape name:}{%
                         One, Block, Beehive, Loaf, Boat, Tub,%
                         Blinker, Toad, Beacon, Pulsar, Pentadecathlon,%
@@ -587,11 +587,11 @@ function printInfoText(text) {
                     }%
                     \strut
                 \end{tcolorbox} \\[-0.3cm]%
-                \PushButton[name=fillrnd, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \PushButton[name=fillrnd, bordercolor=, backgroundcolor=]{
                     \begin{tcolorbox}
                         \centering
-                        \ChoiceMenu[name=percentage, width=0.5cm, height=0.35cm,
-                            bordercolor=, backgroundcolor=, combo, commitonselchange=true%
+                        \ChoiceMenu[name=percentage, height=0.35cm, bordercolor=gray,
+                            backgroundcolor=white, combo, commitonselchange=true, edit=false%
                         ]{Fill random with \% alive:}{%
                             20, 40, 60, 80,%
                         }%

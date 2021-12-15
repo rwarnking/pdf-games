@@ -527,7 +527,7 @@ function jump(m1, n1) {
     draw(ANIM_POS, ANIM_POS);
 
     % Start animation
-    var callback = "jumpAnimation(" + m1 + "," + n1 + "," + m2 + "," + n2 + "," + m3 + "," + n3 + ")";
+    var callback = "jumpAnimation(" + m1 +","+ n1 +","+ m2 +","+ n2 +","+ m3 +","+ n3 + ")";
     run = app.setInterval(callback, ANIMATION_SPEED);
 }
 
@@ -1160,7 +1160,8 @@ function printInfoText(text) {
             \\
             \begin{tcolorbox}%
                 \centering%
-                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{%
+                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm,
+                    combo, edit=false]{Layout: }{%
                     English (33), European (37), German (45), Asymmetrical (39), Hermary (39)%
                 }%
             \end{tcolorbox}%
