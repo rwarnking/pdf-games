@@ -100,6 +100,13 @@ const SHAPES = new Array(
      [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4]] % Heavy-weight spaceship
 );
 
+const SHAPE_NAMES = new Array(
+    "One", "Block", "Beehive", "Loaf", "Boat",
+    "Tub", "Blinker", "Toad", "Beacon", "Pulsar",
+    "Pentadecathlon", "Glider", "Light-weight spaceship",
+    "Middle-weight spaceship", "Heavy-weight spaceship"
+);
+
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
@@ -298,7 +305,7 @@ function process() {
     % Iterate all cells
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         for (var n = 0; n < BOARD_WIDTH; n++) {
-            if (boardIdx == 1) {
+            if (boardIdx == 0) {
                 state = complBoard2[m][n];
             } else {
                 state = complBoard1[m][n];
@@ -323,7 +330,7 @@ function process() {
                 result = DEAD;
             }
 
-            if (boardIdx == 1) {
+            if (boardIdx == 0) {
                 complBoard1[m][n] = result;
             } else {
                 complBoard2[m][n] = result;
@@ -346,8 +353,8 @@ function getNeighbourCount(pM, pN) {
             if ((m == pM && n == pN) || m < 0 || n < 0 || m >= BOARD_HEIGHT || n >= BOARD_WIDTH) {
                 continue;
             }
-            if ((boardIdx == 1 && complBoard2[m][n] == ALIVE) ||
-                (boardIdx == 0 && complBoard1[m][n] == ALIVE)
+            if ((boardIdx == 1 && complBoard1[m][n] == ALIVE) ||
+                (boardIdx == 0 && complBoard2[m][n] == ALIVE)
             ) {
                 counter++;
             }
@@ -387,6 +394,7 @@ function clear() {
         }
     }
     drawAll(boardIdx);
+    this.getField("currstep").value = "Current step: " + currStep + ".";
 }
 
 /**
@@ -416,14 +424,14 @@ function addShape(m, n) {
         }
 
         if (boardIdx == 0) {
-            complBoard1[eM][eN] = ALIVE;
-        } else {
             complBoard2[eM][eN] = ALIVE;
+        } else {
+            complBoard1[eM][eN] = ALIVE;
         }
     };
 
-    printInfoText("Added shape " + currentShape + ".");
-    drawAll((boardIdx + 1) \% 2);
+    printInfoText("Added shape " + SHAPE_NAMES[currentShape] + ".");
+    drawAll(boardIdx);
 }
 
 /**
@@ -435,7 +443,7 @@ function fillRandom() {
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         for (var n = 0; n < BOARD_WIDTH; n++) {
             if (getRandomInt(100) < percentage) {
-                if (boardIdx == 0) {
+                if (boardIdx == 1) {
                     complBoard1[m][n] = ALIVE;
                 } else {
                     complBoard2[m][n] = ALIVE;
@@ -446,7 +454,7 @@ function fillRandom() {
             }
         }
     }
-    drawAll((boardIdx + 1) \% 2);
+    drawAll(boardIdx);
 }
 
 %%%%%%%%
