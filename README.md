@@ -43,6 +43,10 @@ take a look into the [wiki](https://github.com/rwarnking/pdf-games/wiki) of this
 
 ## Installation
 
+If you are only interested in the PDF you can download a `zip` containing all PDFs from
+[here](github.com/rwarnking/pdf-games/releases/latest).
+To program such a PDF yourself you need this:
+
 1. install LaTeX e.g. [TeX Live](https://www.tug.org/texlive/)
 2. install the insdljs package
     * This package is not necessarily component of the default LaTeX packages and needs to be

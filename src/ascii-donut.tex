@@ -20,9 +20,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Can be changed but 20-30 seem to be a good values, but the canvas should be quadratic
-\def\canvasWidth{20}
-\def\canvasHeight{\canvasWidth}
+% Can be changed but 20-30 seem to be a good values
+\def\canvasWidth{45}
+\def\canvasHeight{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % JavaScript
@@ -36,13 +36,36 @@ the different orientations and lighting states.";
 % Outside variables
 const CANVAS_WIDTH = AFMakeNumber(\canvasWidth);
 const CANVAS_HEIGHT = AFMakeNumber(\canvasHeight);
+const CANVAS_WIDTH_CHAR = 40;
 const SCREEN_TEXT_SIZE = 350;
 
 % Constants
-const SCALE = 10;
-const ANIMATION_SPEED = 300;
+% Scale how much the donut should move each frame
+const SCALE = 3;
+const ANIMATION_SPEED = 50;
+
+% https://www.a1k0n.net/2011/07/20/donut-math.html
+% Distance between each ring of the donut
+const THETA_SPACING = 0.07;
+const PHI_SPACING   = 0.02;
+
+const R1 = 1;
+const R2 = 2;
+% Distance to the camera
+const K2 = 5;
+% Calculate K1 based on screen size:
+% the maximum x-distance occurs roughly at the edge of the torus,
+% which is at x = R1 + R2, z = 0.
+% We want that to be displaced 3/8ths of the width of the screen,
+% which is 3/4th of the way from the center to the side of the screen.
+% canvasWidth*3/8 = K1*(R1+R2)/(K2+0)
+% canvasWidth*K2*3/(8*(R1+R2)) = K1
+const K1 = CANVAS_WIDTH * K2 * 3 / (8 * (R1 + R2));
+const K3 = CANVAS_HEIGHT * K2 * 3 / (8 * (R1 + R2));
 
 const CHAR_SET = ".,-~:;=!*#S@";
+const EMPTY = " ";
+const Z_INIT = 0;
 
 % Globals
 % Animation interval variable
@@ -62,23 +85,22 @@ var B = 0;
  * Initialize the default donut state.
  */
 function initialize() {
-    var cell;
-    for (var m = 0; m < CANVAS_HEIGHT; m++) {
-        for (var n = 0; n < CANVAS_WIDTH; n++) {
-            cell = this.getField("cell" + m + "-" + n);
-            cell.delay = true;
-            cell.textColor = color.white
-            cell.textSize = SCREEN_TEXT_SIZE / Math.max(CANVAS_HEIGHT, CANVAS_WIDTH);
-            cell.delay = false;
-        }
+    var line;
+    for (var y = 0; y < CANVAS_HEIGHT; y++) {
+        line = this.getField("line" + y);
+        line.delay = true;
+        line.textColor = color.white
+        line.textSize = SCREEN_TEXT_SIZE / Math.min(CANVAS_HEIGHT, CANVAS_WIDTH);
+        line.delay = false;
+        line.textFont = font.Cour;
     }
 
-    for (var m = 0; m < CANVAS_HEIGHT; m++) {
+    for (var y = 0; y < CANVAS_HEIGHT; y++) {
         var oRow = new Array();
         var zRow = new Array();
-        for (var n = 0; n < CANVAS_WIDTH; n++) {
-            oRow.push(" ");
-            zRow.push(0);
+        for (var x = 0; x < CANVAS_WIDTH; x++) {
+            oRow.push(EMPTY);
+            zRow.push(Z_INIT);
         }
         output.push(oRow);
         zbuffer.push(zRow);
@@ -103,6 +125,7 @@ function initializeButtons() {
     this.getField("restart").setAction("MouseUp", "restart();");
     this.getField("pause").setAction("MouseUp", "pause();");
     this.getField("resume").setAction("MouseUp", "resume();");
+    this.getField("import").setAction("MouseUp", "importRotation();");
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
@@ -179,41 +202,27 @@ function runAll() {
     renderFrame(A, B);
     % Since the canvas changes each frame everything needs to be redrawn
     draw();
-    A += 0.04 * SCALE;
-    B += 0.02 * SCALE;
+    updateGUI();
+    A += 0.07 * SCALE;
+    B += 0.03 * SCALE;
 }
 
 /**
  * Clear the output and the zbuffer before rendering to it.
  */
 function clearBuffer() {
-    for (var m = 0; m < CANVAS_HEIGHT; m++) {
-        for (var n = 0; n < CANVAS_WIDTH; n++) {
-            output[m][n] = " ";
-            zbuffer[m][n] = 0;
+    for (var y = 0; y < CANVAS_HEIGHT; y++) {
+        for (var x = 0; x < CANVAS_WIDTH; x++) {
+            output[y][x] = EMPTY;
+            zbuffer[y][x] = Z_INIT;
         }
     }
 }
 
-% https://www.a1k0n.net/2011/07/20/donut-math.html
-const THETA_SPACING = 0.07;
-const PHI_SPACING   = 0.02;
-
-const R1 = 1;
-const R2 = 2;
-const K2 = 5;
-% Calculate K1 based on screen size:
-% the maximum x-distance occurs roughly at the edge of the torus,
-% which is at x = R1 + R2, z = 0.
-% We want that to be displaced 3/8ths of the width of the screen,
-% which is 3/4th of the way from the center to the side of the screen.
-% canvasWidth*3/8 = K1*(R1+R2)/(K2+0)
-% canvasWidth*K2*3/(8*(R1+R2)) = K1
-const K1 = CANVAS_WIDTH * K2 * 3 / (8 * (R1 + R2));
-
 /**
  * Render the current frame given A and B to the
  * output array and the zbuffer.
+ * https://www.a1k0n.net/2011/07/20/donut-math.html
  *
  * @param {Number} A
  * @param {Number} B
@@ -253,7 +262,12 @@ function renderFrame(A, B) {
             % x and y projection.
             % Note that y is negated here, because y goes up in 3D space but down on 2D displays.
             var xp = Math.floor(CANVAS_WIDTH / 2 + K1 * ooz * x);
-            var yp = Math.floor(CANVAS_HEIGHT / 2 - K1 * ooz * y);
+            var yp = Math.floor(CANVAS_HEIGHT / 2 - K3 * ooz * y);
+
+            % Out of bounds check
+            if (yp < 0 || xp < 0 || yp >= zbuffer.length || xp >= zbuffer[0].length) {
+                continue;
+            }
 
             % Calculate luminance.
             var L = cosphi * costheta * sinB - cosA * costheta * sinphi -
@@ -263,13 +277,13 @@ function renderFrame(A, B) {
             if (L > 0) {
                 % Test against the z-buffer. Larger 1/z means the pixel is
                 % closer to the viewer than what's already plotted.
-                if (ooz > zbuffer[xp][yp]) {
-                    zbuffer[xp][yp] = ooz;
-                    var luminanceIndex = L * 8;
+                if (ooz > zbuffer[yp][xp]) {
+                    zbuffer[yp][xp] = ooz;
+                    var luminanceIndex = Math.floor(Math.max(0, L) * 8);
                     % luminanceIndex is now in the range 0..11 (8*sqrt(2) = 11.3)
                     % now we lookup the character corresponding to the
                     % luminance and plot it in our output:
-                    output[xp][yp] = CHAR_SET.charAt(luminanceIndex);
+                    output[yp][xp] = CHAR_SET.charAt(luminanceIndex);
                 }
             }
         }
@@ -285,15 +299,40 @@ function renderFrame(A, B) {
  */
 function draw() {
     % Now, dump output[] to the screen.
-    var cell;
-    for (var m = 0; m < CANVAS_HEIGHT; m++) {
-        for (var n = 0; n < CANVAS_WIDTH; n++) {
-            cell = this.getField("cell" + m + "-" + n);
-            cell.delay = true;
-            cell.value = output[m][n];
-            cell.delay = false;
+    var line;
+    for (var y = 0; y < CANVAS_HEIGHT; y++) {
+        var valStr = "";
+        for (var x = 0; x < CANVAS_WIDTH; x++) {
+            valStr += output[y][x];
         }
+
+        line = this.getField("line" + y);
+        line.delay = true;
+        line.value = valStr;
+        line.delay = false;
     }
+}
+
+/**
+ * Update the GUI to display the current rotation values.
+ */
+function updateGUI() {
+    var field = this.getField("coordtxtA");
+    field.value = A;
+    var field = this.getField("coordtxtB");
+    field.value = B;
+}
+
+/**
+ * Import the rotation values from the GUI.
+ */
+function importRotation() {
+    if (animInterval != -1) {
+        pause();
+    }
+    A = this.getField("importtxtA").value;
+    B = this.getField("importtxtB").value;
+    runAll();
 }
 
 \end{insDLJS}
@@ -322,23 +361,19 @@ function draw() {
             \end{flushright}%
         \end{multicols}
 
-        % Dynamically adjust the cell width to the number of cells per column
+        % Dynamically adjust the line width to the number of lines per column
         % Only need to check width since the board is quadratic
-        \FPeval{\resultW}{\canvasWidth * 3 - 2} % chktex 8
-        \def\cellsize{\dimexpr (\linewidth-\resultW pt)/\canvasWidth \relax}
+        \FPeval{\resultH}{\canvasHeight * 3 - 2} % chktex 8
+        \def\lineheight{\dimexpr (500pt-\resultH pt)/\canvasHeight \relax}
 
-        % The canvas (pixelarray)
+        % The canvas (linearray)
         \begin{tcolorbox}[colback=black]
             \begin{flushright}
                 \xintFor* #1 in {\xintSeq{0}{\canvasHeight-1}} \do {%
-                    \xintFor* #2 in {\xintSeq{0}{\canvasWidth-1}} \do {%
-                        \TextField[
-                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
-                            bordercolor=, backgroundcolor=, align=1, readonly%
-                        ]{}%
-                        \xintifForLast{}{\hspace{3pt}}%
-                    }\vspace{3pt}%
-                    \newline{}%
+                    \TextField[
+                        name=line#1, width=\linewidth, height=\lineheight,%
+                        bordercolor=, backgroundcolor=, readonly%
+                    ]{}\\%
                 }%
             \end{flushright}
         \end{tcolorbox}
@@ -367,6 +402,28 @@ function draw() {
                         Resume\strut
                     \end{tcolorbox}
                 }
+            \end{tabularx}
+            %
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \begin{tcolorbox}[left=0pt, right=0pt, halign=center]
+                    \strut Rotation A:
+                    \TextField[name=coordtxtA, width=1.2cm, height=0.35cm, maxlen=5,
+                        bordercolor=, backgroundcolor=, charsize=12pt, readonly]{}
+                    Rotation B:
+                    \TextField[name=coordtxtB, width=1.2cm, height=0.35cm, maxlen=5,
+                        bordercolor=, backgroundcolor=, charsize=12pt, readonly]{}
+                \end{tcolorbox}&
+                \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
+                    \begin{tcolorbox}
+                        Import rotation, \strut
+                        A:
+                        \TextField[name=importtxtA, width=1cm, height=0.35cm,
+                            bordercolor=gray, borderwidth=2pt, backgroundcolor=white, value=0]{\strut}
+                        B:
+                        \TextField[name=importtxtB, width=1cm, height=0.35cm,
+                            bordercolor=gray, borderwidth=2pt, backgroundcolor=white, value=0]{\strut}
+                    \end{tcolorbox}
+                }%\\[-0.3cm]
             \end{tabularx}
         \end{center}
 
