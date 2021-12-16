@@ -20,9 +20,20 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Other settings than the default are possible but will most likely not work
 \def\boardWidth{9}
 \def\boardHeight{9}
+\def\boxSize{3}
 
+% Print error when the the board has not the default dimensions
+\pgfmathparse{ \boardWidth == 9 && \boardHeight == 9 && \boxSize == 3 ? 0 : 1 }
+\ifnum\pgfmathresult>0
+    \makeatletter
+    \@latex@warning{Obacht: It is unlikely that the program is able to build a valid riddle if
+        other dimensions than the default are selected!
+    }
+    \makeatother
+\fi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -38,14 +49,14 @@ while the placements needs to follow these rules:\
 % Outside variables
 const BOARD_WIDTH = AFMakeNumber(\boardWidth);
 const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
+const BOX_SIZE = AFMakeNumber(\boxSize);
 const SCREEN_TEXT_SIZE = 300;
 
 % Constants
 const M = 0;
 const N = 1;
 
-const NUMBERS = 9;
-const BOX_SIZE = 3;
+const NUMBERS = BOX_SIZE * BOX_SIZE;
 const EMPTY = 0;
 
 % Globals
@@ -246,17 +257,18 @@ function generateSudoku() {
         numberArray.push(i);
     }
 
-    % % Fill top left
-    fillQuad(numberArray, 0, 0);
-    % Fill middle
-    fillQuad(numberArray, BOX_SIZE, BOX_SIZE);
-    % Fill bot right
-    fillQuad(numberArray, BOX_SIZE * 2, BOX_SIZE * 2);
+    % Fill diagonal quads
+    % (top left, middle, bot right, ...)
+    var num = Math.floor(Math.min(BOARD_WIDTH / BOX_SIZE, BOARD_HEIGHT / BOX_SIZE));
+    for (var quadIdx = 0; quadIdx < num; quadIdx++) {
+        fillQuad(numberArray, quadIdx * BOX_SIZE, quadIdx * BOX_SIZE);
+    }
 
     % Fill rest of the non-diagonal matrices.
     % For every cell to be filled, try all numbers until
     % a safe number is found.
     if (!solveSudoku()) {
+        drawAll(true);
         return;
     }
 
@@ -338,7 +350,7 @@ function solveSudoku() {
     % This should not happen
     for (var idx = 0; idx < spaces.length; idx++) {
         if (candidates[idx].length == 0) {
-            printInfoText("An error occurred in solveSudoku candidates.");
+            printInfoText("Could not solve the current Sudoku.");
             return false;
         }
     }
@@ -423,7 +435,7 @@ function getEmptySpaces() {
 function getCandidates(spaces) {
     % Helper array to mark all numbers that are disallowed
     var disallowed = [];
-    for (var i = 0; i < 9; i++) {
+    for (var i = 0; i < NUMBERS; i++) {
         disallowed.push(true);
     }
 
@@ -452,6 +464,9 @@ function getCandidates(spaces) {
         var nQuad = Math.floor(spaces[idx][N] / BOX_SIZE);
         for (var m = mQuad * BOX_SIZE; m < mQuad * BOX_SIZE + BOX_SIZE; m++) {
             for (var n = nQuad * BOX_SIZE; n < nQuad * BOX_SIZE + BOX_SIZE; n++) {
+                if (m >= BOARD_HEIGHT || n > BOARD_WIDTH) {
+                    continue;
+                }
                 num = complBoard[m][n];
                 if (num > EMPTY) {
                     disallowed[num - 1] = false;
@@ -469,7 +484,7 @@ function getCandidates(spaces) {
         candidates.push(tmpCnd);
 
         % Reset the disallowed numbers
-        for (var i = 0; i < 9; i++) {
+        for (var i = 0; i < NUMBERS; i++) {
             disallowed[i] = true;
         }
     }
@@ -539,7 +554,7 @@ function checkInput(m, n) {
 
     % When the value is inside the bounds
     % validate it and color the cell correspondingly.
-    if (cell.value > 0 && cell.value < 10) {
+    if (cell.value > 0 && cell.value <= NUMBERS) {
         complBoard[m][n] = cell.value;
         if (isCellValid(m, n)) {
             cell.fillColor = COLORS[2];
@@ -549,6 +564,7 @@ function checkInput(m, n) {
     }
     % Else remove the value from the cell
     else {
+        complBoard[m][n] = EMPTY;
         cell.value = "";
         cell.fillColor = COLORS[0];
     }
@@ -718,36 +734,32 @@ function printInfoText(text) {
                 \def\cellsize{\cellHeight}
             \fi
 
-            \begin{flushright}
+            \begin{center}
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
-                    \ifnum#1=3%
-                        \vspace{-12pt}%
-                        \noindent\rule[13pt]{\linewidth}{1pt}
-                    \fi%
-                    \ifnum#1=6%
-                        \vspace{-12pt}%
-                        \noindent\rule[13pt]{\linewidth}{1pt}
+                    \ifnum#1>0%
+                        \pgfmathparse{Mod(#1, \boxSize) == 0 ? 0 : 1}
+                        \ifnum\pgfmathresult=0%
+                            \vspace{-8pt}%
+                            \noindent\rule[3pt]{\linewidth}{1pt}
+                        \fi%
                     \fi%
                     \vspace{1pt}%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                        \ifnum#2>0%
+                            \pgfmathparse{Mod(#2, \boxSize) == 0 ? 0 : 1}
+                            \ifnum\pgfmathresult=0%
+                                \vrule width 1pt%
+                            \fi%
+                        \fi%
+                        \hspace{2pt}%
                         \TextField[%
                             name=cell#1-#2, width=\cellsize, height=\cellsize,%
                             bordercolor=white, align=1%
                         ]{}%
                         \hspace{2pt}%
-                        \ifnum#2=2%
-                            %\vspace{1pt}%
-                            \vrule width 1pt%
-                        \fi%
-                        \ifnum#2=5%
-                            %\vspace{1pt}%
-                            \vrule width 1pt%
-                        \fi%
-                        \hspace{2pt}%
-                    }\vspace{1pt}%
-                    \newline%
+                    }\\[1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
         %
         %%%%%%%%%%%%%%%%%%%%%%%
