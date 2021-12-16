@@ -53,6 +53,7 @@ const EMPTY = 0;
 var run;
 % The game board
 var complBoard = new Array();
+var isPaused = false;
 
 var focus = true;
 var loopTimer = 0;
@@ -165,6 +166,7 @@ function initializeButtons() {
     this.getField("turnRight").setAction("MouseUp", "move('e');");
 
     this.getField("start").setAction("MouseUp", "restart();");
+    this.getField("pause").setAction("MouseUp", "pause();");
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
@@ -186,6 +188,7 @@ function restart() {
     speed = AFMakeNumber(\GAMESPEED);
     lineCount = 0;
 
+    pause = false;
     shouldEmitStone = true;
 }
 
@@ -229,6 +232,10 @@ function tooltip(on) {
  * and drawing.
  */
 function runAll() {
+    if (isPaused) {
+        return;
+    }
+
     loopTimer++;
     processInput();
     updateBoard();
@@ -241,6 +248,13 @@ function runAll() {
     } else if (gameover()) {
         restart();
     }
+}
+
+/**
+ * Toggles pause.
+ */
+function pause() {
+    isPaused = !isPaused;
 }
 
 %%%%%%%%%%%%%
@@ -472,6 +486,11 @@ function processInput() {
  * @param {String} dir Expects a one char string that gives the direction.
  */
 function move(dir) {
+    % If pause is enabled do not process input
+    if (isPaused) {
+        return;
+    }
+
     switch(dir) {
         case "s": % One down
             if (!collidesOrHeight()) {
@@ -562,9 +581,9 @@ function rotate(cm, cn, m, n, angle) {
     var radians = (Math.PI / 180) * angle;
     var cos = Math.cos(radians);
     var sin = Math.sin(radians);
-    var nn = (cos * (n - cn)) + (sin * (m - cm)) + cn;
     var mm = (cos * (m - cm)) - (sin * (n - cn)) + cm;
-    return [Math.round(nn), Math.round(mm)];
+    var nn = (cos * (n - cn)) + (sin * (m - cm)) + cn;
+    return [Math.round(mm), Math.round(nn)];
 }
 
 %%%%%%%%%%%%%%%%%%%%%
