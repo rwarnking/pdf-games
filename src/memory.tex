@@ -25,8 +25,7 @@
 \def\boardWidth{6}
 \def\boardHeight{6}
 
-% Max playercount is 5
-\def\playerCount{3}
+\def\playerCount{5}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % JavaScript
@@ -121,8 +120,9 @@ function initialize() {
         complBoard.push(row);
     }
 
-    for (var i = 0; i < MAX_PLAYERS; i++) {
+    for (var p = 0; p < MAX_PLAYERS; p++) {
         playerPoints.push(0);
+        updatePointsGUI(p);
     }
 
     % Initialize the GUI
@@ -148,6 +148,7 @@ function initializeButtons() {
             cell = this.getField("cell" + m + "-" + n);
             cell.setAction("MouseDown", callbackName);
             cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
+            cell.borderColor = color.black;
         }
     }
 
@@ -182,13 +183,15 @@ function restart() {
             cell = this.getField("cell" + m + "-" + n);
             cell.delay = true;
             cell.value = "";
-            cell.borderColor = color.white;
+            cell.borderColor = color.black;
+            cell.hidden = false;
             cell.delay = false;
         }
     }
 
-    for (var i = 0; i < MAX_PLAYERS; i++) {
-        playerPoints[i] = 0;
+    for (var p = 0; p < MAX_PLAYERS; p++) {
+        playerPoints[p] = 0;
+        updatePointsGUI(p);
     }
 
     % Reset cell marking
@@ -305,6 +308,7 @@ function revealField(m, n) {
             }
         } else {
             playerPoints[playerIdx - 1]++;
+            updatePointsGUI(playerIdx - 1);
         }
         % Print who's turn it is
         printInfoText("Your Turn: Player " + playerIdx);
@@ -341,9 +345,19 @@ function draw(m, n, value) {
 function remove(m, n) {
     var cell = this.getField("cell" + m + "-" + n);
     cell.delay = true;
-    cell.value = "";
-    cell.borderColor = color.black;
+    cell.hidden = true;
     cell.delay = false;
+}
+
+/**
+ * Update the GUI points for the given player.
+ * @param idx {Number} The player index.
+ */
+function updatePointsGUI(idx) {
+    var field = this.getField("points" + (idx + 1));
+    field.delay = true;
+    field.value = playerPoints[idx];
+    field.delay = false;
 }
 
 /**
@@ -355,16 +369,6 @@ function printInfoText(text) {
     var field = this.getField("info");
     field.delay = true;
     field.value = text;
-    field.delay = false;
-
-    % Refresh the current points
-    var field = this.getField("pointtable");
-    field.delay = true;
-    var string = "";
-    for (var i = 0; i < MAX_PLAYERS; i++) {
-        string += "Player " + (i + 1) + " has " + playerPoints[i] + " Points.\n";
-    }
-    field.value = string;
     field.delay = false;
 }
 
@@ -425,6 +429,36 @@ function printInfoText(text) {
             \end{center}%
         \end{tcolorbox}
 
+        % Point table
+        \begin{center}
+            % Player selection buttons
+            \begin{tabularx}{\textwidth}{@{} *{\playerCount}{X} @{}}%
+                \xintFor* #1 in {\xintSeq{1}{\playerCount}} \do {%
+                    %\PushButton[name=player#1, bordercolor=, backgroundcolor=, borderwidth=1]{
+                        \begin{tcolorbox}[left=0pt, right=0pt, halign=center]
+                            \ifdim\linewidth>30pt
+                                P%
+                            \fi%
+                            \ifdim\linewidth>50pt
+                                layer%
+                            \fi%
+                            \ifdim\linewidth>35pt
+                                \(\;\)%
+                            \fi%
+                            \ifdim\linewidth>20pt
+                            #1:%
+                            \fi%
+                            \TextField[name=points#1, width=0.4cm, height=0.35cm,
+                                bordercolor=, backgroundcolor=, align=1, readonly]{}
+                        \end{tcolorbox}
+                    %}
+                    % Have the cell divider for all elements
+                    % that are not the last one
+                    \xintifForLast{}{&}
+                }%
+            \end{tabularx}
+        \end{center}
+        \vspace{-1cm}
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
@@ -440,8 +474,7 @@ function printInfoText(text) {
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
-
-        \TextField[name=pointtable, bordercolor=black, multiline=true, readonly]{}
+        %
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
