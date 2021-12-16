@@ -26,7 +26,7 @@
 \def\boxSize{3}
 
 % Print error when the the board has not the default dimensions
-\pgfmathparse{ \boardWidth == 9 && \boardHeight == 9 && \boxSize == 3 ? 0 : 1 }
+\pgfmathparse{ \boardWidth == 9 && \boardHeight == 9 && \boxSize == 3? 0: 1 }
 \ifnum\pgfmathresult>0
     \makeatletter
     \@latex@warning{Obacht: It is unlikely that the program is able to build a valid riddle if
@@ -737,7 +737,7 @@ function printInfoText(text) {
             \begin{center}
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \ifnum#1>0%
-                        \pgfmathparse{Mod(#1, \boxSize) == 0 ? 0 : 1}
+                        \pgfmathparse{Mod (#1, \boxSize) == 0? 0: 1}
                         \ifnum\pgfmathresult=0%
                             \vspace{-8pt}%
                             \noindent\rule[3pt]{\linewidth}{1pt}
@@ -746,7 +746,7 @@ function printInfoText(text) {
                     \vspace{1pt}%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \ifnum#2>0%
-                            \pgfmathparse{Mod(#2, \boxSize) == 0 ? 0 : 1}
+                            \pgfmathparse{Mod (#2, \boxSize) == 0? 0: 1}
                             \ifnum\pgfmathresult=0%
                                 \vrule width 1pt%
                             \fi%

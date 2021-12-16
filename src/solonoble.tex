@@ -20,7 +20,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Obacht: These must not be changed, otherwise the game is not playable
+% These parameter can be changed but do not impact the available boards
 \def\boardWidth{9}
 \def\boardHeight{9}
 
@@ -49,7 +49,7 @@ const C_IDX = 1;
 const ANIMATION_SPEED = 33;
 const ANIMATION_OFFSET = 0.05;
 % Index of the animation cell x and y
-const ANIM_POS = BOARD_WIDTH - 1;
+const ANIM_POS = 0;
 % Index of the cell that counts as a win
 const W_POS_M = [4, 2, 4, 4, 4];
 const W_POS_N = [4, 4, 4, 4, 4];
@@ -291,10 +291,13 @@ function initialize() {
         var row = new Array();
         for (var n = 0; n < BOARD_WIDTH; n++) {
             var colorIdx = -1;
-            var cell = BOARDS[boardIdx][m][n];
-            if (cell == FULL) {
-                colorIdx = idx;
-                idx++;
+            var cell = NONE;
+            if (m < BOARDS[boardIdx].length && n < BOARDS[boardIdx][m].length) {
+                cell = BOARDS[boardIdx][m][n];
+                if (cell == FULL) {
+                    colorIdx = idx;
+                    idx++;
+                }
             }
             row.push([cell, colorIdx]);
         }
@@ -374,12 +377,15 @@ function restart() {
     var colorIdx = 0;
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         for (var n = 0; n < BOARD_WIDTH; n++) {
-            var cell = BOARDS[boardIdx][m][n];
-            complBoard[m][n][STATE] = cell;
-            if (cell == FULL) {
-                complBoard[m][n][C_IDX] = colorIdx;
-                colorIdx++;
+            var cell = NONE;
+            if (m < BOARDS[boardIdx].length && n < BOARDS[boardIdx][m].length) {
+                cell = BOARDS[boardIdx][m][n];
+                if (cell == FULL) {
+                    complBoard[m][n][C_IDX] = colorIdx;
+                    colorIdx++;
+                }
             }
+            complBoard[m][n][STATE] = cell;
         }
     }
 
@@ -610,6 +616,13 @@ function showSolution() {
     restart();
 
     var boardIdx = this.getField("cmLayout").currentValueIndices;
+    if (BOARD_WIDTH < BOARDS[boardIdx].length || BOARD_HEIGHT < BOARDS[boardIdx][0].length) {
+        printInfoText("Can not show solution on sizes below [" +
+            BOARDS[boardIdx].length + ", " + BOARDS[boardIdx][0].length + "]!"
+        );
+        return;
+    }
+
     exeMoves = solMoves[boardIdx];
     % Start animation
     var callback = "animateMoves()";
