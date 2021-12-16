@@ -20,13 +20,16 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% TODO needs to be atleast 4
 % Can be changed but impacts the performance
 \def\boardWidth{10}
 \def\boardHeight{16}
 % Higher means slower
 \def\GAMESPEED{5}
 
+% Print error when the the board width is smaller than 4
+\ifnum\boardWidth<4
+    \errmessage{Board width is not allowed to be smaller than 4!}
+\fi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -451,23 +454,24 @@ function processInput() {
     iField2.delay = true;
     oField.delay = true;
 
+    const OUTPUT_CUTOFF = 10;
     % Get the input from the currently focused input element
     var movementString;
     if (focus) {
         iField1.setFocus();
-        movementString = iField2.value;
-        if (oField.value.length >= 10)
-            oField.value = oField.value.slice(movementString.length);
-        oField.value += movementString;
+        movementString = iField2.value.toString();
         iField2.value = "";
     } else {
         iField2.setFocus();
-        movementString = iField1.value
-        if (oField.value.length >= 10)
-            oField.value = oField.value.slice(movementString.length);
-        oField.value += movementString;
+        movementString = iField1.value.toString();
         iField1.value = "";
     }
+    % Shorten the output string
+    var tmpStr = oField.value.toString();
+    if (tmpStr.length >= OUTPUT_CUTOFF)
+        oField.value = tmpStr.slice(movementString.length);
+    oField.value += movementString;
+
     focus = !focus;
 
     % Process the input string
@@ -676,6 +680,16 @@ function draw(m, n) {
             \end{center}
         \end{tcolorbox}
 
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % Commandredifinition %
+        % https://www.dickimaw-books.com/latex/admin/html/eforms.shtml
+        %%%%%%%%%%%%%%%%%%%%%%%
+        % \def\DefaultHeightofText{16pt}
+        % \renewcommand*{\LayoutTextField}[2]{%
+        %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1}%
+        %     \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#2}
+        % }
+
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{3}{X} @{}}%
@@ -685,34 +699,41 @@ function draw(m, n) {
                         \Large start/restart\strut
                     \end{tcolorbox}
                 } &
-                \centering
-                \TextField[name=points, width=0.25\linewidth,
-                    bordercolor=, align=2, value=0, readonly]{Points:}&
+                \begin{tcolorbox}[colback=white, halign=center]
+                    % Only locally change this command
+                    \def\DefaultHeightofText{20pt}
+                    \renewcommand*{\LayoutTextField}[2]{%
+                        \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1}%
+                        \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#2}
+                    }
+                    \TextField[name=points, width=0.4\textwidth, charsize=20pt,
+                        bordercolor=, align=2, value=0, readonly]{Points:\;}
+                \end{tcolorbox}
+                &
                 \PushButton[name=pause, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large pause\strut
                     \end{tcolorbox}
-                } \\
+                } \\[-3mm]
                 \PushButton[name=turnLeft, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large turnLeft\strut
                     \end{tcolorbox}
                 } &
-                    \centering
-                    % bordercolor={0.650 .790 .94}
-                    \TextField[name=output1, width=0.3\textwidth, height=1.5cm,
-                        bordercolor=black, readonly]{}
-                    %\begin{tcolorbox}
-                    %\end{tcolorbox}
+                    \begin{tcolorbox}[colback=white,
+                        left=0pt, right=0pt, top=2pt, bottom=2pt, halign=center]
+                        \TextField[name=output1, width=\linewidth, height=1.0cm, charsize=20pt,
+                            bordercolor=, align=1, readonly]{}
+                    \end{tcolorbox}
                 &
                 \PushButton[name=turnRight, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large turnRight\strut
                     \end{tcolorbox}
-                } \\
+                } \\[-3mm]
                 \PushButton[name=left, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
