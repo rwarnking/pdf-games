@@ -274,7 +274,7 @@ function renderFrame(A, B) {
                 sinA * sintheta + cosB * (cosA * sintheta - costheta * sinA * sinphi);
             % L ranges from -sqrt(2) to +sqrt(2). If it's < 0, the surface
             % is pointing away from us, so we won't bother trying to plot it.
-            if (L > 0) {
+            % if (L > 0) {
                 % Test against the z-buffer. Larger 1/z means the pixel is
                 % closer to the viewer than what's already plotted.
                 if (ooz > zbuffer[yp][xp]) {
@@ -285,7 +285,7 @@ function renderFrame(A, B) {
                     % luminance and plot it in our output:
                     output[yp][xp] = CHAR_SET.charAt(luminanceIndex);
                 }
-            }
+            % }
         }
     }
 }

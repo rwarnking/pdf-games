@@ -33,56 +33,54 @@ Via the GUI it is possible to choose one of the available.";
 
 % Outside variables
 const PARTICLE_COUNT = AFMakeNumber(\particleCount);
+const ANIMATION_SPEED = 70;
 
 % Constants
 % Spawn dimensions
-const UPPER_LIMIT = 842;
-const LOWER_LIMIT = 0;
-const LEFT_LIMIT = 0;
-const RIGHT_LIMIT = 596;
 const PARTICLE_SIZE = 10;
 const PARTICLE_SIZE_H = PARTICLE_SIZE / 2;
-% The amount of space that a particle moves each frame
-const STEP_SIZE = 4;
-const DEAD = false;
-const ALIVE = true;
+const PARTICLE_TEXT_SIZE = 10;
 
+% Access variables
 const X = 0;
 const Y = 1;
-const LIFESTATE = 0;
+
+% Identifier for the different particle systems
+const SNOW_P = 0;
+const EXPL_P = 1;
+const FLOW_P = 2;
+
+% Particle data keys
+const STATE = 0;
 const POS = 1;
-const SYMB_IDX = 2;
+const SYMB = 2;
+const ROTATION = 3;
+const MASS = 4;
+const MOMENTUM = 5;
+const WIDTH = 6;
+const HEIGHT = 7;
+const SIZE = 8;
+
+% Initial state
+const DEAD = -1;
 
 % Globals
 % Animation interval variable
 var run;
-% Particle array
-var particles = new Array();
+% Particle information
 var particleType = 0;
+% Array of all particles and their data
+var particles;
+% Information-Object with the current particle system data
+var particleSys = {
+    aliveParticles: 0,
+    finished: function() {
+        return true;
+    }
+};
 
-% Probabilities for emits
-const PROBABILITY = [
-    98,
-    50
-]
-
-% Particle arrays
-const SNOW_SYMBOLS = [
-    0x2744,
-    0x2745,
-    0x2746,
-    0x2749
-]
-
-const FLOWER_SYMBOLS = [
-    0x2740
-];
-
-const CIRCLE_SYMBOLS = [
-    0x25CF,
-    0x25CB,
-    0x25CC
-];
+% Container to save the shift of a particle rect
+var shift = [0, 0];
 
 %%%%%%%%%%
 % Helper %
@@ -102,23 +100,16 @@ function getRandomInt(max) {
  * Initialize the default particle state.
  */
 function initialize() {
-    % Initialize all particles as dead
-    var particle;
-    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        % Lifestate, position, symbol index
-        particles.push([DEAD, [0, 0], 0]);
-
-        particle = this.getField("particle" + idx);
-        particle.delay = true;
-        particle.rect = [0, 0, 0, 0];
-        particle.delay = false;
-    }
-
     % Initialize the GUI
     initializeButtons();
 
+    % Setup canvas, particles, etc
+    setCanvasData();
+    defaultParticleSys();
+    selectParticlesystem(particleType);
+
     % Start the animation interval
-    run = app.setInterval("runAll()", 100);
+    run = app.setInterval("runAll()", ANIMATION_SPEED);
 }
 
 /**
@@ -128,6 +119,8 @@ function initialize() {
 function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
+
+    this.getField("particleType").currentValueIndices = 0;
 
     % Assign each button the corresponding function and disable the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
@@ -146,19 +139,11 @@ function initializeButtons() {
 function restart() {
     app.clearInterval(run);
 
-    var particle;
-    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        % Lifestate, position, symbol index
-        particles[idx] = [DEAD, [0, 0], 0];
+    % Setup particles, etc
+    defaultParticleSys();
+    selectParticlesystem(particleType);
 
-        particle = this.getField("particle" + idx);
-        particle.delay = true;
-        particle.rect = [0, 0, 0, 0];
-        particle.textSize = PARTICLE_SIZE;
-        particle.delay = false;
-    }
-
-    run = app.setInterval("runAll()", 100);
+    run = app.setInterval("runAll()", ANIMATION_SPEED);
 }
 
 /**
@@ -200,91 +185,418 @@ function tooltip(on) {
  * Main loop used to emit new particles or move the current ones.
  */
 function runAll() {
-    particleType = this.getField("particleType").currentValueIndices;
+    % Check if selected particle system changed
+    var guiValue = this.getField("particleType").currentValueIndices;
+    if (particleType != guiValue) {
+        particleType = guiValue;
+        restart();
+        return;
+    }
 
-    % Emit new particle if particle dead and random condition
-    for (var idx = 0; idx < PARTICLE_COUNT; idx++) {
-        if (particles[idx][LIFESTATE] === false &&
-            getRandomInt(100) > PROBABILITY[particleType]
-        ) {
-            emitParticle(idx);
+    if (!particleSys.finished()) {
+        processParticles();
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%
+% Setup functions %
+%%%%%%%%%%%%%%%%%%%
+/**
+ * Sets the canvas object to contain information about the sizes,
+ * borders and the center of both canvas elements.
+ */
+function setCanvasData() {
+    const CANVAS_RECT = [0, 842, 596, 0];
+    const LEFT = CANVAS_RECT[0];
+    const BOT = CANVAS_RECT[3];
+
+    const halfHeight = (CANVAS_RECT[1] - BOT) * 0.5;
+    const halfWidth = (CANVAS_RECT[2] - LEFT) * 0.5;
+
+    canvas = {
+        c: [LEFT + halfWidth, BOT + halfHeight],
+        l: LEFT,
+        r: CANVAS_RECT[2],
+        t: CANVAS_RECT[1],
+        b: BOT,
+        halfHeight: halfHeight,
+        halfWidth: halfWidth,
+    };
+}
+
+/**
+ * (Re)set the particle array and the particleSys object to its
+ * default state. Also resets the physics attributes and the functions.
+ */
+function defaultParticleSys() {
+    particles = Array.apply(null, Array(PARTICLE_COUNT)).map(_ => [
+        DEAD, [0, 0], % STATE, POS
+        0, 0, % SYMB, ROTATION
+        2, [0, 0],  % MASS, MOMENTUM
+        PARTICLE_SIZE, % WIDTH
+        PARTICLE_SIZE, % HEIGHT
+        PARTICLE_TEXT_SIZE % SIZE
+    ]);
+
+    particleSys = {
+        iterationCount: Infinity,
+        iterationCur: 0,
+        aliveParticles: 0,
+        alignment: "center",
+        particleCount: PARTICLE_COUNT,
+        particleSymbols: ["X"],
+        particleLifetime: 0,
+        particleMultiline: false,
+        particleBold: false,
+        probability: 100,
+        gravity: [0, -9.81],
+        force: [0, 5],
+        energyReduction: 0.45,
+        % FUNCTIONS
+        emit: function(p) {
+            particles[p][STATE]++;
+            this.aliveParticles++;
+            return true;
+        },
+        remove: function(p) {
+            hideParticle(p);
+            particles[p][STATE] = DEAD;
+            this.aliveParticles--;
+        },
+        finished: function() {
+            var finished = this.iterationCount < this.iterationCur;
+            return finished && this.aliveParticles == 0;
+        }
+    };
+}
+
+/**
+ * Set all particles once after system selection.
+ */
+function setUpParticles() {
+    for (var p = 0; p < particles.length; p++) {
+        var particle = this.getField("particle" + p);
+        % particle.textFont = font.Cour;
+        particle.alignment = particleSys.alignment;
+        particle.richText = particleSys.particleMultiline || particleSys.particleBold;
+        particle.textSize = particles[p][SIZE];
+        particle.hidden = true;
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%
+% Particle Selection %
+%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Initialize the particle system data depending on the type.
+ * @param {Number} type The type of the chosen particle system.
+ */
+function selectParticlesystem(type) {
+    if (type == SNOW_P) {
+        snowParticles();
+    } else if (type == EXPL_P) {
+        explosionParticles();
+    } else if (type == FLOW_P) {
+        flowerParticles();
+    }
+}
+
+/**
+ * Creates a particle system for falling snow.
+ * The snow is distributed along the top border of the document
+ * and slowly falls down until it reaches the bottom border.
+ */
+function snowParticles() {
+    const SNOW_SYMBOLS = [
+        String.fromCharCode(0x2744),
+        String.fromCharCode(0x2745),
+        String.fromCharCode(0x2746),
+        String.fromCharCode(0x2749)
+    ];
+
+    particleSys.particleSymbols = SNOW_SYMBOLS;
+    particleSys.particleLifetime = SNOW_SYMBOLS.length;
+    particleSys.probability = 99;
+
+    setUpParticles();
+
+    particleSys.emit = function(p) {
+        if (getRandomInt(100) < particleSys.probability) {
+            return false;
+        }
+
+        particles[p][SYMB] = getRandomInt(SNOW_SYMBOLS.length);
+        particles[p][SIZE] = PARTICLE_SIZE;
+        % Get random start position
+        var posX = getRandomInt(canvas.r - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        var posY = canvas.t - PARTICLE_SIZE_H;
+        particles[p][POS] = [posX, posY];
+
+        particles[p][STATE]++;
+        this.aliveParticles++;
+        return true;
+    }
+
+    % Circular move function
+    particleSys.move = function(p) {
+        % Use sin pattern to shift the position slightly
+        shift[X] = Math.cos((particles[p][POS][X] + particles[p][POS][Y]) / 40.0) * 20;
+
+        var moveSpeed = 4;
+        particles[p][POS][Y] -= moveSpeed;
+        % Ending lifecycle when out of render area
+        if (particles[p][POS][Y] < canvas.b) {
+            particles[p][STATE] = particleSys.particleLifetime + 1;
         } else {
-            moveParticles(idx);
+            particles[p][STATE] = 0;
         }
     }
-
 }
 
 /**
- * Emits a new particle for the given index.
- * Dependent on the selected particle system.
- *
- * @param {Number} idx The index of the particle in the array.
+ * Creates a particle system that resembles small explosions.
+ * These are made out of three circle symbols that are iterated
+ * and distributed over the whole document.
  */
-function emitParticle(idx) {
-    if (particleType == 0) {
-        var pos = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
-        % Select a random snow symbol
-        var symb = SNOW_SYMBOLS[getRandomInt(SNOW_SYMBOLS.length)];
-        % Lifestate, position, symbol
-        particles[idx] = [ALIVE, [pos, UPPER_LIMIT - PARTICLE_SIZE_H], symb];
-    } else {
-        var posX = getRandomInt(RIGHT_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
-        var posY = getRandomInt(UPPER_LIMIT - PARTICLE_SIZE) + PARTICLE_SIZE_H;
-        % Lifestate, position, symbol index
-        particles[idx] = [ALIVE, [posX, posY], 0];
+function explosionParticles() {
+    const CIRCLE_SYMBOLS = [
+        String.fromCharCode(0x25CF),
+        String.fromCharCode(0x25CB),
+        % Obacht this character is slow and seems to be buggy (text size is altered)
+        String.fromCharCode(0x25CC)
+    ];
+
+    const DIV = 3;
+    particleSys.particleSymbols = CIRCLE_SYMBOLS;
+    particleSys.particleLifetime = CIRCLE_SYMBOLS.length * DIV - 1;
+    particleSys.probability = 50;
+
+    setUpParticles();
+
+    particleSys.emit = function(p) {
+        if (getRandomInt(100) < particleSys.probability) {
+            return false;
+        }
+
+        particles[p][SYMB] = 0;
+
+        % Get random position
+        var posX = getRandomInt(canvas.r - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        var posY = getRandomInt(canvas.t - PARTICLE_SIZE) + PARTICLE_SIZE_H;
+        particles[p][POS] = [posX, posY];
+
+        particles[p][STATE]++;
+        particles[p][SIZE] = PARTICLE_TEXT_SIZE;
+        particles[p][WIDTH] = PARTICLE_SIZE;
+        particles[p][HEIGHT] = PARTICLE_SIZE;
+        this.aliveParticles++;
+        return true;
+    }
+
+    % Circular move function
+    particleSys.move = function(p) {
+        % Increase size
+        particles[p][SIZE] *= 1.1;
+        particles[p][WIDTH] *= 1.1;
+        particles[p][HEIGHT] *= 1.1;
+        particles[p][SYMB] = Math.floor(particles[p][STATE] / DIV);
     }
 }
 
 /**
- * Move the particle with the given index.
- * Dependent on the selected particle system.
- *
- * @param {Number} idx The index of the particle in the array.
+ * Creates a particle system with UTF8 flower symbols.
+ * The symbols are shot into the air similar to a fountain.
  */
-function moveParticles(idx) {
-    var shiftX = 0;
-    var addX = 0;
-    var addY = 0;
-    var particle = this.getField("particle" + idx);
+function flowerParticles() {
+    const FLOWER_SYMBOLS = [
+        String.fromCharCode(0x2740)
+    ];
+
+    particleSys.particleSymbols = FLOWER_SYMBOLS;
+    particleSys.particleLifetime = 1000;
+    particleSys.probability = 98;
+
+    setUpParticles();
+
+    particleSys.emit = function(p) {
+        if (getRandomInt(100) < particleSys.probability) {
+            return false;
+        }
+
+        % Create directional force
+        particles[p][MASS] = 1;
+        particles[p][MOMENTUM] = [(getRandomInt(100) - 50) / 5, 85];
+
+        var scale = 10;
+        particles[p][SIZE] = PARTICLE_TEXT_SIZE * scale;
+        particles[p][WIDTH] = PARTICLE_SIZE * scale;
+        particles[p][HEIGHT] = PARTICLE_SIZE * scale;
+
+        particles[p][POS] = [canvas.halfWidth, 0];
+
+        particles[p][STATE]++;
+        this.aliveParticles++;
+        return true;
+    }
+
+    % Creates a fountain of flowers
+    particleSys.move = function(p) {
+        % Apply physics and let them fall
+        particles[p][POS] = applyGravityToParticle(p, canvas.b - particles[p][HEIGHT] - 10);
+
+        % Ending lifecycle when out of render area
+        if (particles[p][POS][Y] < canvas.b) {
+            particles[p][STATE] = particleSys.particleLifetime + 1;
+        } else {
+            particles[p][STATE] = 0;
+        }
+    }
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Drawing and Processing %
+%%%%%%%%%%%%%%%%%%%%%%%%%%
+/**
+ * Process the currently active particle system,
+ * by iterating all active particles.
+ * If an active particle is also dead and emit is attempted.
+ * Otherwise the particle is updated and moved.
+ */
+function processParticles() {
+    for (var p = 0; p < Math.min(particles.length, particleSys.particleCount); p++) {
+        % If the particle is dead ...
+        if (particles[p][STATE] == DEAD) {
+            % ... check whether new particles should be emitted
+            var finished = particleSys.iterationCount < particleSys.iterationCur;
+            if (!finished) {
+                % ... do not process this particle if emitting it failed
+                if (!particleSys.emit(p)) {
+                    continue;
+                }
+            }
+            % ... if not do not process this particle
+            else {
+                continue;
+            }
+        } else if (particleSys.particleLifetime < particles[p][STATE]) {
+            particleSys.remove(p);
+            continue;
+        }
+
+        particleSys.move(p);
+        % Draw the particle rectangle
+        moveParticleRect(p);
+        % Process particle content and appearance
+        showAndUpdateParticle(p);
+
+        particles[p][STATE]++;
+    }
+
+    particleSys.iterationCur++;
+}
+
+/**
+ * Adjust the visualization rectangle of the given particle,
+ * by using position, width and height.
+ * @param {Number} p The particle index.
+ */
+function moveParticleRect(p) {
+    var particle = this.getField("particle" + p);
+
+    var x = particles[p][POS][X] + shift[X];
+    var y = particles[p][POS][Y] + shift[Y];
+    var w = particles[p][WIDTH];
+    var h = particles[p][HEIGHT];
+    var rect = [x - w, y + h, x + w, y - h];
+
+    particle.rect = rect;
+}
+
+/**
+ * Adjust the value and appearance of the given particle.
+ * For example: multiline, textfont, textsize, rotation.
+ * @param {Number} p The particle index.
+ */
+function showAndUpdateParticle(p) {
+    var particle = this.getField("particle" + p);
     particle.delay = true;
 
-    if (particleType == 0) {
-        particle.value = String.fromCharCode(particles[idx][SYMB_IDX]);
-        particle.textSize = PARTICLE_SIZE;
-        % Apply shifting motion like waves
-        shiftX = Math.cos((particles[idx][POS][X] + particles[idx][POS][Y]) / 40.0) * 20;
-
-        particles[idx][POS][Y] -= STEP_SIZE;
-        % Ending lifecycle when out of render area
-        if (particles[idx][POS][Y] < LOWER_LIMIT) {
-            particles[idx][LIFESTATE] = DEAD;
-        }
-    } else {
-        particle.value = String.fromCharCode(
-            CIRCLE_SYMBOLS[Math.floor(particles[idx][SYMB_IDX] / 3)]
-        );
-        particle.textSize = PARTICLE_SIZE + particles[idx][SYMB_IDX] * 2;
-
-        particles[idx][SYMB_IDX]++;
-        addX = particles[idx][SYMB_IDX];
-        addY = particles[idx][SYMB_IDX];
-        % Ending lifecycle when all symbols iterated
-        if (particles[idx][SYMB_IDX] >= CIRCLE_SYMBOLS.length * 3) {
-            particles[idx][LIFESTATE] = DEAD;
-        }
+    if (particles[p][STATE] == 0) {
+        particle.hidden = false;
+    }
+    if (particles[p][SIZE] != PARTICLE_TEXT_SIZE) {
+        particle.textSize = particles[p][SIZE];
+    }
+    if (particles[p][ROTATION] != 0) {
+        particle.rotation = particles[p][ROTATION];
     }
 
-    % Adjust the rect position of the TextField
-    var rect = [
-        particles[idx][POS][X] - PARTICLE_SIZE_H - addX + shiftX,
-        particles[idx][POS][Y] + PARTICLE_SIZE_H + addY,
-        particles[idx][POS][X] + PARTICLE_SIZE_H + addX + shiftX,
-        particles[idx][POS][Y] - PARTICLE_SIZE_H - addY
-    ];
-    particle.rect = rect;
+    var textIdx = particles[p][SYMB];
+    % Determine if richText is needed
+    if (particleSys.particleMultiline || particleSys.particleBold) {
+        var spans = new Array();
+        spans[0] = new Object();
+        spans[0].text = particleSys.particleSymbols[textIdx];
+        if (particleSys.particleBold) {
+            spans[0].fontWeight = 700;
+        }
 
+        particle.richValue = spans;
+    } else {
+        particle.value = particleSys.particleSymbols[textIdx];
+    }
     particle.delay = false;
+}
+
+/**
+ * Hide the given particle.
+ * @param {Number} p The particle index.
+ */
+function hideParticle(p) {
+    var particle = this.getField("particle" + p);
+    particle.hidden = true;
+}
+
+%%%%%%%%%%%
+% Utility %
+%%%%%%%%%%%
+/**
+ * Alters the position of the given particle by using gravity.
+ * The floor can be used to achieve a jumping motion.
+ * Very similar the implementation found here:
+ * https://gamedev.stackexchange.com/questions/10277/equation-for-bouncing-graph
+ * @param {Number} p The particle index.
+ * @param {Number} floor The y position at which the floor should be.
+ */
+function applyGravityToParticle(p, floor) {
+    const h = particles[p][HEIGHT];
+    const g = particleSys.gravity;
+    const f = particleSys.force;
+    const m = particles[p][MASS];
+    var pos = particles[p][POS];
+    var mom = particles[p][MOMENTUM];
+
+    % Momentum += gravity + force
+    mom = [mom[X] + g[X] + f[X], mom[Y] + g[Y] + f[Y]];
+    % Velocity = momentum / mass
+    var v = [mom[X] / m, mom[Y] / m];
+    % Position += velocity
+    pos = [pos[X] + v[X], pos[Y] + v[Y]];
+
+    % If position is at floor & momentum heading downward
+    if (pos[Y] < floor + h && mom[Y] < 0) {
+        pos[Y] = floor + h;
+        % Bouncing off direction
+        var collisionNormal = [0, 1];
+        var dot = mom[X] * collisionNormal[X] + mom[Y] * collisionNormal[Y];
+        % Reflect
+        mom = [mom[X] - collisionNormal[X] * 2 * dot, mom[Y] - collisionNormal[Y] * 2 * dot];
+        % Energy loss from bounce.
+        mom = [mom[X] * particleSys.energyReduction, mom[Y] * particleSys.energyReduction];
+    }
+
+    particles[p][MOMENTUM] = mom;
+    return pos;
 }
 
 \end{insDLJS}
@@ -318,7 +630,7 @@ function moveParticles(idx) {
 
         % The particles for the particle system
         \xintFor* #1 in {\xintSeq{0}{\particleCount-1}} \do {%
-            \TextField[name=particle#1, bordercolor=, backgroundcolor=, align=1, readonly]{}%
+            \TextField[name=particle#1, bordercolor=, backgroundcolor=, align=1, readonly, hidden]{}%
         }
 
         \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
@@ -342,7 +654,7 @@ function moveParticles(idx) {
                 \begin{tcolorbox}
                     \ChoiceMenu[name=particleType, width=5cm,
                         bordercolor=gray, combo, edit=false
-                    ]{Particlesystem:\strut}{Snow, Explosions}
+                    ]{Particlesystem:\strut}{Snow, Explosions, Flowers}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
