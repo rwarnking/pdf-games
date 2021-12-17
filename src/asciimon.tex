@@ -1549,8 +1549,6 @@ function getCreature(curLvl) {
 
     var hp = Math.ceil(CREATURE_LIST[creature][HP_GAIN] * curLvl);
 
-    % TODO do not copy everything, have an id to the original list and
-    % extra attributes for the instance variables
     return [
         CREATURE_LIST[creature][NAME],
         CREATURE_LIST[creature][HP_GAIN],

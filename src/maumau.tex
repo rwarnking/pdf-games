@@ -19,7 +19,9 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Max value is 52, other values are possible but they should not be below playercount * cardcount
 \def\cards{32}
+% Needs to be 4
 \def\colors{4}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -128,12 +130,17 @@ const CARD_COLORS = [
     String.fromCharCode(0x2666)
 ];
 
-const CARD_VALUES = ["7", "8", "9", "10", "J", "Q", "K", "A"];
+const CARD_VALUES = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 % A list of all cards, each being a combination of card color and value
-const CARDS = [];
-for (var col = 0; col < CARD_COLORS.length; col++) {
-    for (var val = 0; val < CARD_VALUES.length; val++) {
-        CARDS.push(CARD_VALUES[val] + CARD_COLORS[col]);
+var CARDS = [];
+for (var val = CARD_VALUES.length - 1; val >= 0; val--) {
+    for (var col = 0; col < CARD_COLORS.length; col++) {
+        if (CARDS.length < CARD_COUNT) {
+            CARDS.push(CARD_VALUES[val] + CARD_COLORS[col]);
+        } else {
+            col = CARD_COLORS.length;
+            val = 0;
+        }
     }
 }
 
@@ -235,7 +242,7 @@ function initializeButtons() {
         var card = this.getField("card" + c);
         card.delay = true;
         card.setAction("MouseUp", callbackName);
-        if (c >= CARDS.length * 0.5) {
+        if (c \% 4 > 1) {
             card.textColor = color.red;
         }
         card.textFont = font.Cour;
