@@ -406,22 +406,24 @@ function importRotation() {
             %
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \begin{tcolorbox}[left=0pt, right=0pt, halign=center]
-                    \strut Rotation A:
+                    \strut Rotation A:\@
                     \TextField[name=coordtxtA, width=1.2cm, height=0.35cm, maxlen=5,
                         bordercolor=, backgroundcolor=, charsize=12pt, readonly]{}
-                    Rotation B:
+                    Rotation B:\@
                     \TextField[name=coordtxtB, width=1.2cm, height=0.35cm, maxlen=5,
                         bordercolor=, backgroundcolor=, charsize=12pt, readonly]{}
                 \end{tcolorbox}&
                 \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         Import rotation, \strut
-                        A:
+                        A:\@
                         \TextField[name=importtxtA, width=1cm, height=0.35cm,
-                            bordercolor=gray, borderwidth=2pt, backgroundcolor=white, value=0]{\strut}
-                        B:
+                            bordercolor=gray, borderwidth=2pt, backgroundcolor=white, value=0]
+                            {\strut}
+                        B:\@
                         \TextField[name=importtxtB, width=1cm, height=0.35cm,
-                            bordercolor=gray, borderwidth=2pt, backgroundcolor=white, value=0]{\strut}
+                            bordercolor=gray, borderwidth=2pt, backgroundcolor=white, value=0]
+                            {\strut}
                     \end{tcolorbox}
                 }%\\[-0.3cm]
             \end{tabularx}
