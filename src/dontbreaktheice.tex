@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\usepackage[margin=0.5in]{geometry}
+\usepackage[margin=0.5in, bottom=0.0pt]{geometry}
 
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
@@ -249,15 +249,15 @@ function createPath() {
 
         % Remove and mark the cell
         cellList.splice(rnd, 1);
-        complBoard[elem[1]][elem[0]] = FORBIDDEN;
+        complBoard[elem[M]][elem[N]] = FORBIDDEN;
         % If there is no path available after marking this cell,
         % the cell is needed for the path
-        if (!doesPathExist([startN, BOARD_HEIGHT - 1], [endN, 0], complBoard)) {
-            complBoard[elem[1]][elem[0]] = EMPTY;
+        if (!doesPathExist([BOARD_HEIGHT - 1, startN], [0, endN], complBoard)) {
+            complBoard[elem[M]][elem[N]] = EMPTY;
         }
     }
 
-    freePath = getPath([startN, BOARD_HEIGHT - 1], [endN, 0], complBoard);
+    freePath = getPath([BOARD_HEIGHT - 1, startN], [0, endN], complBoard);
 
     % Reset board for other use
     for (var m = 0; m < BOARD_HEIGHT; m++) {
@@ -593,7 +593,7 @@ function printInfoText(text) {
         \FPeval{\resultH}{\boardHeight * 3 + 3}
         \def\cellHeight{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
 
-        \begin{tcolorbox}
+        \begin{tcolorbox}[boxsep=0pt,left=1pt,right=1pt,top=1pt,bottom=1pt]
             % Define the cellsize via the smaller amount
             % Must be done here so the \linewidth has the correct value
             \ifdim\cellWidth<\cellHeight
@@ -602,9 +602,13 @@ function printInfoText(text) {
                 \def\cellsize{\cellHeight}
             \fi
             %
+            \setlength{\topsep}{0pt}
+            \setlength{\parindent}{0pt}
+            \begin{flushright}
+                \includegraphics[height=0.11\paperheight]{images/evilsnowman-bubble.pdf}
+            \end{flushright}
             \begin{center}
                 \tiny
-                \includegraphics[width=0.25\textwidth]{end}\\[2pt]
                 %
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
@@ -615,8 +619,10 @@ function printInfoText(text) {
                         \xintifForLast{}{\hspace{3pt}}%
                     }\vspace{3pt}\\[-1pt]%
                 }%
-                \includegraphics[width=0.25\textwidth]{start}
             \end{center}%
+            \begin{flushleft}
+                \includegraphics[height=0.11\paperheight]{images/mini-dragon-bubble.pdf}
+            \end{flushleft}
         \end{tcolorbox}
 
         \begin{center}%
