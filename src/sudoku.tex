@@ -415,7 +415,11 @@ function solveSudoku() {
 function getEmptySpaces() {
     var spaces = [];
     for (var m = 0; m < BOARD_HEIGHT; m++) {
-        for (var n = 0; n < BOARD_WIDTH; n++) {
+        % Start top right, so the amount of backtracking is reduced
+        % The important part is the third quad that is filled, if the positions
+        % start top right the third quad has nine cells to check against
+        % (due to preciously filled quads), if it starts from the left it would only have six
+        for (var n = BOARD_WIDTH - 1; n >= 0; n--) {
             if (complBoard[m][n] == EMPTY) {
                 spaces.push([m, n]);
             }
