@@ -431,6 +431,11 @@ function chooseCard(cardIdx) {
         return;
     }
 
+    if (cardAnim.state > -0.1) {
+        printInfoText("Whait for the animation to finish.");
+        return;
+    }
+
     % Do not process the selected card if the special rules disallow it
     if (!specialRulesBegin(cardIdx)) {
         return;
@@ -456,7 +461,12 @@ function chooseCard(cardIdx) {
         % Remove card from stack
         stack.splice(0, 1);
 
-        printInfoText("Player " + (curPlayer + 1) + " took a card!");
+        if (gameState.take > 0) {
+            printInfoText("Player " + (curPlayer + 1) + " took a card! " +
+                gameState.take + " cards left.");
+        } else {
+            printInfoText("Player " + (curPlayer + 1) + " took a card!");
+        }
         % Check for special rules (for example take 2)
         specialRulesDraw();
     }
@@ -523,10 +533,11 @@ function chooseCard(cardIdx) {
 
     % Reshuffle cards from the graveyard to the stack if there are any and the stack is empty
     if (stack.length <= 0 && graveyard.length > 1) {
-        for (var i = 0; i < graveyard.length - 1; i++) {
+        var startLen = graveyard.length - 1;
+        for (var i = 0; i < startLen; i++) {
             var rnd = getRandomInt(graveyard.length - 1);
             stack.push(graveyard[rnd]);
-            cardOwner[graveyard[i]] = STACK;
+            cardOwner[graveyard[rnd]] = STACK;
             graveyard.splice(rnd, 1);
         }
         curCardIdx = stack.length - 1;
@@ -635,22 +646,20 @@ function specialRulesBegin(cardIdx) {
 
     % If a take card was played
     if (gameState.take > 0) {
-        % If chaining is allowed, check if correct card was played
-        % and the player has not already started drawing cards
-        if (rules.cb7chain && !gameState.taking && pC.charAt(0) == "7" && gC.charAt(0) == "7" ||
-            rules.cbKchain && !gameState.taking && pC.charAt(0) == "K" && gC.charAt(0) == "K"
-        ) {
+        if (cardOwner[cardIdx] == STACK) {
+            gameState.take--;
+            gameState.taking = true;
             return true;
-        }
-        % If chaining is disabled, or the card is not valid the player needs to draw
-        else {
-            if (cardOwner[cardIdx] == STACK) {
-                gameState.take--;
-                gameState.taking = true;
-                printInfoText("Player " + (curPlayer + 1) + " took a card! " +
-                    gameState.take + " cards left.");
+        } else {
+            % If chaining is allowed, check if correct card was played
+            % and the player has not already started drawing cards
+            if ((rules.cb7chain && !gameState.taking && pC.charAt(0) == "7" && gC.charAt(0) == "7") ||
+                (rules.cbKchain && !gameState.taking && pC.charAt(0) == "K" && gC.charAt(0) == "K")
+            ) {
                 return true;
-            } else {
+            }
+            % If chaining is disabled, or the card is not valid the player needs to draw
+            else {
                 printInfoText("Player " + (curPlayer + 1) + " you still have " +
                     gameState.take + " cards to draw!");
                 return false;
