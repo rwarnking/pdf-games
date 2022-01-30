@@ -1258,7 +1258,11 @@ function change(idx) {
 
     curCreatureIdx = idx - 1;
 
-    animatedString = "You switched from " + oldName + " to " + creature[NAME] + ".";
+    if (oldName == "Empty") {
+        animatedString = "You switched to " + creature[NAME] + ".";
+    } else {
+        animatedString = "You switched from " + oldName + " to " + creature[NAME] + ".";
+    }
     updatePlayerTxt();
     drawPlayer();
 
