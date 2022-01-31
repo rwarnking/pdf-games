@@ -605,7 +605,7 @@ function printInfoText(text) {
             \setlength{\topsep}{0pt}
             \setlength{\parindent}{0pt}
             \begin{flushright}
-                \includegraphics[height=0.11\paperheight]{evilsnowman-bubble.pdf}
+                \includegraphics[height=0.1\paperheight]{evilsnowman-bubble.pdf}
             \end{flushright}
             \begin{center}
                 \tiny
@@ -621,7 +621,7 @@ function printInfoText(text) {
                 }%
             \end{center}%
             \begin{flushleft}
-                \includegraphics[height=0.11\paperheight]{mini-dragon-bubble.pdf}
+                \includegraphics[height=0.1\paperheight]{mini-dragon-bubble.pdf}
             \end{flushleft}
         \end{tcolorbox}
 
@@ -640,7 +640,10 @@ function printInfoText(text) {
             \end{tabularx}
         \end{center}
 
-        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
+        \TextField[
+            name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden, height=0cm
+        ]{}
+
     \end{Form}
 
 \end{document}

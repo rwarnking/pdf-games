@@ -965,7 +965,9 @@ function hint() {
         field.hidden = false;
         % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
-        field.rect = [298, 145, 595, 0];
+        % Use the restart button rect to get the upper bound for this rect
+        var helper = this.getField("restart");
+        field.rect = [298, helper.rect[3], 595, 0];
         field.delay = false;
     }
 }
