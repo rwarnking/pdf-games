@@ -25,7 +25,7 @@ on:
 # Set the Job #
 ###############
 jobs:
-  build_latex:
+  merge:
     if: github.event.review.state == 'approved'
     # Name the Job
     name: Merge into all_commits (job)
@@ -42,8 +42,8 @@ jobs:
       - name: Wait for tests to succeed
         uses: lewagon/wait-on-check-action@v1.0.0
         with:
-          ref: ${{ github.ref }}
-          check-name: 'Commit compiled pdfs'
+          ref: ${{ github.event.pull_request.head.ref }}
+          check-name: 'Compile PDFs'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           wait-interval: 10
       ##########################
