@@ -1,0 +1,65 @@
+############################
+############################
+## Compile GitHub Actions ##
+############################
+############################
+name: Merge into all_commits
+
+#
+# Documentation:
+#
+# Waiting on other action
+# https://github.com/marketplace/actions/wait-on-check
+#
+
+################################
+# Start the job on push to dev #
+################################
+on:
+  pull_request_review:
+    branches:
+      - dev
+    types: [submitted]
+
+###############
+# Set the Job #
+###############
+jobs:
+  build_latex:
+    if: github.event.review.state == 'approved'
+    # Name the Job
+    name: Merge into all_commits (job)
+    # Set the agent to run on
+    runs-on: ubuntu-latest
+
+    ##################
+    # Load all steps #
+    ##################
+    steps:
+      #####################################################
+      # Wait for compile action to finish committing pdfs #
+      #####################################################
+      - name: Wait for tests to succeed
+        uses: lewagon/wait-on-check-action@v1.0.0
+        with:
+          ref: ${{ github.ref }}
+          check-name: 'Commit compiled pdfs'
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 10
+      ##########################
+      # Checkout the code base #
+      ##########################
+      - name: Set up Git repository
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+      ########################
+      # Merge to all_commits #
+      ########################
+      - name: Merge into all_commits (step)
+        uses: mtanzi/action-automerge@v1
+        id: merge
+        with:
+          github_token: ${{ github.token }}
+          source: ${{ github.event.pull_request.head.ref }}
+          target: 'all_commits'
