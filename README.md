@@ -1,6 +1,6 @@
 # PDF games
 
-[<img alt="Build status" src="https://img.shields.io/github/workflow/status/rwarnking/pdf-games/Create%20PDFs?label=Build&logo=github&style=for-the-badge" height="23">]()
+[<img alt="Build status" src="https://img.shields.io/github/workflow/status/rwarnking/pdf-games/Create%20PDFs?label=Build&logo=github&style=for-the-badge" height="23">](https://github.com/rwarnking/pdf-games/actions/workflows/compile.yml)
 [<img alt="Linting status of master" src="https://img.shields.io/github/workflow/status/rwarnking/pdf-games/Lint%20Code%20Base?label=Linter&style=for-the-badge" height="23">](https://github.com/marketplace/actions/super-linter)
 [<img alt="Version" src="https://img.shields.io/github/v/release/rwarnking/pdf-games?style=for-the-badge" height="23">](https://github.com/rwarnking/pdf-games/releases/latest)
 [<img alt="Licence" src="https://img.shields.io/github/license/rwarnking/pdf-games?style=for-the-badge" height="23">](https://github.com/rwarnking/pdf-games/blob/main/LICENSE)
