@@ -1,6 +1,9 @@
 # PDF games
 
-[![GitHub Super-Linter](https://github.com/rwarnking/pdf-games/workflows/Lint%20Code%20Base/badge.svg)](https://github.com/marketplace/actions/super-linter)
+[<img alt="Build status" src="https://img.shields.io/github/workflow/status/rwarnking/pdf-games/Create%20PDFs?label=Build&logo=github&style=for-the-badge" height="23">]()
+[<img alt="Linting status of master" src="https://img.shields.io/github/workflow/status/rwarnking/pdf-games/Lint%20Code%20Base?label=Linter&style=for-the-badge" height="23">](https://github.com/marketplace/actions/super-linter)
+[<img alt="Version" src="https://img.shields.io/github/v/release/rwarnking/pdf-games?style=for-the-badge" height="23">](https://github.com/rwarnking/pdf-games/releases/latest)
+[<img alt="Licence" src="https://img.shields.io/github/license/rwarnking/pdf-games?style=for-the-badge" height="23">](https://github.com/rwarnking/pdf-games/blob/main/LICENSE)
 
 ## Description
 This is a collection of LaTeX files, that contain some sort of JavaScript
@@ -79,7 +82,7 @@ Simply compile the `.tex` file to PDF and open the PDF with `Adobe Acrobat Reade
 other PDF viewer were not tested and may not be able to run the JavaScript.
 
 OBACHT: Different compiler might leed to different outputs for example regarding spacing.
-The here used compilter was `pdfLaTeX` with TeX live version `2021`.
+The here used compiler was `pdfLaTeX` with TeX live version `2021`.
 Furthermore you might need to enable the JavaScript even when using Adobe,
 more information regarding the settings can be found
 [here](https://github.com/rwarnking/pdf-games/wiki).
