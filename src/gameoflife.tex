@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,22 +20,23 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{20}
-\def\fieldHeight{20}
+% Values can be changed
+\def\boardWidth{20}
+\def\boardHeight{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{gameoflife}
 
 const GAME_DESC = "Conways game of life is a cellular automaton.\
 After the initial input the application will run on itself and without further interaction.\
-Dependent on the state the field will evolve based on certain rules.\
-The rules use the neighbourhood of a cell to determine the state of it in the next step.";
+Dependent on the state the board will evolve based on certain rules.\
+The rules use the neighborhood of a cell to determine the state of it in the next step.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 
 % Constants
 const DEAD = 0;
@@ -46,12 +45,12 @@ const ALIVE = 1;
 % Globals
 % Animation interval variable
 var run;
-% The game field arrays
-var complField1 = new Array();
-var complField2 = new Array();
+% The game board arrays
+var complBoard1 = new Array();
+var complBoard2 = new Array();
 
 var currStep = 0;
-var fieldIdx = 0;
+var boardIdx = 0;
 var currentShape = 8;
 var shapeMode = true;
 var animate = false;
@@ -65,7 +64,7 @@ const COLORS = new Array(
     [ "RGB", 0.560, 0.078, 0.533 ]
 );
 
-% Shape array that can be added to the field
+% Shape array that can be added to the board
 const SHAPES = new Array(
     % Still lifes
     [[0, 0]], % One
@@ -101,63 +100,68 @@ const SHAPES = new Array(
      [1, 4], [2, 4], [3, 4], [4, 4], [5, 4], [6, 4]] % Heavy-weight spaceship
 );
 
+const SHAPE_NAMES = new Array(
+    "One", "Block", "Beehive", "Loaf", "Boat",
+    "Tub", "Blinker", "Toad", "Beacon", "Pulsar",
+    "Pentadecathlon", "Glider", "Light-weight spaceship",
+    "Middle-weight spaceship", "Heavy-weight spaceship"
+);
+
 %%%%%%%%%%
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        var tmp1 = new Array();
-        var tmp2 = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            tmp1.push(DEAD);
-            tmp2.push(DEAD);
+function initialize() {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row1 = new Array();
+        var row2 = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row1.push(DEAD);
+            row2.push(DEAD);
         }
-        complField1.push(tmp1);
-        complField2.push(tmp2);
+        complBoard1.push(row1);
+        complBoard2.push(row2);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     % Initial run
     runAll();
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
-    % Assign each button the coresponding function and disable the highlights
+function initializeButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the corresponding function and disable the highlights
     var funcName = "addShape";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + "-" + y).borderColor = color.transparent;
-            this.getField("pos" + x + "-" + y).fillColor = color.transparent;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            this.getField("cell" + m + "-" + n).setAction("MouseDown", callbackName);
         }
     }
 
     this.getField("animate").setAction("MouseDown", "toggleAnimation();");
-    this.getField("animate").highlight="none";
     this.getField("animatetxt").setAction("MouseDown", "toggleAnimation();");
-    this.getField("animatetxt").fillColor = color.transparent;
-    this.getField("animatetxt").borderColor = color.transparent;
     if (animate) {
         this.getField("animatetxt").value = "On";
     } else {
@@ -165,13 +169,9 @@ function initialiseButtons() {
     }
 
     this.getField("step").setAction("MouseDown", "runAll();");
-    this.getField("step").highlight="none";
 
     this.getField("shapemode").setAction("MouseDown", "toggleMode();");
-    this.getField("shapemode").highlight="none";
     this.getField("shapemodetxt").setAction("MouseDown", "toggleMode();");
-    this.getField("shapemodetxt").fillColor = color.transparent;
-    this.getField("shapemodetxt").borderColor = color.transparent;
     if (shapeMode) {
         this.getField("shapemodetxt").value = "On";
     } else {
@@ -179,36 +179,19 @@ function initialiseButtons() {
     }
 
     this.getField("shapeidx").currentValueIndices = 0;
-    this.getField("shapeidx").fillColor = color.transparent;
-    this.getField("shapeidx").borderColor = color.white;
-
     this.getField("fillrnd").setAction("MouseDown", "fillRandom();");
-    this.getField("fillrnd").highlight="none";
-
     this.getField("percentage").currentValueIndices = 0;
-    this.getField("percentage").fillColor = color.transparent;
-    this.getField("percentage").borderColor = color.white;
-
     this.getField("clear").setAction("MouseDown", "clear();");
-    this.getField("clear").highlight="none";
-
-    this.getField("currstep").fillColor = color.transparent;
-    this.getField("currstep").borderColor = color.transparent;
-
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -216,26 +199,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
-        field.rect = [128, 581, 468, 381];
+        field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -244,7 +224,7 @@ function tooltip(on) {
 % Toggle states %
 %%%%%%%%%%%%%%%%%
 /**
- * Start or stop the field animation.
+ * Start or stop the board animation.
  * Automatically disables the shapemode on switch.
  */
 function toggleAnimation() {
@@ -274,7 +254,7 @@ function toggleAnimation() {
 
 /**
  * Enable or disable shapemode.
- * If the shapemode is enabled the user can add shapes to the field.
+ * If the shapemode is enabled the user can add shapes to the board.
  * Automatically disables the animation on switch.
  */
 function toggleMode() {
@@ -306,41 +286,41 @@ function toggleMode() {
 function runAll() {
     process();
 
-    fieldIdx = (fieldIdx + 1) \% 2;
+    boardIdx = (boardIdx + 1) \% 2;
     currStep++;
     this.getField("currstep").value = "Current step: " + currStep + ".";
 
-    drawAll(fieldIdx);
+    drawAll(boardIdx);
 }
 
 /**
- * Calculates the next state of the gamefield, by locking at each spot
- * and writing the new state (determined by the neighbourhood) in the
+ * Calculates the next state of the board, by locking at each cell
+ * and writing the new state (determined by the neighborhood) in the
  * next array.
  */
 function process() {
     var state = DEAD;
     var result = DEAD;
     var n = 0;
-    % Iterate all fields
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (fieldIdx == 1) {
-                state = complField2[y][x];
+    % Iterate all cells
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (boardIdx == 0) {
+                state = complBoard2[m][n];
             } else {
-                state = complField1[y][x];
+                state = complBoard1[m][n];
             }
 
-            var n = getNeighbourCount(x, y);
-            % Rules for when a slot is dead or alive
-            if (state == DEAD && n == 3) {
+            var count = getNeighbourCount(m, n);
+            % Rules for when a cell is dead or alive
+            if (state == DEAD && count == 3) {
                 % Repopulation
                 result = ALIVE;
             } else if (state == ALIVE) {
-                if (n < 2) {
+                if (count < 2) {
                     % Underpopulation
                     result = DEAD;
-                } else if (n == 2 || n == 3) {
+                } else if (count == 2 || count == 3) {
                     result = ALIVE;
                 } else {
                     % Overpopulation
@@ -350,31 +330,31 @@ function process() {
                 result = DEAD;
             }
 
-            if (fieldIdx == 1) {
-                complField1[y][x] = result;
+            if (boardIdx == 0) {
+                complBoard1[m][n] = result;
             } else {
-                complField2[y][x] = result;
+                complBoard2[m][n] = result;
             }
         }
     }
 }
 
 /**
- * Calculates the amount of neighbours that are alive for the given slot x, y.
+ * Calculates the amount of neighbors that are alive for the given cell m, n.
  *
- * @param {Number} pX The x coordinate.
- * @param {Number} pY The y coordinate.
+ * @param {Number} pM The m coordinate.
+ * @param {Number} pN The n coordinate.
  */
-function getNeighbourCount(pX, pY) {
+function getNeighbourCount(pM, pN) {
     var counter = 0;
-    for (var x = pX - 1; x <= pX + 1; x++) {
-        for (var y = pY - 1; y <= pY + 1; y++) {
+    for (var m = pM - 1; m <= pM + 1; m++) {
+        for (var n = pN - 1; n <= pN + 1; n++) {
             % Ignore own position and border
-            if ((x == pX && y == pY) || x < 0 || y < 0 || x >= FIELD_WIDTH || y >= FIELD_HEIGHT) {
+            if ((m == pM && n == pN) || m < 0 || n < 0 || m >= BOARD_HEIGHT || n >= BOARD_WIDTH) {
                 continue;
             }
-            if ((fieldIdx == 1 && complField2[y][x] == ALIVE) ||
-                (fieldIdx == 0 && complField1[y][x] == ALIVE)
+            if ((boardIdx == 1 && complBoard1[m][n] == ALIVE) ||
+                (boardIdx == 0 && complBoard2[m][n] == ALIVE)
             ) {
                 counter++;
             }
@@ -387,7 +367,7 @@ function getNeighbourCount(pX, pY) {
 % Fill and clear %
 %%%%%%%%%%%%%%%%%%
 /**
- * Clears both field arrays and stops animation.
+ * Clears both board arrays and stops animation.
  */
 function clear() {
     currStep = 0;
@@ -401,29 +381,30 @@ function clear() {
 
         app.clearInterval(run);
 
-        printInfoText("Clear field and disabled animation.");
+        printInfoText("Clear board and disabled animation.");
     } else {
-        printInfoText("Clear field.");
+        printInfoText("Clear board.");
     }
 
     % Clear all to dead
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField1[y][x] = DEAD;
-            complField2[y][x] = DEAD;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard1[m][n] = DEAD;
+            complBoard2[m][n] = DEAD;
         }
     }
-    drawAll(fieldIdx);
+    drawAll(boardIdx);
+    this.getField("currstep").value = "Current step: " + currStep + ".";
 }
 
 /**
  * Adds the selected shape to the given coordinates, with its top left corner at
  * that position.
  *
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
+ * @param {Number} m The m coordinate.
+ * @param {Number} n The n coordinate.
  */
-function addShape(x, y) {
+function addShape(m, n) {
     % Warning when shapemode is disabled
     if (!shapeMode) {
         printInfoText("Enable shape mode to add shapes.");
@@ -434,74 +415,77 @@ function addShape(x, y) {
     currentShape = this.getField("shapeidx").currentValueIndices;
 
     for (var pos = 0; pos < SHAPES[currentShape].length; pos++) {
-        var eX = SHAPES[currentShape][pos][0] + x;
-        var eY = SHAPES[currentShape][pos][1] + y;
+        var eM = SHAPES[currentShape][pos][0] + m;
+        var eN = SHAPES[currentShape][pos][1] + n;
 
         % Border check
-        if (eX < 0 || eY < 0 || eX >= FIELD_WIDTH || eY >= FIELD_HEIGHT) {
+        if (eM < 0 || eN < 0 || eM >= BOARD_HEIGHT || eN >= BOARD_WIDTH) {
             continue;
         }
 
-        if (fieldIdx == 0) {
-            complField1[eY][eX] = ALIVE;
+        if (boardIdx == 0) {
+            complBoard2[eM][eN] = ALIVE;
         } else {
-            complField2[eY][eX] = ALIVE;
+            complBoard1[eM][eN] = ALIVE;
         }
     };
 
-    printInfoText("Added shape " + currentShape + ".");
-    drawAll((fieldIdx + 1) \% 2);
+    printInfoText("Added shape " + SHAPE_NAMES[currentShape] + ".");
+    drawAll(boardIdx);
 }
 
 /**
- * Randomise the content of the complete field given the
- * percentage specified in the gui.
+ * Randomize the content of the complete board given the
+ * percentage specified in the GUI.
  */
 function fillRandom() {
     var percentage = this.getField("percentage").value;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             if (getRandomInt(100) < percentage) {
-                if (fieldIdx == 0) {
-                    complField1[y][x] = ALIVE;
+                if (boardIdx == 1) {
+                    complBoard1[m][n] = ALIVE;
                 } else {
-                    complField2[y][x] = ALIVE;
+                    complBoard2[m][n] = ALIVE;
                 }
+            } else {
+                complBoard1[m][n] = DEAD;
+                complBoard2[m][n] = DEAD;
             }
         }
     }
-    drawAll((fieldIdx + 1) \% 2);
+    drawAll(boardIdx);
 }
 
 %%%%%%%%
 % Draw %
 %%%%%%%%
 /**
- * Redraw all fields.
+ * Redraw all cells.
  *
  * @param {Number} idx The index of the array to draw.
  */
 function drawAll(idx) {
-    var field;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
+    var cell;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            cell = this.getField("cell" + m + "-" + n);
+            cell.delay = true;
             var value = DEAD;
             if (idx == 1) {
-                value = complField1[y][x];
+                value = complBoard1[m][n];
             } else {
-                value = complField2[y][x];
+                value = complBoard2[m][n];
             }
 
             if (value > DEAD) {
-                field.fillColor = COLORS[0];
-                field.borderColor = COLORS[0];
+                cell.fillColor = COLORS[0];
+                cell.borderColor = COLORS[0];
             } else {
-                field.fillColor = color.transparent;
-                field.borderColor = color.transparent;
+                cell.fillColor = color.transparent;
+                cell.borderColor = color.transparent;
             }
-            field.delay = false;
+            cell.delay = false;
         }
     }
 }
@@ -518,10 +502,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
@@ -534,7 +518,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -542,98 +526,104 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (0.591\paperheight -\resultH pt)/\boardHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
-        % The gamefield
+        % The game board
         \begin{tcolorbox}
-            \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            % Define the cell size via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
+            \else
+                \def\cellsize{\cellHeight}
+            \fi
+
+            \begin{center}
+                \tiny
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
-                    }\vspace{3pt}
-                    \newline%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
+                            bordercolor=, backgroundcolor=, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=animate, bordercolor=white]{
+                \PushButton[name=animate, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=animatetxt, height=0.35cm, width=0.5cm, readonly=true]%
-                            {Animation:}
+                        \TextField[name=animatetxt, width=0.5cm, height=0.35cm,
+                            bordercolor=, backgroundcolor=, readonly]{Animation:}
                         \strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=step, bordercolor=white]{
+                \PushButton[name=step, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Next step\strut
                     \end{tcolorbox}
-                } \\
-                \PushButton[name=shapemode, bordercolor=white]{
+                } \\%
+                \PushButton[name=shapemode, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[%
-                            name=shapemodetxt, height=0.35cm, width=0.5cm, readonly=true%
-                        ]{Shape mode:}
+                        \TextField[name=shapemodetxt, width=0.5cm, height=0.35cm,
+                            bordercolor=, backgroundcolor=, readonly]{Shape mode:}
                         \strut
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
                     \centering
-                    \ChoiceMenu[%
-                        name=shapeidx, height=0.35cm, width=0.5cm, combo, commitonselchange=true]%
-                            {Shape name:}{%
+                    \ChoiceMenu[name=shapeidx, height=0.35cm,%
+                        bordercolor=gray, combo, commitonselchange=true, edit=false%
+                    ]{Shape name:}{%
                         One, Block, Beehive, Loaf, Boat, Tub,%
                         Blinker, Toad, Beacon, Pulsar, Pentadecathlon,%
                         Glider, Light-weight spaceship, Middle-weight spaceship,%
                         Heavy-weight spaceship%
                     }%
                     \strut
-                \end{tcolorbox} \\[-0.5cm]% TODO why do we need -0.5 here
-                \PushButton[name=fillrnd, bordercolor=white]{
+                \end{tcolorbox} \\[-0.3cm]%
+                \PushButton[name=fillrnd, bordercolor=, backgroundcolor=]{
                     \begin{tcolorbox}
                         \centering
-                        \ChoiceMenu[name=percentage, height=0.35cm, width=0.5cm, combo,%
-                            commitonselchange=true]{Fill random with \% alive:}{%
+                        \ChoiceMenu[name=percentage, height=0.35cm, bordercolor=gray,
+                            backgroundcolor=white, combo, commitonselchange=true, edit=false%
+                        ]{Fill random with \% alive:}{%
                             20, 40, 60, 80,%
                         }%
                         \strut
                     \end{tcolorbox}
                 } &%
                 \begin{tcolorbox}
-                    \TextField[name=currstep, width=\linewidth, readonly=true]{}
-                \end{tcolorbox} \\[-0.5cm]% TODO why do we need -0.5 here
-                \PushButton[name=clear, bordercolor=white]{
+                    \TextField[name=currstep, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
+                \end{tcolorbox} \\[-0.3cm]%
+                \PushButton[name=clear, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Clear\strut
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 

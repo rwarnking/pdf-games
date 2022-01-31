@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,40 +20,54 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{9}
-\def\fieldHeight{9}
+% Other settings than the default are possible but will most likely not work
+\def\boardWidth{9}
+\def\boardHeight{9}
+\def\boxSize{3}
 
+% Print error when the the board has not the default dimensions
+\pgfmathparse{ \boardWidth == 9 && \boardHeight == 9 && \boxSize == 3? 0: 1 }
+\ifnum\pgfmathresult>0
+    \makeatletter
+    \@latex@warning{Obacht: It is unlikely that the program is able to build a valid riddle if
+        other dimensions than the default are selected!
+    }
+    \makeatother
+\fi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Sudoku}
+\begin{insDLJS}[]{JSDateiname}{sudoku}
 
 const GAME_DESC = "Sudoku is a logic-based number-placement puzzle.\
-The objective is to fill all empty spots with a digit from 1 to 9,\
+The objective is to fill all empty cells with a digit from 1 to 9,\
 while the placements needs to follow these rules:\
 1. Each row can only contain each digit once\
 2. Each column can only contain each digit once\
-3. Each 3x3 block can only contain each digit once.";
+3. Each 3x3 area can only contain each digit once.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 300;
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
+const BOX_SIZE = AFMakeNumber(\boxSize);
+const SCREEN_TEXT_SIZE = 300;
 
 % Constants
-const NUMBERS = 9;
-const BOX_WIDTH = 3;
+const M = 0;
+const N = 1;
+
+const NUMBERS = BOX_SIZE * BOX_SIZE;
 const EMPTY = 0;
 
 % Globals
-% Field for current visualisation and input
-var complField = new Array();
-% The complete field with applied solution
+% Board for current visualization and input
+var complBoard = new Array();
+% The complete board with applied solution
 var solution = new Array();
-% The field containing only the initial values
+% The board containing only the initial values
 var original = new Array();
 
-% Switch if the user wants to input a sudoku
+% Switch if the user wants to input a Sudoku
 var customMode = false;
 
 % Color data
@@ -71,8 +83,8 @@ const COLORS = new Array(
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
@@ -96,82 +108,75 @@ function shuffle(a) {
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state by clearing everything and
- * generating a sudoku.
+ * Initialize the default game state by clearing everything and
+ * generating a Sudoku.
  */
-function initialise() {
-    % Initlialise all arrays with a zero array
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        var zArr1 = new Array();
-        var zArr2 = new Array();
-        var zArr3 = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            zArr1.push(EMPTY);
-            zArr2.push(EMPTY);
-            zArr3.push(EMPTY);
+function initialize() {
+    % Initialize all arrays with a zero array
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row1 = new Array();
+        var row2 = new Array();
+        var row3 = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row1.push(EMPTY);
+            row2.push(EMPTY);
+            row3.push(EMPTY);
         }
-        complField.push(zArr1);
-        solution.push(zArr2);
-        original.push(zArr3);
+        complBoard.push(row1);
+        solution.push(row2);
+        original.push(row3);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     generateSudoku();
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
-    % Assign each button the coresponding function and disable the highlights
-    this.getField("generate").setAction("MouseUp", "generateSudoku();");
-    this.getField("generate").highlight="none";
-    this.getField("hint").setAction("MouseUp", "showHint();");
-    this.getField("hint").highlight="none";
-    this.getField("solve").setAction("MouseUp", "showSolution();");
-    this.getField("solve").highlight="none";
-    this.getField("enter").setAction("MouseUp", "enterSudoku();");
-    this.getField("enter").highlight="none";
-    this.getField("reset").setAction("MouseUp", "resetSudoku();");
-    this.getField("reset").highlight="none";
+function initializeButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
 
-    % Selection field for the amount of predefined fields when generating
-    this.getField("elemcount").borderColor = color.white;
+    % Assign each button the corresponding function and disable the highlights
+    this.getField("generate").setAction("MouseUp", "generateSudoku();");
+    this.getField("hint").setAction("MouseUp", "showHint();");
+    this.getField("solve").setAction("MouseUp", "showSolution();");
+    this.getField("enter").setAction("MouseUp", "enterSudoku();");
+    this.getField("reset").setAction("MouseUp", "resetSudoku();");
+
+    % Selection field for the amount of predefined cells when generating
     this.getField("elemcount").currentValueIndices = 2;
     this.getField("elemcount").commitOnSelChange = true;
 
-    % Each field needs to be connected to an input function
+    % Each cell needs to be connected to an input function
     % Define text style
     var funcName = "checkInput";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("OnBlur", callbackName);
-            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-            this.getField("pos" + x + "-" + y).alignment = "center";
+    var cell;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
+            cell.setAction("OnBlur", callbackName);
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
     }
-
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -179,40 +184,37 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
 
 /**
- * Activate manual sudoku input.
+ * Activate manual Sudoku input.
  */
 function enterSudoku() {
     % Clear all arrays to zero
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField[y][x] = EMPTY;
-            solution[y][x] = EMPTY;
-            original[y][x] = EMPTY;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
+            solution[m][n] = EMPTY;
+            original[m][n] = EMPTY;
         }
     }
 
@@ -226,16 +228,16 @@ function enterSudoku() {
 % Generation and solving %
 %%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Generates a sudoku.
+ * Generates a Sudoku.
  * The solution is saved inside the solution array.
- * Inside the complField the same values can be found
+ * Inside the complBoard the same values can be found
  * with some of them removed. The amount is defined by
- * the gui element "elemcount".
+ * the GUI element "elemcount".
  *
  * Algorithm:
  * 1. Clear array
  * 2. Fill diagonal 3x3 matrices randomly.
- * 3. Fill rest by solving the sudoku.
+ * 3. Fill rest by solving the Sudoku.
  * 4. Remove K elements randomly
  * Source: https://www.geeksforgeeks.org/program-sudoku-generator/
  */
@@ -243,9 +245,9 @@ function generateSudoku() {
     customMode = false;
 
     % Clear array
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField[y][x] = EMPTY;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
         }
     }
 
@@ -255,26 +257,27 @@ function generateSudoku() {
         numberArray.push(i);
     }
 
-    % % Fill top left
-    fillQuad(numberArray, 0, 0);
-    % Fill middle
-    fillQuad(numberArray, BOX_WIDTH, BOX_WIDTH);
-    % Fill bot right
-    fillQuad(numberArray, BOX_WIDTH * 2, BOX_WIDTH * 2);
+    % Fill diagonal quads
+    % (top left, middle, bot right, ...)
+    var num = Math.floor(Math.min(BOARD_WIDTH / BOX_SIZE, BOARD_HEIGHT / BOX_SIZE));
+    for (var quadIdx = 0; quadIdx < num; quadIdx++) {
+        fillQuad(numberArray, quadIdx * BOX_SIZE, quadIdx * BOX_SIZE);
+    }
 
     % Fill rest of the non-diagonal matrices.
     % For every cell to be filled, try all numbers until
     % a safe number is found.
     if (!solveSudoku()) {
+        drawAll(true);
         return;
     }
 
     % Remove K elements randomly
     % Get all possible position combinations
     var positions = [];
-    for (var x = 0; x < NUMBERS; x++) {
-        for (var y = 0; y < NUMBERS; y++) {
-            positions.push([x, y]);
+    for (var m = 0; m < NUMBERS; m++) {
+        for (var n = 0; n < NUMBERS; n++) {
+            positions.push([m, n]);
         }
     }
     var num_elements = this.getField("elemcount").value;
@@ -283,21 +286,21 @@ function generateSudoku() {
         % Draw and remove one random element from the positions array
         rnd = getRandomInt(positions.length);
         var elem = positions[rnd];
-        complField[elem[1]][elem[0]] = EMPTY;
+        complBoard[elem[M]][elem[N]] = EMPTY;
         positions.splice(rnd, 1);
     }
 
-    % Save the current field into the original array,
+    % Save the current board into the original array,
     % to allow for easy reset
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            original[y][x] = complField[y][x];
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            original[m][n] = complBoard[m][n];
         }
     }
 
     drawAll(true);
 
-    printInfoText("Please fill the sudoku.");
+    printInfoText("Please fill the Sudoku.");
 }
 
 /**
@@ -306,25 +309,25 @@ function generateSudoku() {
  * achieve randomness.
  *
  * @param {Array} numberArray Array of numbers to fill the quad with
- * @param {Number} offsetX Select the x position of the quad
- * @param {Number} offsetY Select the y position of the quad
+ * @param {Number} offsetM Select the m position of the quad
+ * @param {Number} offsetN Select the n position of the quad
  */
-function fillQuad(numberArray, offsetX, offsetY) {
+function fillQuad(numberArray, offsetM, offsetN) {
     shuffle(numberArray);
 
-    var x = 0;
-    var y = 0;
-    % Assign each number to a field
+    var m = 0;
+    var n = 0;
+    % Assign each number to a cell
     for (var idx = 0; idx < numberArray.length; idx++) {
         % Wrap to next line - expects the lines to be 3 in length
-        x = offsetX + (idx \% BOX_WIDTH);
-        y = offsetY + Math.floor(idx / BOX_WIDTH);
-        complField[y][x] = numberArray[idx];
+        m = offsetM + Math.floor(idx / BOX_SIZE);
+        n = offsetN + (idx \% BOX_SIZE);
+        complBoard[m][n] = numberArray[idx];
     }
 }
 
 /**
- * Solve the sudoku.
+ * Solve the Sudoku.
  *
  * Algorithm:
  * 1. Make list of all empty spaces
@@ -332,10 +335,10 @@ function fillQuad(numberArray, offsetX, offsetY) {
  * 3. Setup an array to save which combinations where tried
  * 4. Iterate all spaces
  * 4.1. Try a candidate
- * 4.2. If field is still valid continue
- * 4.3. Else increase iteration counter and reset spaceiterator
+ * 4.2. If cell value is still valid continue
+ * 4.3. Else increase iteration counter and reset space iterator
  *
- * @return { Boolean } true if sucessfull, else false
+ * @return { Boolean } true if successful, else false
  */
 function solveSudoku() {
     % Make list of all empty spaces
@@ -347,12 +350,12 @@ function solveSudoku() {
     % This should not happen
     for (var idx = 0; idx < spaces.length; idx++) {
         if (candidates[idx].length == 0) {
-            printInfoText("An error occurred in solveSudoku candidates.");
+            printInfoText("Could not solve the current Sudoku.");
             return false;
         }
     }
 
-    % Setup and init candidate indices
+    % Setup and initialize candidate indices
     var indices = [];
     for (var i = 0; i < spaces.length; i++) {
         indices.push(0);
@@ -360,10 +363,10 @@ function solveSudoku() {
 
     % Apply candidates
     for (var idx = 0; idx < spaces.length; idx++) {
-        complField[spaces[idx][1]][spaces[idx][0]] = candidates[idx][indices[idx]];
+        complBoard[spaces[idx][M]][spaces[idx][N]] = candidates[idx][indices[idx]];
 
-        % When the field is not valid increase indices and reset complField and idx
-        if (!isFieldValid(spaces[idx][0], spaces[idx][1])) {
+        % When the cell value is not valid increase indices and reset complBoard and idx
+        if (!isCellValid(spaces[idx][M], spaces[idx][N])) {
 
             var tmpIdx = idx;
             % Increment the current index
@@ -385,7 +388,7 @@ function solveSudoku() {
 
             % Reverse not valid solution
             for (var idx2 = 0; idx2 <= idx; idx2++) {
-                complField[spaces[idx2][1]][spaces[idx2][0]] = EMPTY;
+                complBoard[spaces[idx2][M]][spaces[idx2][N]] = EMPTY;
             }
 
             % Restart the idx counter since the solution for the spaces did not work
@@ -394,9 +397,9 @@ function solveSudoku() {
     }
 
     % Save complete solution since we already generated it here
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            solution[y][x] = complField[y][x];
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            solution[m][n] = complBoard[m][n];
         }
     }
 
@@ -404,17 +407,21 @@ function solveSudoku() {
 }
 
 /**
- * Returns an array of positions ([x, y]) at which
- * the complField contains a zero (0) and is therefore EMPTY.
+ * Returns an array of positions ([m, n]) at which
+ * the complBoard contains a zero (0) and is therefore EMPTY.
  *
  * @return {Array} Array of empty spaces
  */
 function getEmptySpaces() {
     var spaces = [];
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (complField[y][x] == EMPTY) {
-                spaces.push([x, y]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        % Start top right, so the amount of backtracking is reduced
+        % The important part is the third quad that is filled, if the positions
+        % start top right the third quad has nine cells to check against
+        % (due to preciously filled quads), if it starts from the left it would only have six
+        for (var n = BOARD_WIDTH - 1; n >= 0; n--) {
+            if (complBoard[m][n] == EMPTY) {
+                spaces.push([m, n]);
             }
         }
     }
@@ -424,15 +431,15 @@ function getEmptySpaces() {
 /**
  * Returns an array of candidates which number of 1-9 could be
  * put at the given spaces. These are selected by consulting the
- * typical sudoku rules.
+ * typical Sudoku rules.
  *
- * @param {Array} spaces An array of empty spots
+ * @param {Array} spaces An array of empty cells
  * @return {Array} An array of candidates for each space
  */
 function getCandidates(spaces) {
     % Helper array to mark all numbers that are disallowed
     var disallowed = [];
-    for (var i = 0; i < 9; i++) {
+    for (var i = 0; i < NUMBERS; i++) {
         disallowed.push(true);
     }
 
@@ -441,27 +448,30 @@ function getCandidates(spaces) {
     % Iterate all spaces that need to be filled
     for (var idx = 0; idx < spaces.length; idx++) {
         % Check the row for all numbers that are set
-        for (var x = 0; x < FIELD_WIDTH; x++) {
-            num = complField[spaces[idx][1]][x];
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            num = complBoard[spaces[idx][M]][n];
             if (num > EMPTY) {
                 disallowed[num - 1] = false;
             }
         }
 
         % Check the column for all numbers that are set
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            num = complField[y][spaces[idx][0]];
+        for (var m = 0; m < BOARD_HEIGHT; m++) {
+            num = complBoard[m][spaces[idx][N]];
             if (num > EMPTY) {
                 disallowed[num - 1] = false;
             }
         }
 
         % Check the box for all numbers that are set
-        var xQuad = Math.floor(spaces[idx][0] / BOX_WIDTH);
-        var yQuad = Math.floor(spaces[idx][1] / BOX_WIDTH);
-        for (var x = xQuad * BOX_WIDTH; x < xQuad * BOX_WIDTH + BOX_WIDTH; x++) {
-            for (var y = yQuad * BOX_WIDTH; y < yQuad * BOX_WIDTH + BOX_WIDTH; y++) {
-                num = complField[y][x];
+        var mQuad = Math.floor(spaces[idx][M] / BOX_SIZE);
+        var nQuad = Math.floor(spaces[idx][N] / BOX_SIZE);
+        for (var m = mQuad * BOX_SIZE; m < mQuad * BOX_SIZE + BOX_SIZE; m++) {
+            for (var n = nQuad * BOX_SIZE; n < nQuad * BOX_SIZE + BOX_SIZE; n++) {
+                if (m >= BOARD_HEIGHT || n > BOARD_WIDTH) {
+                    continue;
+                }
+                num = complBoard[m][n];
                 if (num > EMPTY) {
                     disallowed[num - 1] = false;
                 }
@@ -478,7 +488,7 @@ function getCandidates(spaces) {
         candidates.push(tmpCnd);
 
         % Reset the disallowed numbers
-        for (var i = 0; i < 9; i++) {
+        for (var i = 0; i < NUMBERS; i++) {
             disallowed[i] = true;
         }
     }
@@ -486,39 +496,39 @@ function getCandidates(spaces) {
 }
 
 /**
- * Checks the field at the given position
- * if there are any conflicts with the sudoku rules
- * given the current numbers in the field.
+ * Checks the board at the given position
+ * for conflicts with the Sudoku rules
+ * given the current numbers on the board.
  *
- * @param {Number} valX X-coordinate of the field
- * @param {Number} valY Y-coordinate of the field
- * @return {Boolean} Returns true if field is valid else false.
+ * @param {Number} valM M-coordinate of the cell
+ * @param {Number} valM N-coordinate of the cell
+ * @return {Boolean} Returns true if cell value is valid else false.
  */
-function isFieldValid(valX, valY) {
+function isCellValid(valM, valN) {
     % Get the value
-    var value = complField[valY][valX];
+    var value = complBoard[valM][valN];
 
-    % Check all possibly conflicting fields for the same value
+    % Check all possibly conflicting cells for the same value
     % Check the row
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        if (complField[valY][x] == value && x != valX) {
+    for (var n = 0; n < BOARD_WIDTH; n++) {
+        if (complBoard[valM][n] == value && n != valN) {
             return false;
         }
     }
 
     % Check the column
-    for (var y = 0; y < FIELD_HEIGHT; y++) {
-        if (complField[y][valX] == value && y != valY) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        if (complBoard[m][valN] == value && m != valM) {
             return false;
         }
     }
 
     % Check the box
-    var xQuad = Math.floor(valX / BOX_WIDTH);
-    var yQuad = Math.floor(valY / BOX_WIDTH);
-    for (var x = xQuad * BOX_WIDTH; x < xQuad * BOX_WIDTH + BOX_WIDTH; x++) {
-        for (var y = yQuad * BOX_WIDTH; y < yQuad * BOX_WIDTH + BOX_WIDTH; y++) {
-            if (complField[y][x] == value && (y != valY || x != valX)) {
+    var mQuad = Math.floor(valM / BOX_SIZE);
+    var nQuad = Math.floor(valN / BOX_SIZE);
+    for (var m = mQuad * BOX_SIZE; m < mQuad * BOX_SIZE + BOX_SIZE; m++) {
+        for (var n = nQuad * BOX_SIZE; n < nQuad * BOX_SIZE + BOX_SIZE; n++) {
+            if (complBoard[m][n] == value && (m != valM || n != valN)) {
                 return false;
             }
         }
@@ -529,72 +539,73 @@ function isFieldValid(valX, valY) {
 
 /**
  * Checks the given user input if it is valid.
- * Needs to be a number betwenn 0 and 10.
- * If the value is not allowed by the sudoku rules
- * the field is marked red and green otherwise.
+ * Needs to be a number between 0 and 10.
+ * If the value is not allowed by the Sudoku rules
+ * the cell is marked red and green otherwise.
  *
- * @param {Number} x X-coordinate
- * @param {Number} y Y-coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  */
-function checkInput(x, y) {
-    % Get the value that was commited
-    var field = this.getField("pos" + x + "-" + y);
+function checkInput(m, n) {
+    % Get the value that was committed
+    var cell = this.getField("cell" + m + "-" + n);
 
-    % If the value did not change dont do anything
-    if (complField[y][x] == field.value) {
+    % If the value did not change do not do anything
+    if (complBoard[m][n] == cell.value) {
         return;
     }
-    field.delay = true;
+    cell.delay = true;
 
     % When the value is inside the bounds
-    % validate it and color the field correspondingly.
-    if (field.value > 0 && field.value < 10) {
-        complField[y][x] = field.value;
-        if (isFieldValid(x, y)) {
-            field.fillColor = COLORS[2];
+    % validate it and color the cell correspondingly.
+    if (cell.value > 0 && cell.value <= NUMBERS) {
+        complBoard[m][n] = cell.value;
+        if (isCellValid(m, n)) {
+            cell.fillColor = COLORS[2];
         } else {
-            field.fillColor = COLORS[3];
+            cell.fillColor = COLORS[3];
         }
     }
-    % Else remove the value from the field
+    % Else remove the value from the cell
     else {
-        field.value = "";
-        field.fillColor = COLORS[0];
+        complBoard[m][n] = EMPTY;
+        cell.value = "";
+        cell.fillColor = COLORS[0];
     }
 
-    field.delay = false;
+    cell.delay = false;
 }
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Resets the sudoku to the original generated one.
+ * Resets the Sudoku to the original generated one.
  */
 function resetSudoku() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField[y][x] = original[y][x];
-            refreshField(x, y, COLORS[1]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = original[m][n];
+            refreshCell(m, n, COLORS[1]);
         }
     }
 }
 
 /**
- * Shows one field that was not previously revealed.
+ * Shows one cell that was not previously revealed.
  */
 function showHint() {
-    % If one field in the solution array is zero (EMPTY) the whole array should be
+    % If one cell in the solution array is zero (EMPTY) the whole array should be
     % zero and therefore the solution was not yet generated
     if (solution[0][0] == EMPTY) {
         solveSudoku();
     }
 
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (complField[y][x] == EMPTY) {
-                complField[y][x] = solution[y][x];
-                refreshField(x, y, COLORS[1]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n] == EMPTY) {
+                complBoard[m][n] = solution[m][n];
+                refreshCell(m, n, COLORS[1]);
                 return;
             }
         }
@@ -613,60 +624,60 @@ function showSolution() {
     }
 
     % Just copy all values from the solution array
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (complField[y][x] == EMPTY || customMode) {
-                complField[y][x] = solution[y][x];
-                refreshField(x, y, COLORS[0]);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n] == EMPTY || customMode) {
+                complBoard[m][n] = solution[m][n];
+                refreshCell(m, n, COLORS[0]);
             }
         }
     }
 }
 
 /**
- * Refreshes value of one input field
+ * Refreshes value of one input cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
- * @param {Array} color The rgb color.
- *              Gray for given fields, green for correct fields,
- *              Red for wrong fields, white for empty fields.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
+ * @param {Array} color The RGB color.
+ *              Gray for given cells, green for correct cells,
+ *              Red for wrong cells, white for empty cells.
  */
-function refreshField(x, y, color) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    if (complField[y][x] > EMPTY) {
-        field.value = complField[y][x];
-        field.fillColor = color;
+function refreshCell(m, n, color) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    if (complBoard[m][n] > EMPTY) {
+        cell.value = complBoard[m][n];
+        cell.fillColor = color;
     } else {
-        field.value = "";
-        field.fillColor = COLORS[0];
+        cell.value = "";
+        cell.fillColor = COLORS[0];
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
- * ReDraw complete field, coloring can be enabled.
+ * Redraw complete board, coloring can be enabled.
  *
- * @param {Boolean} color Should the fields be colored.
+ * @param {Boolean} color Should the cells be colored.
  */
 function drawAll(color) {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
-            if (complField[y][x] > EMPTY) {
-                field.value = complField[y][x];
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            cell = this.getField("cell" + m + "-" + n);
+            cell.delay = true;
+            if (complBoard[m][n] > EMPTY) {
+                cell.value = complBoard[m][n];
                 if (color) {
-                    field.fillColor = COLORS[1];
-                    field.readonly = true;
+                    cell.fillColor = COLORS[1];
+                    cell.readonly = true;
                 }
             } else {
-                field.value = "";
-                field.fillColor = COLORS[0];
-                field.readonly = false;
+                cell.value = "";
+                cell.fillColor = COLORS[0];
+                cell.readonly = false;
             }
-            field.delay = false;
+            cell.delay = false;
         }
     }
 }
@@ -685,10 +696,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
@@ -701,7 +712,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -709,52 +720,50 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3 + \fieldWidth * 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 4 + 3 + \boardWidth * 3}
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (0.591\paperheight -\resultH pt)/\boardHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
-        % Playingfield
+        % Playing board
         \begin{tcolorbox}
-            \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                        \ifnum#2=3%
-                            \vspace{-12pt}%
-                            \noindent\rule[13pt]{\linewidth}{1pt}
+            % Define the cell size via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
+            \else
+                \def\cellsize{\cellHeight}
+            \fi
+
+            \begin{center}
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \ifnum#1>0%
+                        \pgfmathparse{Mod (#1, \boxSize) == 0? 0: 1}
+                        \ifnum\pgfmathresult=0%
+                            \vspace{-8pt}%
+                            \noindent\rule[3pt]{\linewidth}{1pt}
                         \fi%
-                        \ifnum#2=6%
-                            \vspace{-12pt}%
-                            \noindent\rule[13pt]{\linewidth}{1pt}
-                        \fi%
+                    \fi%
                     \vspace{1pt}%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                        \ifnum#2>0%
+                            \pgfmathparse{Mod (#2, \boxSize) == 0? 0: 1}
+                            \ifnum\pgfmathresult=0%
+                                \vrule width 1pt%
+                            \fi%
+                        \fi%
+                        \hspace{2pt}%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2]{}%
-                        %
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
+                            bordercolor=white, align=1%
+                        ]{}%
                         \hspace{2pt}%
-                        \ifnum#1=2%
-                            %\vspace{1pt}%
-                            \vrule width 1pt%
-                        \fi%
-                        \ifnum#1=5%
-                            %\vspace{1pt}%
-                            \vrule width 1pt%
-                        \fi%
-                        \hspace{2pt}%
-                    }\vspace{1pt}%
-                    \newline%
+                    }\\[1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
         %
         %%%%%%%%%%%%%%%%%%%%%%%
@@ -772,44 +781,45 @@ function printInfoText(text) {
         %%%%%%%%%%%%%%%%
         % GUI elements %
         %%%%%%%%%%%%%%%
-        \ChoiceMenu[name=elemcount, bordercolor=gray, width=50mm, combo]
-            {Fullfield count:}{15, 30, 45, 60, 75}
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \ChoiceMenu[name=elemcount, bordercolor=gray, width=50mm, combo, edit=false]
+            {Fullcell count:}{15, 30, 45, 60, 75}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
         %
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=generate, bordercolor=white]{
+                \PushButton[name=generate, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Generate new Sudoku\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=enter, bordercolor=white]{
+                \PushButton[name=enter, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Enter own Sudoku\strut
                     \end{tcolorbox}
                 } \\
-                \PushButton[name=solve, bordercolor=white]{
+                \PushButton[name=solve, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Show current solution\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=hint, bordercolor=white]{
+                \PushButton[name=hint, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Give me a hint\strut
                     \end{tcolorbox}
                 } \\
-                \PushButton[name=reset, bordercolor=white]{
+                \PushButton[name=reset, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Reset current input\strut
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}

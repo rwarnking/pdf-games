@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,25 +20,31 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{20}
-\def\fieldHeight{20}
+% Values can be changed
+% Obacht: Higher values than 20 might led to lag
+\def\boardWidth{20}
+\def\boardHeight{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{minesweeper}
 
 const GAME_DESC = "This is a logic based puzzle game.\
-The goal is to reveal as much fields as possible without revealing a mine.\
-These mines are distributed randomly. Everytime a field is revealed it shows a counter\
-of how many mines are in the neighbourhood allowing for logicall deduction where\
+The goal is to reveal as many cells as possible without hitting a mine.\
+These mines are distributed randomly. Every time a cell is revealed it shows a counter\
+of how many mines are in the neighborhood allowing for logical deduction where\
 a mine can be.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
+const SCREEN_TEXT_SIZE = 300;
 
 % Constants
+const M = 0;
+const N = 1;
+
 const MINE = -1;
 const EMPTY = 0;
 const HIDDEN = false;
@@ -49,13 +53,13 @@ const REVEAL = true;
 const LOCK = false;
 
 % Globals
-% The game field array
-var complField = new Array();
+% The game board array
+var complBoard = new Array();
 var gameover = false;
 % Is the game in reveal or lock mode
 var gameMode = REVEAL;
-% Amount of fields that need to be revealed to win
-var fieldsToReveal = FIELD_WIDTH * FIELD_HEIGHT;
+% Amount of cells that need to be revealed to win
+var cellsToReveal = BOARD_WIDTH * BOARD_HEIGHT;
 var revealed = 0;
 var mines = 0;
 
@@ -77,31 +81,31 @@ const COLORS = new Array(
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Fill the array with the default content and infos
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            tmp.push([HIDDEN, EMPTY, !LOCK]);
+function initialize() {
+    % Fill the array with the default content and information
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row.push([HIDDEN, EMPTY, !LOCK]);
         }
-        complField.push(tmp);
+        complBoard.push(row);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     fillMines();
     drawAll();
@@ -109,58 +113,47 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
-    % Set the callbacks and attributes of each small field
+function initializeButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Set the callbacks and attributes of each cell
     var funcName = "reveal";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            var f = this.getField("pos" + x + "-" + y);
-            f.setAction("MouseDown", callbackName);
-            f.borderColor = color.black;
-            f.fillColor = color.white;
-            f.alignment = "center";
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            var c = this.getField("cell" + m + "-" + n);
+            c.setAction("MouseDown", callbackName);
+            c.borderColor = color.black;
+            c.fillColor = color.white;
+            c.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
     }
 
     % Mode change button setup
     this.getField("reveal").setAction("MouseUp", "changeMode();");
-    var field = this.getField("revealtxt");
-    %field.setAction("MouseUp", "changeMode();");
-    field.value = "On";
-    field.borderColor = color.transparent;
-    field.fillColor = color.transparent;
+    this.getField("revealtxt").value = "On";
 
     this.getField("lock").setAction("MouseUp", "changeMode();");
-    var field = this.getField("locktxt");
-    %field.setAction("MouseUp", "changeMode();");
-    field.value = "Off";
-    field.borderColor = color.transparent;
-    field.fillColor = color.transparent;
+    this.getField("locktxt").value = "Off";
 
-    % Restat button setup
+    % Restart button setup
     this.getField("restart").setAction("MouseDown", "restart();");
-    this.getField("restart").highlight="none";
 
     this.getField("percentage").currentValueIndices = 2;
-
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
 
     % Tooltip button setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -168,26 +161,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
-        field.rect = [128, 581, 468, 381];
+        field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -196,44 +186,49 @@ function tooltip(on) {
 % Fill and restart %
 %%%%%%%%%%%%%%%%%%%%
 /**
- * Calculates the amount of expected mines using the gui and
- * distributes them to the field.
- * Afterwards iterate all non mined fields and check the neighbourhood
+ * Calculates the amount of expected mines using the GUI and
+ * distributes them to the board.
+ * Afterwards iterate all non mined cells and check the neighborhood
  * to get the mine amount.
  */
 function fillMines() {
-    % Get the amount of mines using the gui-percentage
-    mines = (FIELD_WIDTH * FIELD_HEIGHT) / 100 * this.getField("percentage").value;
-    % Reduce the count of fields to reveal
-    fieldsToReveal -= mines;
-    % Distribute the mines onto the field
+    % Get the amount of mines using the GUI-percentage
+    mines = Math.floor((BOARD_WIDTH * BOARD_HEIGHT) / 100 * this.getField("percentage").value);
+    % Reduce the count of cells to reveal
+    cellsToReveal -= mines;
+    % Distribute the mines onto the board
     % OBACHT: In this loop a mine might be placed at an already taken position.
-    var x = 0;
-    var y = 0;
+    var m = 0;
+    var n = 0;
     for (var i = 0; i < mines; i++) {
-        x = getRandomInt(FIELD_WIDTH);
-        y = getRandomInt(FIELD_HEIGHT);
-        complField[y][x][1] = MINE;
+        m = getRandomInt(BOARD_HEIGHT);
+        n = getRandomInt(BOARD_WIDTH);
+        % Make sure that a cell is not mined twice
+        if (complBoard[m][n][1] == MINE) {
+            i--;
+        } else {
+            complBoard[m][n][1] = MINE;
+        }
     }
 
-    % For each field that is not a mine calc the mine count
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            % Ignore fields with mine on it
-            if (complField[y][x][1] == MINE) {
+    % For each cell that is not a mine calculate the mine count
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            % Ignore cells with mine on it
+            if (complBoard[m][n][1] == MINE) {
                 continue;
             }
             % Check the neighbourhood
-            for (var xx = x - 1; xx <= x + 1; xx++) {
-                for (var yy = y - 1; yy <= y + 1; yy++) {
-                    if (xx < 0 || yy < 0 || xx >= FIELD_WIDTH ||
-                        yy >= FIELD_HEIGHT || (xx == x && yy == y)
+            for (var mm = m - 1; mm <= m + 1; mm++) {
+                for (var nn = n - 1; nn <= n + 1; nn++) {
+                    if (nn < 0 || mm < 0 || nn >= BOARD_WIDTH ||
+                        mm >= BOARD_HEIGHT || (nn == n && mm == m)
                     ) {
                         continue;
                     }
                     % Adjust count
-                    if (complField[yy][xx][1] == MINE) {
-                        complField[y][x][1]++;
+                    if (complBoard[mm][nn][1] == MINE) {
+                        complBoard[m][n][1]++;
                     }
                 }
             }
@@ -242,24 +237,24 @@ function fillMines() {
 }
 
 /**
- * Restart the game by reseting everything to default.
+ * Restart the game by resetting everything to default.
  */
 function restart() {
     % Remove focus so the cursor is not shown
-    this.getField("info").setFocus();
+    this.getField("cell" + 0 + "-" + 0).setFocus();
 
     gameover = false;
 
-    % Clear the field
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-             complField[y][x] = [HIDDEN, EMPTY, !LOCK];
+    % Clear the board
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = [HIDDEN, EMPTY, !LOCK];
         }
     }
 
     % Redistribute mines and redraw
     revealed = 0;
-    fieldsToReveal = FIELD_WIDTH * FIELD_HEIGHT;
+    cellsToReveal = BOARD_WIDTH * BOARD_HEIGHT;
     fillMines();
     drawAll();
     printInfoText("Restarted the game.");
@@ -281,144 +276,152 @@ function changeMode() {
 }
 
 /**
- * Reveal the cell x, y.
+ * Reveal the cell m, n.
  * If the Lockmode is activated the cell will be marked and
  * can not be reveal unless the lock is lifted.
- * If the revealmode is activated the cell is revealed and
+ * If the Revealmode is activated the cell is revealed and
  * either shows a number, an area of numbers or a mine.
  * If the game is over nothing will happen.
  *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  */
-function reveal(x, y) {
-    % Clear output
-    printInfoText("Clicked on cell.");
+function reveal(m, n) {
+    % Remove focus so the cursor is not shown
+    this.getField("cell" + 0 + "-" + 0).setFocus();
+
     if (gameover) {
+        printInfoText("Gameover.");
         return;
     }
 
-    % Lock the field or lift it depending on current state
+    if (complBoard[m][n][0] == VISIBLE) {
+        printInfoText("Cell already visible!");
+        return;
+    }
+
+    % Lock the cell or lift it depending on current state
     if (gameMode == LOCK) {
-        if (complField[y][x][2] != LOCK) {
-            complField[y][x][2] = LOCK;
+        if (complBoard[m][n][2] != LOCK) {
+            complBoard[m][n][2] = LOCK;
         } else {
-            complField[y][x][2] = !LOCK
+            complBoard[m][n][2] = !LOCK
         }
-        draw(x, y);
-        this.getField("restart").setFocus();
+        draw(m, n);
+        printInfoText("Locked cell.");
         return;
     }
 
     % Ignore click if locked
-    if (complField[y][x][2] == LOCK) {
+    if (complBoard[m][n][2] == LOCK) {
         return;
     }
 
     % Make visible
-    complField[y][x][0] = VISIBLE;
+    complBoard[m][n][0] = VISIBLE;
 
-    % If the field is a mine the game is over
-    if (complField[y][x][1] == MINE) {
+    % If the cell is a mine the game is over
+    if (complBoard[m][n][1] == MINE) {
         gameover = true;
         printInfoText("You hit a mine and lost!");
+    } else {
+        printInfoText("You reveled a " + complBoard[m][n][1] + " .");
     }
 
-    % Reveal all empty spots in the neighbourhood
+    % Reveal all empty cells in the neighborhood
     % This happens if there are no mines near by.
-    if (complField[y][x][1] == EMPTY) {
-        var stack = [[x, y]];
-        % For each nh-field put it on a stack unless it is already visible.
-        % Iterate the stack and reveal the fields.
+    if (complBoard[m][n][1] == EMPTY) {
+        var stack = [[m, n]];
+        % For each neighbor-cell put it on a stack unless it is already visible.
+        % Iterate the stack and reveal the cells.
         while (stack.length > 0) {
             var elem = stack.pop();
-            for (var xx = elem[0] - 1; xx <= elem[0] + 1; xx++) {
-                for (var yy = elem[1] - 1; yy <= elem[1] + 1; yy++) {
-                    % Ignore out of bounds, same field and already visible
-                    if (xx < 0 || yy < 0 || xx >= FIELD_WIDTH || yy >= FIELD_HEIGHT ||
-                        (xx == elem[0] && yy == elem[1]) || complField[yy][xx][0] == VISIBLE) {
+            for (var mm = elem[M] - 1; mm <= elem[M] + 1; mm++) {
+                for (var nn = elem[N] - 1; nn <= elem[N] + 1; nn++) {
+                    % Ignore out of bounds, same cells and already visible
+                    if (nn < 0 || mm < 0 || nn >= BOARD_WIDTH || mm >= BOARD_HEIGHT ||
+                        (mm == elem[M] && nn == elem[N]) || complBoard[mm][nn][0] == VISIBLE) {
                         continue;
                     }
-                    % Reveal the field
-                    complField[yy][xx][0] = VISIBLE;
-                    % Adjust counter for each field
+                    % Reveal the cell
+                    complBoard[mm][nn][0] = VISIBLE;
+                    % Adjust counter for each cell
                     revealed++;
-                    draw(xx, yy);
+                    draw(mm, nn);
                     % If it is a number then do not add it to the stack
-                    if (complField[yy][xx][1] != EMPTY) {
+                    if (complBoard[mm][nn][1] != EMPTY) {
                         continue;
                     }
-                    stack.push([xx, yy]);
-
+                    stack.push([mm, nn]);
                 }
             }
         }
-    } else {
-        % Add one if there was one field revealed
-        revealed++;
     }
+    % Add one for the first cell revealed
+    revealed++;
 
     % Win condition
-    if (revealed == fieldsToReveal) {
+    if (revealed >= cellsToReveal) {
         gameover = true;
         printInfoText("You found all mines and won!");
     }
 
-    draw(x, y);
+    draw(m, n);
 }
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draws the complete field.
+ * Draws the complete board.
  */
 function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
 
 /**
- * Draw the field at the coordinates x, y.
+ * Draw the cell at the coordinates m, n.
  *
- * @param {Number} x The x coordinate
- * @param {Number} y The y coordinate
+ * @param {Number} m The m coordinate
+ * @param {Number} n The n coordinate
  */
-function draw(x, y) {
-    % Retrieve the field data
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
+function draw(m, n) {
+    % Retrieve the cell data
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
 
-    if (complField[y][x][0] == VISIBLE) {
-        var val = complField[y][x][1];
-        % Is the field a mine, a number or empty
+    if (complBoard[m][n][0] == VISIBLE) {
+        var val = complBoard[m][n][1];
+        % Is the cell a mine, a number or empty
         if (val == MINE) {
-            field.fillColor = color.black;
-            field.borderColor = color.black;
-            field.textColor = COLORS[val + 1];
-            field.value = "M";
+            cell.fillColor = color.black;
+            cell.borderColor = color.black;
+            cell.textColor = COLORS[val + 1];
+            cell.value = "M";
         } else if (val != EMPTY) {
-            field.value = val;
-            field.textColor = COLORS[val + 1];
+            cell.value = val;
+            cell.textColor = COLORS[val + 1];
         } else {
-            field.fillColor = color.transparent;
-            field.borderColor = color.transparent;
+            cell.fillColor = color.transparent;
+            cell.borderColor = color.transparent;
         }
-    } else if (complField[y][x][2] == LOCK) {
-        field.fillColor = color.transparent;
-        field.borderColor = color.black;
+    } else if (complBoard[m][n][2] == LOCK) {
+        cell.fillColor = color.transparent;
+        cell.borderColor = color.black;
+        cell.textColor = COLORS[1];
         % Fancy x for marking mines
-        field.value = String.fromCharCode(0x2717);
+        cell.value = String.fromCharCode(0x2717);
     } else {
-        field.borderColor = color.black;
-        field.fillColor = color.white;
-        field.value = "";
+        cell.borderColor = color.black;
+        cell.fillColor = color.white;
+        cell.value = "";
     }
 
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
@@ -433,10 +436,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
@@ -449,7 +452,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -457,71 +460,74 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (0.591\paperheight -\resultH pt)/\boardHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
-        % The gamefield
+        % The game board
         \begin{tcolorbox}
-            \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            % Define the cell size via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
+            \else
+                \def\cellsize{\cellHeight}
+            \fi
+
+            \begin{center}
+                \tiny
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{3pt}%
-                    }\vspace{3pt}
-                    \newline%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
+                            bordercolor=white, align=1, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=reveal, bordercolor=white]{
+                \PushButton[name=reveal, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=revealtxt, height=0.35cm, width=0.5cm, readonly=true]
-                            {Revel mode:}
+                        \TextField[name=revealtxt, height=0.35cm, width=0.5cm,
+                            bordercolor=, backgroundcolor=, readonly]{Revel mode:}
                         \strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=lock, bordercolor=white]{
+                \PushButton[name=lock, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \TextField[name=locktxt, height=0.35cm, width=0.5cm, readonly=true]
-                            {Lock mode:}
+                        \TextField[name=locktxt, height=0.35cm, width=0.5cm,
+                            bordercolor=, backgroundcolor=, readonly]{Lock mode:}
                         \strut
                     \end{tcolorbox}
                 } \\
-                \PushButton[name=restart, bordercolor=white]{
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
-                        \ChoiceMenu[name=percentage, height=0.35cm, width=0.5cm, combo,
-                            commitonselchange=true]{
-                            Restart with mines in \%:}{%
-                            10, 13, 17, 20,%
-                        }%
+                        \ChoiceMenu[name=percentage, height=0.35cm, bordercolor=gray,
+                            backgroundcolor=white, combo, edit=false, commitonselchange=true]
+                            {Restart with mines in \%:}{10, 13, 17, 20}%
                         \strut
                     \end{tcolorbox}
                 } &%
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 
