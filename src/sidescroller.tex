@@ -674,8 +674,8 @@ function printInfoText(text) {
         \end{multicols}
 
         % Calculate the max width and height of a cell
-        \def\lineHeight{\dimexpr (500 pt)/\canvasCharHeight \relax}
-        \def\lineWidth{\dimexpr (500 pt) \relax}
+        \def\lineHeight{\dimexpr (0.591\paperheight)/\canvasCharHeight \relax}
+        \def\lineWidth{\dimexpr (0.591\paperheight) \relax}
 
         \begin{center}
             \xintFor* #1 in {\xintSeq{0}{\canvasCharHeight-1}} \do {%

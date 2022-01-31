@@ -719,7 +719,7 @@ function printInfoText(text) {
         % Calculate the max height of a text cell
         % 2pt for each TextField, 5pt for distance between cards, 2 * 5pt for margin inside a card
         \FPeval{\resultH}{\boardHeight * 4 * 2 + \boardHeight * 5 + \boardHeight * 5 * 2}
-        \def\cellHeight{\dimexpr (500 pt -\resultH pt) / (\boardHeight * 5) \relax}
+        \def\cellHeight{\dimexpr (0.591\paperheight -\resultH pt) / (\boardHeight * 5) \relax}
 
         \begin{center}
             \tiny

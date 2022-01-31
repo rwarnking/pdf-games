@@ -364,7 +364,7 @@ function importRotation() {
         % Dynamically adjust the line width to the number of lines per column
         % Only need to check width since the board is quadratic
         \FPeval{\resultH}{\canvasHeight * 3 - 2} % chktex 8
-        \def\lineheight{\dimexpr (500pt-\resultH pt)/\canvasHeight \relax}
+        \def\lineheight{\dimexpr (0.591\paperheight-\resultH pt)/\canvasHeight \relax}
 
         % The canvas (linearray)
         \begin{tcolorbox}[colback=black]

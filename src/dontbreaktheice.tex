@@ -591,7 +591,7 @@ function printInfoText(text) {
         \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
         \FPeval{\resultH}{\boardHeight * 3 + 3}
-        \def\cellHeight{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
+        \def\cellHeight{\dimexpr (0.591\paperheight -\resultH pt)/\boardHeight \relax}
 
         \begin{tcolorbox}[boxsep=0pt,left=1pt,right=1pt,top=1pt,bottom=1pt]
             % Define the cellsize via the smaller amount
