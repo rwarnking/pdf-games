@@ -1,0 +1,36 @@
+name: New Game Idea
+description: Present an idea for a new game
+title: ":game_die: "
+labels: []
+assignees:
+  - rwarnking
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: Present us your game idea.
+      placeholder: Tell us your game idea!
+      value: "How about an MMORPG"
+    validations:
+      required: true
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Do you have an idea how to implement that?
+      placeholder: Tell us how to implement that!
+      value: "No"
+  - type: checkboxes
+    id: limitations
+    attributes:
+      label: Limitations
+      description: Did you think about the limitations that the JavaScript in PDFs has?
+      options:
+        - label: I think it might be possible to implement that
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://example.com)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

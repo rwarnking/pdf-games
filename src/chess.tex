@@ -3,7 +3,7 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\usepackage[margin=0.5in]{geometry}
+\usepackage[margin=0.5in, bottom=0.1in]{geometry}
 
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
@@ -20,12 +20,12 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Board width and height (should not be changed)
+% Board width and height
 \def\boardWidth{8}
-\def\boardHeight{8}
+\def\boardHeight{\boardWidth}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{insDLJS}[]{JSDateiname}{chess}
 
@@ -36,7 +36,7 @@ leaving a lot of room for different combinations and play styles.";
 % Outside variables
 const BOARD_WIDTH = AFMakeNumber(\boardWidth);
 const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
-const SCREEN_TEXT_SIZE = 500;
+const SCREEN_TEXT_SIZE = 250;
 const PLAYBACK_SPEED = 200;
 
 % Constants
@@ -101,8 +101,8 @@ var conversion = [];
 var promotionIndex = 0;
 
 % Game Data
-% The symbol array, each piece gets one symbol. Since the utf8 chess pieces do not work
-% default asccii letters are used
+% The symbol array, each piece gets one symbol.
+% Since the UTF8 chess pieces do not work default ASCII letters are used. (0x2654 ...)
 const PIECE_SYMBOLS = new Array(
     "K", "Q", "B", "N", "R", "P"
 );
@@ -155,8 +155,8 @@ const CHECK_COLOR = [ "RGB", 0.9, 0.100, 0.176 ];
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound.
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound.
  * @param {Number} Return a random integer.
  */
 function getRandomInt(max) {
@@ -174,13 +174,13 @@ function sign(x) {
 };
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Fill the array with the default content and infos
+function initialize() {
+    % Fill the array with the default content and information
     for (var m = 0; m < BOARD_HEIGHT; m++) {
         var row = new Array();
         for (var n = 0; n < BOARD_WIDTH; n++) {
@@ -192,31 +192,30 @@ function initialise() {
     % Add the pieces for both players
     addPieces();
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     drawAll();
     printInfoText("Ready to play, good luck.");
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
-    % Set the callbacks and attributes of each selectable cell
+    % Set the callbacks and attributes of each select able cell
     var funcName = "move";
-    for (var m = 0; m < BOARD_WIDTH; m++) {
-        for (var n = 0; n < BOARD_HEIGHT; n++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
             var c = this.getField("cell" + m + "-" + n);
             c.setAction("MouseDown", callbackName);
-            c.alignment = "center";
-            c.textSize = SCREEN_TEXT_SIZE / (BOARD_WIDTH * 3);
-            c.borderWidth = 4;
+            c.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
+            c.borderWidth = 3;
         }
     }
 
@@ -226,7 +225,6 @@ function initialiseButtons() {
         cell.setAction("MouseDown", "promotePawn(" + i.toString() + ")");
         cell.value = PIECE_SYMBOLS[QUEEN + i];
         cell.hidden = true;
-        cell.alignment = "center";
     }
 
     % Process button setup
@@ -237,17 +235,13 @@ function initialiseButtons() {
     % Restart button setup
     this.getField("restart").setAction("MouseDown", "restart();");
 
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
-
     % Tooltip button setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 }
 
 /**
- * Restart the game by reseting everything to default.
+ * Restart the game by resetting everything to default.
  */
 function restart() {
     % Remove focus so the cursor is not shown
@@ -306,16 +300,17 @@ function addPieces() {
     }
 
     % Init KINGs and QUEENs
-    complBoard[0][3] = [PIECE_SYMBOLS[QUEEN], BLACK, UNMOVED];
-    complBoard[0][4] = [PIECE_SYMBOLS[KING], BLACK, UNMOVED];
-    complBoard[BOARD_HEIGHT - 1][3] = [PIECE_SYMBOLS[QUEEN], WHITE, UNMOVED];
-    complBoard[BOARD_HEIGHT - 1][4] = [PIECE_SYMBOLS[KING], WHITE, UNMOVED];
+    var centerpos = Math.floor(BOARD_WIDTH / 2);
+    complBoard[0][centerpos - 1] = [PIECE_SYMBOLS[QUEEN], BLACK, UNMOVED];
+    complBoard[0][centerpos] = [PIECE_SYMBOLS[KING], BLACK, UNMOVED];
+    complBoard[BOARD_HEIGHT - 1][centerpos - 1] = [PIECE_SYMBOLS[QUEEN], WHITE, UNMOVED];
+    complBoard[BOARD_HEIGHT - 1][centerpos] = [PIECE_SYMBOLS[KING], WHITE, UNMOVED];
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -328,10 +323,11 @@ function tooltip(on) {
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
         % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
@@ -339,12 +335,6 @@ function tooltip(on) {
         var field = this.getField("tooltiptxt");
         field.delay = true;
         field.hidden = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
         field.delay = false;
     }
 }
@@ -554,7 +544,7 @@ function validMove(m, n) {
         return false;
     }
 
-    % Sadly the equality test (==) does not work, since the borderColor has
+    % Sadly the equality test (==) does not work, since the bordercolor has
     % more digits after the comma then POSS_MOVE_COLOR
     const EPSILON = 0.001;
     var equal = function(col1, col2) {
@@ -1281,10 +1271,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
@@ -1297,7 +1287,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -1305,32 +1295,36 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\boardWidth * 4 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\boardHeight * 4 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\boardHeight \relax}
-
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (0.591\paperheight -\resultH pt)/\boardHeight \relax}
 
         % The game board
         \begin{tcolorbox}
-            \begin{flushright}
+            % Define the cell size via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
+            \else
+                \def\cellsize{\cellHeight}
+            \fi
+
+            \begin{center}
+                \tiny
                 \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
                     \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=cell#1-#2, readonly=true]{}\hspace{3pt}%
-                    }\vspace{3pt}
-                    \newline%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,
+                            bordercolor=white, align=1, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         % Game related buttons
@@ -1340,27 +1334,28 @@ function printInfoText(text) {
                 \xintFor* #1 in {\xintSeq{0}{3}} \do {%
                     \begin{tcolorbox}
                         \TextField[
-                            name=promote#1, width=\linewidth, bordercolor=gray, readonly=true
+                            name=promote#1, width=\linewidth, bordercolor=gray, align=1, readonly
                         ]{}
                     \end{tcolorbox}
                     % Have the cell divider for all elements
                     % that are not the last one
                     \xintifForLast{}{&}%
-                }
+                }%
             \end{tabularx}
+            \vspace{-0.4cm}
 
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
                 \begin{tcolorbox}
-                    \TextField[name=moves, bordercolor=gray, width=\linewidth]{}
+                    \TextField[name=moves, width=\linewidth, bordercolor=gray]{}
                 \end{tcolorbox} &%
-                \PushButton[name=process, bordercolor=white]{
+                \PushButton[name=process, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Process moves
                         \strut
                     \end{tcolorbox}
-                }\\
-                \PushButton[name=restart, bordercolor=white]{
+                }\\[-0.3cm]
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart
@@ -1368,13 +1363,13 @@ function printInfoText(text) {
                     \end{tcolorbox}
                 } &%
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=, name=tooltiptxt, readonly=true, hidden]{}
-
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
     \end{Form}
 
 \end{document}

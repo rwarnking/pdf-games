@@ -73,19 +73,8 @@ jobs:
         run: |
           chmod +x ./.github/workflows/move-changed-files.sh
           ./.github/workflows/move-changed-files.sh
-        # mv connectfour.pdf pdf/connectfour.pdf
       - name: Commit compiled pdfs
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: "Automated commit: Add compiled pdfs"
           file_pattern: pdf/*.pdf
-      ########################
-      # Merge to all_commits #
-      ########################
-      - name: Merge into all_commits
-        uses: mtanzi/action-automerge@v1
-        id: merge
-        with:
-          github_token: ${{ github.token }}
-          source: ${{ github.event.pull_request.head.ref }}
-          target: 'all_commits'

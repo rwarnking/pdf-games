@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,36 +20,43 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% TODO needs to be atleast 4
-\def\fieldWidth{9}
-\def\fieldHeight{20}
+% Can be changed but impacts the performance
+\def\boardWidth{10}
+\def\boardHeight{16}
 % Higher means slower
 \def\GAMESPEED{5}
 
+% Print error when the the board width is smaller than 4
+\ifnum\boardWidth<4
+    \errmessage{Board width is not allowed to be smaller than 4!}
+\fi
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{irgendeinTitel}
+\begin{insDLJS}[]{JSDateiname}{tetris}
 
 const GAME_DESC = "Tetris is a puzzle game where you get stones of a specific shape.\
 These must be placed in such a manner that they build a complete line.\
 A line will be removed to make space for more stones. With increasing amount\
-of removed lines the gamespeed will increase. When the top of the field\
+of removed lines the game speed will increase. When the top of the board\
 is reached the game is over.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const HALF_FIELD_WIDTH = Math.floor(FIELD_WIDTH / 2.0);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const HALF_BOARD_WIDTH = Math.floor(BOARD_WIDTH / 2.0);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
 
 % Constants
+const M = 0;
+const N = 1;
 const EMPTY = 0;
 
 % Globals
 % Animation interval variable
 var run;
-% The game field
-var complField = new Array();
+% The game board
+var complBoard = new Array();
+var isPaused = false;
 
 var focus = true;
 var loopTimer = 0;
@@ -63,52 +68,52 @@ var shouldEmitStone = true;
 const STONES = new Array(
     % Bar
     new Array(
-        new Array(HALF_FIELD_WIDTH - 2, 0),
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(0, HALF_BOARD_WIDTH - 2),
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1)
     ),
     % Cube
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1)
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(1, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(1, HALF_BOARD_WIDTH)
     ),
     % T
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(1, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1)
     ),
     % Z
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH + 1, 1)
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(1, HALF_BOARD_WIDTH),
+        new Array(1, HALF_BOARD_WIDTH + 1)
     ),
     % L
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 1)
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1),
+        new Array(1, HALF_BOARD_WIDTH + 1)
     ),
     % J
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH - 1, 0),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(1, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH - 1),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1)
     ),
     % S
     new Array(
-        new Array(HALF_FIELD_WIDTH - 1, 1),
-        new Array(HALF_FIELD_WIDTH, 1),
-        new Array(HALF_FIELD_WIDTH, 0),
-        new Array(HALF_FIELD_WIDTH + 1, 0)
+        new Array(1, HALF_BOARD_WIDTH - 1),
+        new Array(1, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH),
+        new Array(0, HALF_BOARD_WIDTH + 1)
     )
 );
 
@@ -123,67 +128,62 @@ const COLORS = new Array(
 );
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            tmp.push(EMPTY);
+function initialize() {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row.push(EMPTY);
         }
-        complField.push(tmp);
+        complBoard.push(row);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     % Start the animation interval
     run = app.setInterval("runAll()", 20);
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
-    % Assign each button the coresponding function and disable the highlights
+function initializeButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the corresponding function and disable the highlights
     this.getField("input1").setFocus();
 
     this.getField("left").setAction("MouseUp", "move('a');");
-    this.getField("left").highlight="invert";
-
     this.getField("right").setAction("MouseUp", "move('d');");
-    this.getField("right").highlight="invert";
     this.getField("down").setAction("MouseUp", "move('s');");
-    this.getField("down").highlight="invert";
     this.getField("fulldown").setAction("MouseUp", "move(' ');");
-    this.getField("fulldown").highlight="invert";
 
     this.getField("turnLeft").setAction("MouseUp", "move('q');");
-    this.getField("turnLeft").highlight="invert";
     this.getField("turnRight").setAction("MouseUp", "move('e');");
-    this.getField("turnRight").highlight="invert";
 
     this.getField("start").setAction("MouseUp", "restart();");
-    this.getField("start").highlight="invert";
+    this.getField("pause").setAction("MouseUp", "pause();");
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 }
 
 /**
- * Resets the gamefield to an empty field and restarts the game.
+ * Resets the board to empty and restarts the game.
  */
 function restart() {
     this.getField("points").value = 0;
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            complField[row][column] = EMPTY;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
         }
     }
 
@@ -191,13 +191,14 @@ function restart() {
     speed = AFMakeNumber(\GAMESPEED);
     lineCount = 0;
 
+    pause = false;
     shouldEmitStone = true;
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -205,26 +206,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -233,13 +231,17 @@ function tooltip(on) {
 % Loop %
 %%%%%%%%
 /**
- * Main loop, responsible for processing the input, updating the field
+ * Main loop, responsible for processing the input, updating the board
  * and drawing.
  */
 function runAll() {
+    if (isPaused) {
+        return;
+    }
+
     loopTimer++;
     processInput();
-    updateField();
+    updateBoard();
     if (!shouldEmitStone) {
         drawAll();
         % Stone needs to be removed so the gameover detection does not
@@ -251,6 +253,13 @@ function runAll() {
     }
 }
 
+/**
+ * Toggles pause.
+ */
+function pause() {
+    isPaused = !isPaused;
+}
+
 %%%%%%%%%%%%%
 % Gamelogic %
 %%%%%%%%%%%%%
@@ -259,8 +268,8 @@ function runAll() {
  * @return {Boolean} If the game is over true else false.
  */
 function gameover() {
-    for (var column = 0; column < FIELD_WIDTH; column++) {
-        if (complField[0][column] != 0) {
+    for (var n = 0; n < BOARD_WIDTH; n++) {
+        if (complBoard[0][n] != 0) {
             return true;
         }
     }
@@ -268,7 +277,7 @@ function gameover() {
 }
 
 /**
- * Emits a new random stone by adding it to the field.
+ * Emits a new random stone by adding it to the board.
  */
 function emitStone() {
     % Random color
@@ -280,23 +289,23 @@ function emitStone() {
     }
     % Set the stone
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        complField[y][x] = stoneColor;
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        complBoard[m][n] = stoneColor;
     }
     shouldEmitStone = false;
 }
 
 /**
  * Check if the stone collides with something below it or if it
- * reached the bottom of the field.
+ * reached the bottom of the board.
  * @return {Boolean} True when colliding else false
  */
 function collidesOrHeight() {
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        if (y + 1 >= FIELD_HEIGHT || complField[y + 1][x] != EMPTY) {
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        if (m + 1 >= BOARD_HEIGHT || complBoard[m + 1][n] != EMPTY) {
             return true;
         }
     }
@@ -305,14 +314,14 @@ function collidesOrHeight() {
 
 /**
  * Check if the stone collides with something on the left or if it
- * reached the left border of the field.
+ * reached the left border of the board.
  * @return {Boolean} True when colliding else false
  */
 function collidesOrLeft() {
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        if (x - 1 < 0 || complField[y][x - 1] != EMPTY) {
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        if (n - 1 < 0 || complBoard[m][n - 1] != EMPTY) {
             return true;
         }
     }
@@ -321,14 +330,14 @@ function collidesOrLeft() {
 
 /**
  * Check if the stone collides with something on the right or if it
- * reached the right border of the field.
+ * reached the right border of the board.
  * @return {Boolean} True when colliding else false
  */
 function collidesOrRight() {
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        if (x + 1 >= FIELD_WIDTH || complField[y][x + 1] != EMPTY) {
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        if (n + 1 >= BOARD_WIDTH || complBoard[m][n + 1] != EMPTY) {
             return true;
         }
     }
@@ -336,19 +345,19 @@ function collidesOrRight() {
 }
 
 /**
- * Removes all full lines of the field if there are any by
+ * Removes all full lines of the board if there are any by
  * moving all lines above them down by one.
  * Add a new line at the top.
  */
 function removeLines() {
-    for (var y = FIELD_HEIGHT - 1; y >= 0; y--) {
-        for (var x = 0; x < FIELD_WIDTH; x++) {
-            % Line is not completly full
-            if (complField[y][x] == EMPTY) {
-                x = FIELD_WIDTH;
+    for (var m = BOARD_HEIGHT - 1; m >= 0; m--) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            % Line is not completely full
+            if (complBoard[m][n] == EMPTY) {
+                n = BOARD_WIDTH;
             }
-            % Last field of line is reached and it is not empty
-            else if (x == FIELD_WIDTH - 1 && complField[y][x] > EMPTY) {
+            % Last cell of line is reached and it is not empty
+            else if (n == BOARD_WIDTH - 1 && complBoard[m][n] > EMPTY) {
 
                 this.getField("points").value += 1000;
                 lineCount++;
@@ -358,17 +367,17 @@ function removeLines() {
                     speed--;
                 }
                 % Remove the line by shifting all the lines above one down
-                for (var move_y = y; move_y > 0; move_y--) {
-                    complField[move_y] = complField[move_y - 1];
+                for (var rowIdx = m; rowIdx > 0; rowIdx--) {
+                    complBoard[rowIdx] = complBoard[rowIdx - 1];
                 }
                 % Override the top line with a new one
-                var tmp = new Array();
-                for (var column = 0; column < FIELD_WIDTH; column++) {
-                    tmp.push(EMPTY);
+                var row = new Array();
+                for (var n = 0; n < BOARD_WIDTH; n++) {
+                    row.push(EMPTY);
                 }
-                complField[0] = tmp;
-                % Adjust y such that the shifted line is also tested
-                y++;
+                complBoard[M] = row;
+                % Adjust m such that the shifted line is also tested
+                m++;
 
             }
         }
@@ -377,9 +386,9 @@ function removeLines() {
 
 /**
  * Emits new stone if needed or moves the current one unless there is a
- * collision then the stone is added to the field as unmoveable.
+ * collision then the stone is added to the board as unmovable.
  */
-function updateField() {
+function updateBoard() {
     if (shouldEmitStone) {
         emitStone();
     }
@@ -391,24 +400,24 @@ function updateField() {
                 this.getField("points").value++;
                 loopTimer = 0;
                 for (var pice = 0; pice < stone.length; pice++) {
-                    stone[pice][1]++;
-                    var x = stone[pice][0];
-                    var y = stone[pice][1];
-                    complField[y][x] = stoneColor;
+                    stone[pice][M]++;
+                    var m = stone[pice][M];
+                    var n = stone[pice][N];
+                    complBoard[m][n] = stoneColor;
                 }
             } else {
                 for (var pice = 0; pice < stone.length; pice++) {
-                    var x = stone[pice][0];
-                    var y = stone[pice][1];
-                    complField[y][x] = stoneColor;
+                    var m = stone[pice][M];
+                    var n = stone[pice][N];
+                    complBoard[m][n] = stoneColor;
                 }
             }
         } else {
-            % Add the stone to the field array
+            % Add the stone to the board array
             for (var pice = 0; pice < stone.length; pice++) {
-                var x = stone[pice][0];
-                var y = stone[pice][1];
-                complField[y][x] = stoneColor;
+                var m = stone[pice][M];
+                var n = stone[pice][N];
+                complBoard[m][n] = stoneColor;
             }
             removeLines();
             shouldEmitStone = true;
@@ -417,14 +426,14 @@ function updateField() {
 }
 
 /**
- * Removes the stone from the field.
+ * Removes the stone from the board.
  * Should be used temporary.
  */
 function removeStone() {
     for (var pice = 0; pice < stone.length; pice++) {
-        var x = stone[pice][0];
-        var y = stone[pice][1];
-        complField[y][x] = EMPTY;
+        var m = stone[pice][M];
+        var n = stone[pice][N];
+        complBoard[m][n] = EMPTY;
     }
 }
 
@@ -445,23 +454,24 @@ function processInput() {
     iField2.delay = true;
     oField.delay = true;
 
+    const OUTPUT_CUTOFF = 10;
     % Get the input from the currently focused input element
     var movementString;
     if (focus) {
         iField1.setFocus();
-        movementString = iField2.value;
-        if (oField.value.length >= 10)
-            oField.value = oField.value.slice(movementString.length);
-        oField.value += movementString;
+        movementString = iField2.value.toString();
         iField2.value = "";
     } else {
         iField2.setFocus();
-        movementString = iField1.value
-        if (oField.value.length >= 10)
-            oField.value = oField.value.slice(movementString.length);
-        oField.value += movementString;
+        movementString = iField1.value.toString();
         iField1.value = "";
     }
+    % Shorten the output string
+    var tmpStr = oField.value.toString();
+    if (tmpStr.length >= OUTPUT_CUTOFF)
+        oField.value = tmpStr.slice(movementString.length);
+    oField.value += movementString;
+
     focus = !focus;
 
     % Process the input string
@@ -480,59 +490,64 @@ function processInput() {
  * @param {String} dir Expects a one char string that gives the direction.
  */
 function move(dir) {
+    % If pause is enabled do not process input
+    if (isPaused) {
+        return;
+    }
+
     switch(dir) {
         case "s": % One down
             if (!collidesOrHeight()) {
                 for (pice = 0; pice < stone.length; pice++) {
-                    stone[pice][1]++;
+                    stone[pice][M]++;
                 }
             }
             break;
         case " ": % Full down
             while (!collidesOrHeight()) {
                 for (pice = 0; pice < stone.length; pice++) {
-                    stone[pice][1]++;
+                    stone[pice][M]++;
                 }
             }
             break;
         case "a": % Left
             if (!collidesOrLeft()) {
                 for (pice = 0; pice < stone.length; pice++) {
-                    stone[pice][0]--;
+                    stone[pice][N]--;
                 }
             }
             break;
         case "d": % Right
             if (!collidesOrRight()) {
                 for (pice = 0; pice < stone.length; pice++) {
-                    stone[pice][0]++;
+                    stone[pice][N]++;
                 }
             }
             break;
         case "q": % Rotate
             var newPositions = new Array();
             for (var pice = 0; pice < stone.length; pice++) {
-                var res = rotate(stone[0][0], stone[0][1], stone[pice][0], stone[pice][1], 90.0);
-                if (collidesOrOOB(res[0], res[1]))
+                var res = rotate(stone[0][M], stone[0][N], stone[pice][M], stone[pice][N], 90.0);
+                if (collidesOrOOB(res[M], res[N]))
                     return;
                 newPositions.push(res);
             }
             for (var pice = 0; pice < stone.length; pice++) {
-                stone[pice][0] = newPositions[pice][0];
-                stone[pice][1] = newPositions[pice][1];
+                stone[pice][M] = newPositions[pice][M];
+                stone[pice][N] = newPositions[pice][N];
             }
             break;
         case "e": % Rotate
             var newPositions = new Array();
             for (var pice = 0; pice < stone.length; pice++) {
-                var res = rotate(stone[0][0], stone[0][1], stone[pice][0], stone[pice][1], -90.0);
-                if (collidesOrOOB(res[0], res[1]))
+                var res = rotate(stone[0][M], stone[0][N], stone[pice][M], stone[pice][N], -90.0);
+                if (collidesOrOOB(res[M], res[N]))
                     return;
                 newPositions.push(res);
             }
             for (var pice = 0; pice < stone.length; pice++) {
-                stone[pice][0] = newPositions[pice][0];
-                stone[pice][1] = newPositions[pice][1];
+                stone[pice][M] = newPositions[pice][M];
+                stone[pice][N] = newPositions[pice][N];
             }
             break;
     }
@@ -540,17 +555,17 @@ function move(dir) {
 
 /**
  * Check the given position if it is out of bounds or collides.
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
+ * @param {Number} m The m coordinate.
+ * @param {Number} n The n coordinate.
  * @return {Boolean} True if collides else false
  */
-function collidesOrOOB(x, y) {
+function collidesOrOOB(m, n) {
     % Collides
-    if (complField[y][x] > EMPTY) {
+    if (complBoard[m][n] > EMPTY) {
          return true;
     }
     % Out of bounds
-    if (x < 0 || x >= FIELD_WIDTH || y < 0 || y >= FIELD_HEIGHT) {
+    if (n < 0 || n >= BOARD_WIDTH || m < 0 || m >= BOARD_HEIGHT) {
         return true;
     }
     return false;
@@ -559,60 +574,60 @@ function collidesOrOOB(x, y) {
 /**
  * Rotate the given coordinate around a given center.
  * https://stackoverflow.com/questions/17410809/how-to-calculate-rotation-in-2d-in-javascript
- * @param {Number} cx The center x coordinate.
- * @param {Number} cy The center y coordinate.
- * @param {Number} x The x coordinate.
- * @param {Number} y The y coordinate.
+ * @param {Number} cm The center m coordinate.
+ * @param {Number} cn The center n coordinate.
+ * @param {Number} m The m coordinate.
+ * @param {Number} n The n coordinate.
  * @param {Number} angle The angle at which to rotate.
  * @return {Array} The new position.
  */
-function rotate(cx, cy, x, y, angle) {
+function rotate(cm, cn, m, n, angle) {
     var radians = (Math.PI / 180) * angle;
     var cos = Math.cos(radians);
     var sin = Math.sin(radians);
-    var nx = (cos * (x - cx)) + (sin * (y - cy)) + cx;
-    var ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
-    return [Math.round(nx), Math.round(ny)];
+    var mm = (cos * (m - cm)) - (sin * (n - cn)) + cm;
+    var nn = (cos * (n - cn)) + (sin * (m - cm)) + cn;
+    return [Math.round(mm), Math.round(nn)];
 }
 
 %%%%%%%%%%%%%%%%%%%%%
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draw all fields.
+ * Draw all cells.
  */
 function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
 
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function draw(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    if (complField[y][x] > 0) {
-        field.fillColor = COLORS[complField[y][x] - 1];
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    if (complBoard[m][n] > 0) {
+        cell.fillColor = COLORS[complBoard[m][n] - 1];
     } else {
-        field.fillColor = color.white;
+        cell.fillColor = color.white;
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
@@ -625,7 +640,7 @@ function draw(x, y) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -633,82 +648,102 @@ function draw(x, y) {
             \end{flushright}%
         \end{multicols}
 
-        \FPeval{\result}{(\fieldWidth * 3 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\result pt)/\fieldWidth \relax}
-        \FPeval{\result}{(\fieldHeight * 3 + 3)}
-        \def\blocksizeH{\dimexpr (0.5\paperheight-\result pt)/\fieldHeight \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        % The gamefield
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (0.55\paperheight -\resultH pt)/\boardHeight \relax}
+
+        % The game board
         \begin{tcolorbox}
-            %\centering
-            \begin{flushright}
-            \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \TextField[width=\blocksizeW, height=\blocksizeH,
-                        bordercolor=white, readonly=true, name=pos#1-#2]{}\hspace{3pt}%
-                }\vspace{3pt}
-                \newline
-            }
-            \end{flushright}
+            % Define the cell size via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
+            \else
+                \def\cellsize{\cellHeight}
+            \fi
+
+            \begin{center}
+                \tiny
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
+                        \TextField[%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
+                            bordercolor=white, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
+                }
+            \end{center}
         \end{tcolorbox}
 
         % Game related buttons
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{3}{X} @{}}%
-                \PushButton[name=start, bordercolor=white]{
+                \PushButton[name=start, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large start/restart\strut
                     \end{tcolorbox}
                 } &
-                \centering
-                \TextField[name=points, width=0.1\textwidth, value=0,
-                    bordercolor=white, readonly=true]{Points:} &
-                \PushButton[name=pause, bordercolor=white]{
+                \begin{tcolorbox}[colback=white, halign=center]
+                    % Only locally change this command
+                    \def\DefaultHeightofText{20pt}
+                    \renewcommand*{\LayoutTextField}[2]{%
+                        \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#1}%
+                        \parbox[c][\DefaultHeightofText]{0.5\linewidth}{#2}
+                    }
+                    \TextField[name=points, width=0.4\textwidth, charsize=20pt,
+                        bordercolor=, align=2, value=0, readonly]{Points:\;}
+                \end{tcolorbox}
+                &
+                \PushButton[name=pause, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large pause\strut
                     \end{tcolorbox}
-                } \\
-                \PushButton[name=turnLeft, bordercolor=white]{
+                } \\[-3mm]
+                \PushButton[name=turnLeft, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large turnLeft\strut
                     \end{tcolorbox}
                 } &
-                    \centering
-                    % bordercolor={0.650 .790 .94}
-                    \TextField[name=output1, width=0.3\textwidth, height=1.5cm,
-                        bordercolor=white, readonly=true]{}
-                    %\begin{tcolorbox}
-                    %\end{tcolorbox}
+                    \begin{tcolorbox}[colback=white,
+                        left=0pt, right=0pt, top=2pt, bottom=2pt, halign=center]
+                        \TextField[name=output1, width=\linewidth, height=1.0cm, charsize=20pt,
+                            bordercolor=, align=1, readonly]{}
+                    \end{tcolorbox}
                 &
-                \PushButton[name=turnRight, bordercolor=white]{
+                \PushButton[name=turnRight, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large turnRight\strut
                     \end{tcolorbox}
-                } \\
-                \PushButton[name=left, bordercolor=white]{
+                } \\[-3mm]
+                \PushButton[name=left, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large left\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=down, bordercolor=white]{
+                \PushButton[name=down, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large down\strut
                     \end{tcolorbox}
                 } &
-                \PushButton[name=right, bordercolor=white]{
+                \PushButton[name=right, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         \Large right\strut
                     \end{tcolorbox}
                 } \\
                 \multicolumn{3}{@{} l @{}}{%
-                    \PushButton[name=fulldown, bordercolor=white]{
+                    \PushButton[name=fulldown, bordercolor=, backgroundcolor=, borderwidth=0]{
                         \begin{tcolorbox}
                             \centering
                             \Large fulldown\strut
@@ -721,7 +756,7 @@ function draw(x, y) {
         \TextField[name=input1, width=2in, bordercolor={0.650 .790 .94}]{}
         \TextField[name=input2, width=2in, bordercolor={0.650 .790 .94}]{}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 
