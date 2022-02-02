@@ -1,0 +1,29 @@
+name: Feature Request
+description: Propose an enhancement or a new feature
+title: ":seedling: "
+labels: ["enhancement"]
+assignees:
+  - rwarnking
+body:
+  - type: textarea
+    id: proposition
+    attributes:
+      label: What do you propose?
+      placeholder: Tell us what you would like!
+      value: "All the pizza!"
+    validations:
+      required: true
+  - type: textarea
+    id: implementation
+    attributes:
+      label: Do you have an idea how to implement that?
+      placeholder: Tell us how to implement that!
+      value: "No"
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our [Code of Conduct](https://example.com)
+      options:
+        - label: I agree to follow this project's Code of Conduct
+          required: true

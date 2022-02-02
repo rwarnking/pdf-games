@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,31 +20,56 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{20}
-\def\fieldHeight{20}
+% Can be changed but 20-30 seem to be a good values
+\def\canvasWidth{45}
+\def\canvasHeight{20}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{ascii_donut}
+\begin{insDLJS}[]{JSDateiname}{ascii-donut}
 
-const GAME_DESC = "This application uses ascii characters to visualise\
+const GAME_DESC = "This application uses ASCII characters to visualize\
 a rotating donut. The idea is to use the different symbols to simulate\
 the different orientations and lighting states.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
+const CANVAS_WIDTH = AFMakeNumber(\canvasWidth);
+const CANVAS_HEIGHT = AFMakeNumber(\canvasHeight);
+const CANVAS_WIDTH_CHAR = 40;
+const SCREEN_TEXT_SIZE = 350;
 
 % Constants
-const SCALE = 10;
-const INTERVAL = 300;
+% Scale how much the donut should move each frame
+const SCALE = 3;
+const ANIMATION_SPEED = 50;
+
+% https://www.a1k0n.net/2011/07/20/donut-math.html
+% Distance between each ring of the donut
+const THETA_SPACING = 0.07;
+const PHI_SPACING   = 0.02;
+
+const R1 = 1;
+const R2 = 2;
+% Distance to the camera
+const K2 = 5;
+% Calculate K1 based on screen size:
+% the maximum x-distance occurs roughly at the edge of the torus,
+% which is at x = R1 + R2, z = 0.
+% We want that to be displaced 3/8ths of the width of the screen,
+% which is 3/4th of the way from the center to the side of the screen.
+% canvasWidth*3/8 = K1*(R1+R2)/(K2+0)
+% canvasWidth*K2*3/(8*(R1+R2)) = K1
+const K1 = CANVAS_WIDTH * K2 * 3 / (8 * (R1 + R2));
+const K3 = CANVAS_HEIGHT * K2 * 3 / (8 * (R1 + R2));
 
 const CHAR_SET = ".,-~:;=!*#S@";
+const EMPTY = " ";
+const Z_INIT = 0;
 
 % Globals
 % Animation interval variable
-var run;
+var animInterval;
 % The display arrays
 var output = new Array();
 var zbuffer = new Array();
@@ -56,56 +79,89 @@ var A = 0;
 var B = 0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default donut state.
+ * Initialize the default donut state.
  */
-function initialise() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
-            field.fillColor = color.transparent;
-            field.borderColor = color.transparent;
-            field.textColor = color.white
-            field.delay = false;
-        }
+function initialize() {
+    var line;
+    for (var y = 0; y < CANVAS_HEIGHT; y++) {
+        line = this.getField("line" + y);
+        line.delay = true;
+        line.textColor = color.white
+        line.textSize = SCREEN_TEXT_SIZE / Math.min(CANVAS_HEIGHT, CANVAS_WIDTH);
+        line.delay = false;
+        line.textFont = font.Cour;
     }
 
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        var tmp = new Array();
-        var tmp2 = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            tmp.push(" ");
-            tmp2.push(0);
+    for (var y = 0; y < CANVAS_HEIGHT; y++) {
+        var oRow = new Array();
+        var zRow = new Array();
+        for (var x = 0; x < CANVAS_WIDTH; x++) {
+            oRow.push(EMPTY);
+            zRow.push(Z_INIT);
         }
-        output.push(tmp);
-        zbuffer.push(tmp2);
+        output.push(oRow);
+        zbuffer.push(zRow);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 
     % Start the animation interval
-    run = app.setInterval("runAll()", INTERVAL);
+    animInterval = app.setInterval("runAll()", ANIMATION_SPEED);
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
+function initializeButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
+
+    % Assign each button the coresponding function
+    this.getField("restart").setAction("MouseUp", "restart();");
+    this.getField("pause").setAction("MouseUp", "pause();");
+    this.getField("resume").setAction("MouseUp", "resume();");
+    this.getField("import").setAction("MouseUp", "importRotation();");
+
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 }
 
 /**
- * Enable or disable the tooltip
+ * Restarts the application by resetting the donut state.
+ */
+function restart() {
+    A = 0;
+    B = 0;
+    resume();
+}
+
+/**
+ * Pause the interval.
+ */
+function pause() {
+    app.clearInterval(animInterval);
+    animInterval = -1;
+}
+
+/**
+ * Continue the interval.
+ */
+function resume() {
+    if (animInterval == -1) {
+        animInterval = app.setInterval("runAll()", ANIMATION_SPEED);
+    }
+}
+
+/**
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -113,26 +169,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -146,50 +199,35 @@ function tooltip(on) {
 function runAll() {
     clearBuffer();
     % Create the data for the current frame
-    render_frame(A, B);
-    % Since the complete field changes each frame everyting needs
-    % to be redrawn
+    renderFrame(A, B);
+    % Since the canvas changes each frame everything needs to be redrawn
     draw();
-    A += 0.04 * SCALE;
-    B += 0.02 * SCALE;
+    updateGUI();
+    A += 0.07 * SCALE;
+    B += 0.03 * SCALE;
 }
 
 /**
  * Clear the output and the zbuffer before rendering to it.
  */
 function clearBuffer() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            output[y][x] = " ";
-            zbuffer[y][x] = 0;
+    for (var y = 0; y < CANVAS_HEIGHT; y++) {
+        for (var x = 0; x < CANVAS_WIDTH; x++) {
+            output[y][x] = EMPTY;
+            zbuffer[y][x] = Z_INIT;
         }
     }
 }
 
-% https://www.a1k0n.net/2011/07/20/donut-math.html
-const THETA_SPACING = 0.07;
-const PHI_SPACING   = 0.02;
-
-const R1 = 1;
-const R2 = 2;
-const K2 = 5;
-% Calculate K1 based on screen size:
-% the maximum x-distance occurs roughly at the edge of the torus,
-% which is at x = R1 + R2, z = 0.
-% We want that to be displaced 3/8ths of the width of the screen,
-% which is 3/4th of the way from the center to the side of the screen.
-% fieldWidth*3/8 = K1*(R1+R2)/(K2+0)
-% fieldWidth*K2*3/(8*(R1+R2)) = K1
-const K1 = FIELD_WIDTH * K2 * 3 / (8 * (R1 + R2));
-
 /**
  * Render the current frame given A and B to the
  * output array and the zbuffer.
+ * https://www.a1k0n.net/2011/07/20/donut-math.html
  *
  * @param {Number} A
  * @param {Number} B
  */
-function render_frame(A, B) {
+function renderFrame(A, B) {
     % Precompute sines and cosines of A and B
     var cosA = Math.cos(A);
     var sinA = Math.sin(A);
@@ -223,26 +261,31 @@ function render_frame(A, B) {
 
             % x and y projection.
             % Note that y is negated here, because y goes up in 3D space but down on 2D displays.
-            var xp = Math.floor(FIELD_WIDTH / 2 + K1 * ooz * x);
-            var yp = Math.floor(FIELD_HEIGHT / 2 - K1 * ooz * y);
+            var xp = Math.floor(CANVAS_WIDTH / 2 + K1 * ooz * x);
+            var yp = Math.floor(CANVAS_HEIGHT / 2 - K3 * ooz * y);
+
+            % Out of bounds check
+            if (yp < 0 || xp < 0 || yp >= zbuffer.length || xp >= zbuffer[0].length) {
+                continue;
+            }
 
             % Calculate luminance.
             var L = cosphi * costheta * sinB - cosA * costheta * sinphi -
                 sinA * sintheta + cosB * (cosA * sintheta - costheta * sinA * sinphi);
             % L ranges from -sqrt(2) to +sqrt(2). If it's < 0, the surface
             % is pointing away from us, so we won't bother trying to plot it.
-            if (L > 0) {
+            % if (L > 0) {
                 % Test against the z-buffer. Larger 1/z means the pixel is
                 % closer to the viewer than what's already plotted.
                 if (ooz > zbuffer[yp][xp]) {
                     zbuffer[yp][xp] = ooz;
-                    var luminanceIndex = L * 8;
+                    var luminanceIndex = Math.floor(Math.max(0, L) * 8);
                     % luminanceIndex is now in the range 0..11 (8*sqrt(2) = 11.3)
                     % now we lookup the character corresponding to the
                     % luminance and plot it in our output:
                     output[yp][xp] = CHAR_SET.charAt(luminanceIndex);
                 }
-            }
+            % }
         }
     }
 }
@@ -251,29 +294,53 @@ function render_frame(A, B) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Draw the current state of the complete field (output array)
+ * Draw the current state of the canvas (output array)
  * to the display elements.
  */
 function draw() {
     % Now, dump output[] to the screen.
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            field = this.getField("pos" + x + "-" + y);
-            field.delay = true;
-            field.fillColor = color.transparent;
-            field.borderColor = color.transparent;
-            field.value = output[y][x];
-            field.delay = false;
+    var line;
+    for (var y = 0; y < CANVAS_HEIGHT; y++) {
+        var valStr = "";
+        for (var x = 0; x < CANVAS_WIDTH; x++) {
+            valStr += output[y][x];
         }
+
+        line = this.getField("line" + y);
+        line.delay = true;
+        line.value = valStr;
+        line.delay = false;
     }
+}
+
+/**
+ * Update the GUI to display the current rotation values.
+ */
+function updateGUI() {
+    var field = this.getField("coordtxtA");
+    field.value = A;
+    var field = this.getField("coordtxtB");
+    field.value = B;
+}
+
+/**
+ * Import the rotation values from the GUI.
+ */
+function importRotation() {
+    if (animInterval != -1) {
+        pause();
+    }
+    A = this.getField("importtxtA").value;
+    B = this.getField("importtxtB").value;
+    runAll();
 }
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
@@ -286,7 +353,7 @@ function draw() {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -294,26 +361,75 @@ function draw() {
             \end{flushright}%
         \end{multicols}
 
-        % TODO use dynamic dimension for textfield
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Dynamically adjust the line width to the number of lines per column
+        % Only need to check width since the board is quadratic
+        \FPeval{\resultH}{\canvasHeight * 3 - 2} % chktex 8
+        \def\lineheight{\dimexpr (0.591\paperheight-\resultH pt)/\canvasHeight \relax}
 
-        % The canvas (pixelarray)
+        % The canvas (linearray)
         \begin{tcolorbox}[colback=black]
-            %\centering
             \begin{flushright}
-            \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
-                    \TextField[%
-                        width=10pt, height=10pt, bordercolor=white, name=pos#1-#2, readonly=true%
-                    ]{}\hspace{3pt}%
-                }\vspace{3pt}
-                \newline
-            }
+                \xintFor* #1 in {\xintSeq{0}{\canvasHeight-1}} \do {%
+                    \TextField[
+                        name=line#1, width=\linewidth, height=\lineheight,%
+                        bordercolor=, backgroundcolor=, readonly%
+                    ]{}\\%
+                }%
             \end{flushright}
         \end{tcolorbox}
 
-       \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        %%%%%%%%%%%%%%%%
+        % GUI elements %
+        %%%%%%%%%%%%%%%%
+        % Game related buttons
+        \begin{center}%
+            \begin{tabularx}{\textwidth}{@{} *{3}{X} @{}}%
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Restart\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=pause, bordercolor=, backgroundcolor=, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Pause\strut
+                    \end{tcolorbox}
+                } &
+                \PushButton[name=resume, bordercolor=, backgroundcolor=, borderwidth=0]{
+                    \begin{tcolorbox}
+                        \centering
+                        Resume\strut
+                    \end{tcolorbox}
+                }
+            \end{tabularx}
+            %
+            \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
+                \begin{tcolorbox}[left=0pt, right=0pt, halign=center]
+                    \strut Rotation A:\@
+                    \TextField[name=coordtxtA, width=1.2cm, height=0.35cm, maxlen=5,
+                        bordercolor=, backgroundcolor=, charsize=12pt, readonly]{}
+                    Rotation B:\@
+                    \TextField[name=coordtxtB, width=1.2cm, height=0.35cm, maxlen=5,
+                        bordercolor=, backgroundcolor=, charsize=12pt, readonly]{}
+                \end{tcolorbox}&
+                \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
+                    \begin{tcolorbox}
+                        Import rotation, \strut
+                        A:\@
+                        \TextField[name=importtxtA, width=1cm, height=0.35cm,
+                            bordercolor=gray, borderwidth=2pt, backgroundcolor=white, value=0]
+                            {\strut}
+                        B:\@
+                        \TextField[name=importtxtB, width=1cm, height=0.35cm,
+                            bordercolor=gray, borderwidth=2pt, backgroundcolor=white, value=0]
+                            {\strut}
+                    \end{tcolorbox}
+                }%\\[-0.3cm]
+            \end{tabularx}
+        \end{center}
+
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 
