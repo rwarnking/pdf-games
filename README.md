@@ -52,12 +52,17 @@ To program such a PDF yourself you need this:
 
 1. install LaTeX e.g. [TeX Live](https://www.tug.org/texlive/)
 2. install the insdljs package
-    * This package is not necessarily component of the default LaTeX packages and needs to be
+    * This package is not necessarily included in the default LaTeX packages and needs to be
         installed manually
     * Download the acrotex bundle [Source1](https://ctan.org/pkg/insdljs) | [Source2](http://www.math.uakron.edu/~dpstory/webeq.html)
     * Unzip the bundle
     * Use `tex acrotex.ins` to compile the file and to get the insdljs.sty
     * Check that the files are found by LaTeX e.g. by putting them in the same directory
+
+Alternativly you can use one of the install scripts
+([bash](https://github.com/rwarnking/pdf-games/blob/main/install.sh) |
+[powershell](https://github.com/rwarnking/pdf-games/blob/main/install.ps1))
+to install all dependencies and the acrotex package automatically.
 
 ### Dependencies
 
@@ -86,6 +91,9 @@ The here used compiler was `pdfLaTeX` with TeX live version `2021`.
 Furthermore you might need to enable the JavaScript even when using Adobe,
 more information regarding the settings can be found
 [here](https://github.com/rwarnking/pdf-games/wiki).
+
+If you have problems compiling it yourself you can try to use the
+[compile.ps1](https://github.com/rwarnking/pdf-games/blob/main/install.ps1) powershell script.
 
 For more details on the different games and how the program similar projects,
 take a look into the [wiki](https://github.com/rwarnking/pdf-games/wiki) of this project.
