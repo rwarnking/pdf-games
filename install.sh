@@ -25,7 +25,7 @@ FILE="acrotex.zip"
 if [[ -f $FILE ]]; then
     echo "Acrotex.zip already found: no need to download!"
 else
-    read -p "Do you want to download the acrotex.zip? " -n 1 -r
+    read -p "Do you want to download the acrotex.zip? [y/n] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]
     then
@@ -47,7 +47,7 @@ FILE="acrotex/acrotex.ins"
 if [[ -f $FILE ]]; then
     echo "Acrotex folder already found: skip unzip!"
 else
-    read -p "Do you want to unzip the acrotex.zip " -n 1 -r
+    read -p "Do you want to unzip the acrotex.zip? [y/n] " -n 1 -r
     echo
     if [[ $REPLY =~ ^[Yy]$ ]]
     then
@@ -62,7 +62,7 @@ else
     fi
 fi
 
-read -p "Do you want to compile the acrotex.ins " -n 1 -r
+read -p "Do you want to compile the acrotex.ins? [y/n] " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then

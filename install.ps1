@@ -25,7 +25,7 @@ $FileName = "acrotex.zip"
 if (Test-Path $FileName) {
     Write-Host "Acrotex.zip already found: no need to download!"
 } else {
-    $confirmation = Read-Host "Do you want to download the acrotex.zip?"
+    $confirmation = Read-Host "Do you want to download the acrotex.zip? [y/n]"
     if ($confirmation -eq 'y') {
         # Source file location
         $source = 'http://www.math.uakron.edu/~dpstory/acrotex/acrotex.zip'
@@ -44,7 +44,7 @@ $FileName = "acrotex/acrotex.ins"
 if (Test-Path $FileName) {
     Write-Host "Acrotex folder already found: skip unzip!"
 } else {
-    $confirmation = Read-Host "Do you want to unzip the acrotex.zip"
+    $confirmation = Read-Host "Do you want to unzip the acrotex.zip? [y/n]"
     if ($confirmation -eq 'y') {
         # Destination to save the file
         $destination = '.\acrotex.zip'
@@ -57,7 +57,7 @@ if (Test-Path $FileName) {
     }
 }
 
-$confirmation = Read-Host "Do you want to compile the acrotex.ins"
+$confirmation = Read-Host "Do you want to compile the acrotex.ins? [y/n]"
 if ($confirmation -eq 'y') {
     # Compile acrotex to obtain insdljs package
     Invoke-Expression "cd acrotex"
