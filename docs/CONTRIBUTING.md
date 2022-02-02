@@ -99,4 +99,4 @@ TODO
 
 ### Javascript Styleguide
 
-TODO
+See wiki for [naming convention](https://github.com/rwarnking/pdf-games/wiki/Naming-Convention).

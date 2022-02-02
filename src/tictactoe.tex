@@ -1,12 +1,10 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \usepackage[margin=0.5in]{geometry}
 
-\usepackage[ngerman]{babel}
-\usepackage{xcolor}
 \usepackage[pdftex]{hyperref}
 \usepackage{multicol}
 
@@ -22,43 +20,44 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Obacht: It is discuraged to use a field with size bigger than 15x15 since the pdf might get
-% to slow to play
-\def\fieldWidth{3}
-\def\fieldHeight{3}
+% Values can be changed
+\def\boardWidth{3}
+\def\boardHeight{3}
 \def\winningPieces{3}
 % Max playercount is 5
 \def\playerCount{2}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Tic-Tac-Toe}
+\begin{insDLJS}[]{JSDateiname}{tic-tac-toe}
 
-const GAME_DESC = "Tic-Tac-Toe is a turnbased multiplayer strategy game.\
-Each player has a symbol which is used to mark parts of the field.\
+const GAME_DESC = "Tic-Tac-Toe is a turn based multiplayer strategy game.\
+Each player has a symbol which is used to mark parts of the board.\
 The symbol is used to create a connected line of usually three symbols.\
 The player who is able to create such a line first wins.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 300;
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
+const SCREEN_TEXT_SIZE = 300;
 const WINNING_PIECES = AFMakeNumber(\winningPieces);
 const MAX_PLAYERS = AFMakeNumber(\playerCount);
 
 % Constants
+const M = 0;
+const N = 1;
 const EMPTY = 0;
 
 % Globals
-% The game field
-var complField = new Array();
+% The game board
+var complBoard = new Array();
 % Lock if the game has ended
 var gameover = false;
 % Save the current turn
 var playerIdx = 1;
 % Save the last move for highlighting
-var lastField = false;
+var lastCell = false;
 
 % Symbol array (for each player)
 const PLAYER_SYMBOLS = [
@@ -81,63 +80,61 @@ const COLORS = new Array(
 const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Initlialise the array with a zeros
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        var zArr = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            zArr.push(EMPTY);
+function initialize() {
+    % Initialize the array with a zeros
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            row.push(EMPTY);
         }
-        complField.push(zArr);
+        complBoard.push(row);
     }
 
-    % Init the GUI
-    initialiseButtons();
+    % Initialize the GUI
+    initializeButtons();
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
-    % Assign each button the coresponding function and disable the highlights
-    this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="none";
+function initializeButtons() {
+    % Disables the rectangle around a button after the click
+    app.focusRect = false;
 
-    % Each field needs to be connected to an input function
+    % Assign each button the corresponding function and disable the highlights
+    this.getField("restart").setAction("MouseUp", "restart();");
+
+    % Each cell needs to be connected to an input function
     % Define text style
-    var funcName = "markField";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            this.getField("pos" + x + "-" + y).setAction("MouseDown", callbackName);
-            this.getField("pos" + x + "-" + y).textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-            this.getField("pos" + x + "-" + y).alignment = "center";
+    var cell;
+    var funcName = "markCell";
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
+            cell.setAction("MouseDown", callbackName);
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
     }
-
-    % Info field setup
-    this.getField("info").fillColor = color.transparent;
-    this.getField("info").borderColor = color.transparent;
 
     % Tooltip setup
     this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
     this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
-    this.getField("tooltipbtn").highlight="none";
 
     % Print the initial move information
     printCurrentMove();
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -145,44 +142,41 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
-    % Reset field
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            complField[y][x] = EMPTY;
-            resetDraw(x, y);
+    % Reset board
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            complBoard[m][n] = EMPTY;
+            resetDraw(m, n);
         }
     }
 
     % Reset game state
-    lastField = false;
+    lastCell = false;
     gameover = false;
     playerIdx = 1;
 
@@ -194,23 +188,23 @@ function restart() {
 % Gamelogic %
 %%%%%%%%%%%%%
 /**
- * Set the value of the input field.
+ * Set the value of the input cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function markField(x, y) {
+function markCell(m, n) {
     % Remove blinking cursor after selection
     this.getField("info").setFocus();
 
-    if (gameover || complField[y][x] != EMPTY) {
+    if (gameover || complBoard[m][n] != EMPTY) {
         return;
     }
 
-    complField[y][x] = playerIdx;
+    complBoard[m][n] = playerIdx;
 
     % Check for winner (playerIdx)
-    var winner = checkForWinner(x, y);
+    var winner = checkForWinner(m, n);
 
     playerIdx++;
     if (playerIdx > MAX_PLAYERS) {
@@ -220,22 +214,22 @@ function markField(x, y) {
     % Print the current move information
     printCurrentMove();
 
-    % Check if field full
+    % Check if board full
     var full = true;
     if (winner == 0) {
-        for (var xx = 0; xx < FIELD_WIDTH; xx++) {
-            for (var yy = 0; yy < FIELD_HEIGHT; yy++) {
-                if (complField[yy][xx] == EMPTY) {
+        for (var mm = 0; mm < BOARD_HEIGHT; mm++) {
+            for (var nn = 0; nn < BOARD_WIDTH; nn++) {
+                if (complBoard[mm][nn] == EMPTY) {
                     full = false;
-                    yy = FIELD_HEIGHT;
-                    xx = FIELD_WIDTH;
+                    mm = BOARD_HEIGHT;
+                    nn = BOARD_WIDTH;
                 }
             }
         }
     }
 
-    % When there is a winner of the field is full -> gameover
-    % Print whether the game is over, or whos turn it is
+    % When there is a winner or the board is full -> gameover
+    % Print whether the game is over, or who's turn it is
     if (winner > 0) {
         gameover = true;
         var symbol = String.fromCharCode(PLAYER_SYMBOLS[winner - 1]);
@@ -243,13 +237,13 @@ function markField(x, y) {
         printInfoText(text, COLORS[winner - 1]);
     } else if (full) {
         gameover = true;
-        printInfoText("No one did win and the field is full.");
+        printInfoText("No one did win and the board is full.");
     }
 
-    draw(x, y);
+    draw(m, n);
 
-    % Safe the last field so it can be marked
-    lastField = [x, y];
+    % Safe the last cell so it can be marked
+    lastCell = [m, n];
 }
 
 /**
@@ -260,11 +254,11 @@ function markField(x, y) {
  * Therefore all directions are checked whether a line
  * of a set length with the current player symbol can be formed.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @return {Number} The player index or 0 if no winner
  */
-function checkForWinner(x, y) {
+function checkForWinner(m, n) {
     var count = 0;
     var maxCount = 0;
     % Define directions
@@ -278,14 +272,14 @@ function checkForWinner(x, y) {
     for (var dirIdx = 0; dirIdx < directions.length; dirIdx += 2) {
         count = 0;
         maxCount = 0;
-        % Count succeeding stones
+        % Count succeeding cells
         for (var wp = -WINNING_PIECES + 1; wp < WINNING_PIECES; wp++) {
-            var nx = x + directions[dirIdx] * wp;
-            var ny = y + directions[dirIdx + 1] * wp;
+            var mm = m + directions[dirIdx] * wp;
+            var nn = n + directions[dirIdx + 1] * wp;
             % Border check
-            if (nx < 0 || nx >= FIELD_WIDTH ||
-                ny < 0 || ny >= FIELD_HEIGHT ||
-                complField[ny][nx] != playerIdx
+            if (mm < 0 || mm >= BOARD_HEIGHT ||
+                nn < 0 || nn >= BOARD_WIDTH ||
+                complBoard[mm][nn] != playerIdx
             ) {
                 % Reset counter when line is broken
                 count = 0;
@@ -306,48 +300,48 @@ function checkForWinner(x, y) {
 % Draw and coloring %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function draw(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    var value = complField[y][x];
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    var value = complBoard[m][n];
 
-    field.textColor = COLORS[value - 1];
-    field.value = String.fromCharCode(PLAYER_SYMBOLS[value - 1]);
+    cell.textColor = COLORS[value - 1];
+    cell.value = String.fromCharCode(PLAYER_SYMBOLS[value - 1]);
 
     % Highlight the current taken move
-    field.borderColor = HIGHLIGHT_COLOR;
-    field.delay = false;
+    cell.borderColor = HIGHLIGHT_COLOR;
+    cell.delay = false;
 
     % Reset highlight the last taken move
-    if (lastField !== false) {
-        var xx = lastField[0];
-        var yy = lastField[1];
-        field = this.getField("pos" + xx + "-" + yy);
-        field.delay = true;
-        field.borderColor = color.white;
-        field.delay = false;
+    if (lastCell !== false) {
+        var mm = lastCell[M];
+        var nn = lastCell[N];
+        cell = this.getField("cell" + mm + "-" + nn);
+        cell.delay = true;
+        cell.borderColor = color.white;
+        cell.delay = false;
     }
 }
 
 /**
- * Reset the current field to its default state.
+ * Reset the current cell to its default state.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function resetDraw(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
-    field.textColor = color.black;
-    field.value = "";
-    field.borderColor = color.white;
-    field.delay = false;
+function resetDraw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
+    cell.textColor = color.black;
+    cell.value = "";
+    cell.borderColor = color.white;
+    cell.delay = false;
 }
 
 /**
@@ -374,10 +368,10 @@ function printInfoText(text, col=color.black) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
+\OpenAction{/S /JavaScript /JS (initialize();)}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
@@ -390,7 +384,7 @@ function printInfoText(text, col=color.black) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -398,48 +392,54 @@ function printInfoText(text, col=color.black) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 15)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (0.591\paperheight -\resultH pt)/\boardHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
+        % The game board
         \begin{tcolorbox}
-            \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            % Define the cell size via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
+            \else
+                \def\cellsize{\cellHeight}
+            \fi
+
+            \begin{center}
+                \tiny
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=white, name=pos#1-#2, readonly=true]{}\hspace{5pt}%
-                    }\vspace{3pt}%
-                    \newline%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
+                            bordercolor=white, align=1, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         \begin{center}%
             \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
-                \PushButton[name=restart, bordercolor=white]{
+                \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                     \begin{tcolorbox}
                         \centering
                         Restart game\strut
                     \end{tcolorbox}
                 } &
                 \begin{tcolorbox}
-                    \TextField[name=info, width=\linewidth, readonly=true]{}
+                    \TextField[name=info, width=\linewidth,
+                        bordercolor=, backgroundcolor=, readonly]{}
                 \end{tcolorbox}
             \end{tabularx}
         \end{center}
 
-        \TextField[bordercolor=white, name=tooltiptxt, readonly=true]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
 
     \end{Form}
 \end{document}

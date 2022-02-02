@@ -1,4 +1,4 @@
-\documentclass[12pt, a4paper, footexclude, headexclude]{scrartcl}
+\documentclass[12pt, a4paper]{scrartcl}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Packages
@@ -20,33 +20,39 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Parameter
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\def\fieldWidth{9}
-\def\fieldHeight{9}
+% These parameter can be changed but do not impact the available boards
+\def\boardWidth{9}
+\def\boardHeight{9}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Javascript
+% JavaScript
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{insDLJS}[]{JSDateiname}{Solo Noble}
+\begin{insDLJS}[]{JSDateiname}{solo-noble}
 
-const GAME_DESC = "This game consists of a field of cells. On each of these but one a marble\
+const GAME_DESC = "This game consists of a board of cells. On each of these but one a marble\
 is placed. The goal is to reduce the marble count to one while placing this last marble\
 on the one cell which is empty at the beginning of the game.\
 A marble can be moved only by jumping over exactly one other marble onto an empty cell.\
 The jumped over marble is removed and it is not allowed to jump diagonal.";
 
 % Outside variables
-const FIELD_WIDTH = AFMakeNumber(\fieldWidth);
-const FIELD_HEIGHT = AFMakeNumber(\fieldHeight);
-const SCREEN_TEXT_WIDTH = 300;
+const BOARD_WIDTH = AFMakeNumber(\boardWidth);
+const BOARD_HEIGHT = AFMakeNumber(\boardHeight);
+const SCREEN_TEXT_SIZE = 300;
 
 % Constants
+const M = 0;
+const N = 1;
+const STATE = 0;
+const C_IDX = 1;
+
 const ANIMATION_SPEED = 33;
 const ANIMATION_OFFSET = 0.05;
 % Index of the animation cell x and y
-const ANIM_POS = FIELD_WIDTH - 1;
+const ANIM_POS = 0;
 % Index of the cell that counts as a win
-const W_POS_X = [4, 4, 4, 4, 4];
-const W_POS_Y = [4, 2, 4, 4, 4];
+const W_POS_M = [4, 2, 4, 4, 4];
+const W_POS_N = [4, 4, 4, 4, 4];
 % For empty cells
 const NONE = -1;
 const EMPTY = 0;
@@ -56,24 +62,24 @@ const FULL = 1;
 % Animation interval variable for jumping
 var run;
 var timestep = 0.0;
-% The game field
-var complField = new Array();
+% The game board
+var complBoard = new Array();
 % Saves the last clicked cell
 var currentCell = null;
 % The amount of taken cells
 var currentMarbleCount = 0;
-% The index determining which field should be played
-var fieldIdx = 0;
+% The index determining which board should be played
+var boardIdx = 0;
 var colorEnabled = true;
 % Animation variable for solution
 var runSol;
 % Saving current solving step
 var exeIndex = 0;
-% The array of moves to execute/apply to the field
+% The array of moves to execute/apply to the board
 var exeMoves = [];
 
-%%%%%%%%%% Field arrays %%%%%%%%%%
-const FIELDS = [
+%%%%%%%%%% Board arrays %%%%%%%%%%
+const BOARDS = [
     [ % English
         [NONE, NONE,  NONE,  NONE,  NONE,  NONE,  NONE,  NONE, NONE],
         [NONE, NONE,  NONE,  FULL,  FULL,  FULL,  NONE,  NONE, NONE],
@@ -134,53 +140,53 @@ const FIELDS = [
 %%%%%%%%%% Solutions %%%%%%%%%%
 var solMoves = [
     [ % English
-        [6, 4, 4, 4], [5, 6, 5, 4], [7, 5, 5, 5], [7, 3, 7, 5], [5, 4, 5, 6],
-        [5, 7, 5, 5], [5, 3, 7, 3], [5, 1, 5, 3], [4, 5, 6, 5], [7, 5, 5, 5],
-        [4, 7, 4, 5], [4, 5, 6, 5], [4, 3, 4, 5], [4, 1, 4, 3], [4, 3, 6, 3],
-        [7, 3, 5, 3], [3, 5, 5, 5], [6, 5, 4, 5], [3, 7, 3, 5], [3, 4, 3, 6],
-        [2, 3, 4, 3], [3, 1, 3, 3], [1, 5, 3, 5], [4, 5, 2, 5], [1, 3, 1, 5],
-        [1, 5, 3, 5], [3, 6, 3, 4], [3, 4, 3, 2], [5, 3, 3, 3], [3, 2, 3, 4],
-        [2, 4, 4, 4]
+        [4, 6, 4, 4], [6, 5, 4, 5], [5, 7, 5, 5], [3, 7, 5, 7], [4, 5, 6, 5],
+        [7, 5, 5, 5], [3, 5, 3, 7], [1, 5, 3, 5], [5, 4, 5, 6], [5, 7, 5, 5],
+        [7, 4, 5, 4], [5, 4, 5, 6], [3, 4, 5, 4], [1, 4, 3, 4], [3, 4, 3, 6],
+        [3, 7, 3, 5], [5, 3, 5, 5], [5, 6, 5, 4], [7, 3, 5, 3], [4, 3, 6, 3],
+        [3, 2, 3, 4], [1, 3, 3, 3], [5, 1, 5, 3], [5, 4, 5, 2], [3, 1, 5, 1],
+        [5, 1, 5, 3], [6, 3, 4, 3], [4, 3, 2, 3], [3, 5, 3, 3], [2, 3, 4, 3],
+        [4, 2, 4, 4]
     ],
     [ % European
-        [2, 3, 4, 3], [3, 1, 3, 3], [2, 5, 2, 3], [4, 5, 2, 5], [4, 3, 4, 5],
-        [5, 2, 3, 2], [2, 3, 4, 3], [5, 1, 3, 1], [5, 5, 3, 5], [5, 4, 5, 2],
-        [4, 7, 4, 5], [2, 2, 4, 2], [7, 5, 5, 5], [2, 6, 2, 4], [7, 3, 5, 3],
-        [5, 2, 3, 2], [3, 1, 3, 3], [7, 4, 5, 4], [4, 5, 2, 5], [3, 7, 3, 5],
-        [4, 3, 2, 3], [2, 5, 4, 5], [6, 6, 4, 6], [1, 3, 3, 3], [3, 3, 3, 5],
-        [5, 4, 5, 6], [4, 5, 2, 5], [1, 4, 3, 4], [5, 7, 5, 5], [1, 5, 3, 5],
-        [3, 4, 3, 6], [3, 6, 5, 6], [5, 6, 5, 4], [5, 4, 5, 2], [6, 2, 4, 2]
+        [3, 2, 3, 4], [1, 3, 3, 3], [5, 2, 3, 2], [5, 4, 5, 2], [3, 4, 5, 4],
+        [2, 5, 2, 3], [3, 2, 3, 4], [1, 5, 1, 3], [5, 5, 5, 3], [4, 5, 2, 5],
+        [7, 4, 5, 4], [2, 2, 2, 4], [5, 7, 5, 5], [6, 2, 4, 2], [3, 7, 3, 5],
+        [2, 5, 2, 3], [1, 3, 3, 3], [4, 7, 4, 5], [5, 4, 5, 2], [7, 3, 5, 3],
+        [3, 4, 3, 2], [5, 2, 5, 4], [6, 6, 6, 4], [3, 1, 3, 3], [3, 3, 5, 3],
+        [4, 5, 6, 5], [5, 4, 5, 2], [4, 1, 4, 3], [7, 5, 5, 5], [5, 1, 5, 3],
+        [4, 3, 6, 3], [6, 3, 6, 5], [6, 5, 4, 5], [4, 5, 2, 5], [2, 6, 2, 4]
     ],
     [ % German
-        [4, 2, 4, 4], [2, 3, 4, 3], [3, 5, 3, 3], [3, 2, 3, 4], [3, 0, 3, 2],
-        [1, 5, 3, 5], [3, 5, 3, 3], [3, 3, 3, 1], [0, 3, 2, 3], [2, 3, 2, 5],
-        [5, 5, 3, 5], [3, 5, 1, 5], [3, 7, 3, 5], [5, 6, 3, 6], [5, 8, 5, 6],
-        [7, 5, 5, 5], [5, 5, 5, 7], [3, 8, 5, 8], [5, 8, 5, 6], [6, 3, 6, 5],
-        [8, 3, 6, 3], [5, 3, 7, 3], [8, 5, 8, 3], [8, 3, 6, 3], [0, 5, 2, 5],
-        [2, 5, 4, 5], [5, 0, 3, 0], [3, 0, 3, 2], [5, 1, 3, 1], [3, 1, 3, 3],
-        [3, 3, 5, 3], [5, 3, 7, 3], [7, 3, 7, 5], [7, 5, 5, 5], [5, 5, 3, 5],
-        [3, 5, 3, 7], [3, 7, 5, 7], [5, 7, 5, 5], [5, 5, 5, 3], [5, 2, 5, 4],
-        [5, 4, 3, 4], [0, 4, 2, 4], [2, 4, 4, 4]
+        [2, 4, 4, 4], [3, 2, 3, 4], [5, 3, 3, 3], [2, 3, 4, 3], [0, 3, 2, 3],
+        [5, 1, 5, 3], [5, 3, 3, 3], [3, 3, 1, 3], [3, 0, 3, 2], [3, 2, 5, 2],
+        [5, 5, 5, 3], [5, 3, 5, 1], [7, 3, 5, 3], [6, 5, 6, 3], [8, 5, 6, 5],
+        [5, 7, 5, 5], [5, 5, 7, 5], [8, 3, 8, 5], [8, 5, 6, 5], [3, 6, 5, 6],
+        [3, 8, 3, 6], [3, 5, 3, 7], [5, 8, 3, 8], [3, 8, 3, 6], [5, 0, 5, 2],
+        [5, 2, 5, 4], [0, 5, 0, 3], [0, 3, 2, 3], [1, 5, 1, 3], [1, 3, 3, 3],
+        [3, 3, 3, 5], [3, 5, 3, 7], [3, 7, 5, 7], [5, 7, 5, 5], [5, 5, 5, 3],
+        [5, 3, 7, 3], [7, 3, 7, 5], [7, 5, 5, 5], [5, 5, 3, 5], [2, 5, 4, 5],
+        [4, 5, 4, 3], [4, 0, 4, 2], [4, 2, 4, 4]
     ],
     [ % Asymmetrical
-        [4, 2, 4, 4], [4, 0, 4, 2], [6, 3, 4, 3], [8, 3, 6, 3], [8, 5, 8, 3],
-        [7, 5, 7, 3], [5, 4, 7, 4], [5, 5, 7, 5], [7, 3, 5, 3], [7, 5, 7, 3],
-        [8, 3, 6, 3], [5, 2, 5, 4], [3, 3, 5, 3], [6, 3, 4, 3], [4, 4, 6, 4],
-        [2, 4, 4, 4], [1, 3, 3, 3], [3, 2, 3, 4], [3, 0, 3, 2], [4, 4, 2, 4],
-        [1, 4, 3, 4], [3, 5, 3, 3], [5, 0, 5, 2], [3, 7, 3, 5], [3, 5, 5, 5],
-        [1, 5, 3, 5], [5, 7, 3, 7], [3, 2, 3, 4], [3, 4, 3, 6], [3, 7, 3, 5],
-        [5, 6, 3, 6], [3, 6, 3, 4], [4, 2, 4, 4], [3, 4, 5, 4], [5, 5, 5, 3],
-        [5, 2, 5, 4], [6, 4, 4, 4]
+        [2, 4, 4, 4], [0, 4, 2, 4], [3, 6, 3, 4], [3, 8, 3, 6], [5, 8, 3, 8],
+        [5, 7, 3, 7], [4, 5, 4, 7], [5, 5, 5, 7], [3, 7, 3, 5], [5, 7, 3, 7],
+        [3, 8, 3, 6], [2, 5, 4, 5], [3, 3, 3, 5], [3, 6, 3, 4], [4, 4, 4, 6],
+        [4, 2, 4, 4], [3, 1, 3, 3], [2, 3, 4, 3], [0, 3, 2, 3], [4, 4, 4, 2],
+        [4, 1, 4, 3], [5, 3, 3, 3], [0, 5, 2, 5], [7, 3, 5, 3], [5, 3, 5, 5],
+        [5, 1, 5, 3], [7, 5, 7, 3], [2, 3, 4, 3], [4, 3, 6, 3], [7, 3, 5, 3],
+        [6, 5, 6, 3], [6, 3, 4, 3], [2, 4, 4, 4], [4, 3, 4, 5], [5, 5, 3, 5],
+        [2, 5, 4, 5], [4, 6, 4, 4]
     ],
     [ % Diamond http://recmath.org/pegsolitaire/gif/Hermarys23Move.gif
-        [4, 2, 4, 4], [4, 5, 4, 3], [4, 7, 4, 5], [6, 2, 4, 2], [6, 6, 4, 6],
-        [5, 4, 5, 2], [4, 5, 4, 7], [5, 1, 5, 3], [2, 6, 4, 6], [3, 4, 3, 6],
-        [3, 7, 3, 5], [3, 2, 3, 4], [3, 4, 3, 6], [3, 6, 5, 6], [5, 6, 5, 4],
-        [5, 4, 5, 2], [5, 2, 3, 2], [1, 5, 3, 5], [7, 5, 5, 5], [7, 3, 5, 3],
-        [3, 1, 3, 3], [4, 0, 4, 2], [1, 4, 3, 4], [3, 4, 3, 2], [3, 2, 5, 2],
-        [5, 2, 5, 4], [5, 4, 5, 6], [1, 3, 3, 3], [5, 7, 5, 5], [4, 8, 4, 6],
-        [7, 4, 5, 4], [5, 4, 5, 6], [5, 6, 3, 6], [3, 6, 3, 4], [3, 4, 3, 2],
-        [2, 2, 4, 2], [4, 2, 4, 4]
+        [2, 4, 4, 4], [5, 4, 3, 4], [7, 4, 5, 4], [2, 6, 2, 4], [6, 6, 6, 4],
+        [4, 5, 2, 5], [5, 4, 7, 4], [1, 5, 3, 5], [6, 2, 6, 4], [4, 3, 6, 3],
+        [7, 3, 5, 3], [2, 3, 4, 3], [4, 3, 6, 3], [6, 3, 6, 5], [6, 5, 4, 5],
+        [4, 5, 2, 5], [2, 5, 2, 3], [5, 1, 5, 3], [5, 7, 5, 5], [3, 7, 3, 5],
+        [1, 3, 3, 3], [0, 4, 2, 4], [4, 1, 4, 3], [4, 3, 2, 3], [2, 3, 2, 5],
+        [2, 5, 4, 5], [4, 5, 6, 5], [3, 1, 3, 3], [7, 5, 5, 5], [8, 4, 6, 4],
+        [4, 7, 4, 5], [4, 5, 6, 5], [6, 5, 6, 3], [6, 3, 4, 3], [4, 3, 2, 3],
+        [2, 2, 2, 4], [2, 4, 4, 4]
     ]
 ];
 
@@ -190,7 +196,7 @@ const EMPTY_SYMBOL = String.fromCharCode(0x25CB);
 
 % How many marbles need to be placed
 const MARBLE_COUNTS = [
-    32, 36, 44, 38, 40
+    32, 36, 44, 38, 38
 ]
 
 % Color data
@@ -202,8 +208,8 @@ const HIGHLIGHT_COLOR = [ "RGB", 0.984, 0.800, 0.176 ];
 % Helper %
 %%%%%%%%%%
 /**
- * Returns a random number between 0 and the param.
- * @param {Number} max The upperbound
+ * Returns a random number between 0 and the parameter.
+ * @param {Number} max The upper bound
  */
 function getRandomInt(max) {
     return Math.floor(Math.random() * max);
@@ -250,8 +256,8 @@ function hslToRgb(h, s, l) {
 /**
  * Generates the specified amount of colors and pushes
  * them to the colors array.
- * For generating the colors are selected using hsl
- * and afterwards transformed to rgb.
+ * For generating the colors are selected using HSL
+ * and afterwards transformed to RGB.
  *
  * @param {number} amount The amount of colors to generate
  * @param {number} saturation The saturation
@@ -267,35 +273,38 @@ function generateColors(saturation, lightness, amount) {
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Initialisation and Restart %
+% Initialization and Restart %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 /**
- * Initialise the default game state.
+ * Initialize the default game state.
  */
-function initialise() {
-    % Init the GUI
-    initialiseButtons();
+function initialize() {
+    % Initialize the GUI
+    initializeButtons();
     % Get the value of the choise menu
-    fieldIdx = this.getField("cmLayout").currentValueIndices;
-    currentMarbleCount = MARBLE_COUNTS[fieldIdx];
+    boardIdx = this.getField("cmLayout").currentValueIndices;
+    currentMarbleCount = MARBLE_COUNTS[boardIdx];
 
-    % Create the field using the FIELDS array data
+    % Create the board using the BOARDS array data
     var idx = 0;
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        var tmp = new Array();
-        for (var column = 0; column < FIELD_WIDTH; column++) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        var row = new Array();
+        for (var n = 0; n < BOARD_WIDTH; n++) {
             var colorIdx = -1;
-            var cell = FIELDS[fieldIdx][row][column];
-            if (cell == FULL) {
-                colorIdx = idx;
-                idx++;
+            var cell = NONE;
+            if (m < BOARDS[boardIdx].length && n < BOARDS[boardIdx][m].length) {
+                cell = BOARDS[boardIdx][m][n];
+                if (cell == FULL) {
+                    colorIdx = idx;
+                    idx++;
+                }
             }
-            tmp.push([cell, colorIdx]);
+            row.push([cell, colorIdx]);
         }
-        complField.push(tmp);
+        complBoard.push(row);
     }
 
-    % Hide all cells that are not part of the field
+    % Hide all cells that are not part of the board
     hideCells();
     % Generate a color for each marble
     generateColors(1.0, 0.5, currentMarbleCount);
@@ -304,39 +313,36 @@ function initialise() {
 }
 
 /**
- * Initialise all buttons from the GUI.
+ * Initialize all buttons from the GUI.
  * For example add callbacks and set the correct colors.
  */
-function initialiseButtons() {
-    var field;
+function initializeButtons() {
     % Disables the rectangle around a button after the click
     app.focusRect = false;
 
     this.getField("cbColor").checkThisBox(0);
 
-    % Assign each button the coresponding function and set the highlights
+    % Assign each button the corresponding function and set the highlights
     this.getField("restart").setAction("MouseUp", "restart();");
-    this.getField("restart").highlight="outline";
 
     this.getField("showSol").setAction("MouseUp", "showSolution();");
-    this.getField("showSol").highlight="outline";
 
-    this.getField("import").setAction("MouseUp", "importField();");
-    this.getField("export").setAction("MouseUp", "exportField();");
+    this.getField("import").setAction("MouseUp", "importBoard();");
+    this.getField("export").setAction("MouseUp", "exportBoard();");
 
     this.getField("exmoves").setAction("MouseUp", "executeMoves();");
 
     this.getField("cmLayout").currentValueIndices = 0;
 
-    % Each field needs to be connected to an input function
-    var funcName = "fieldClicked";
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            var callbackName = funcName + "(" + x.toString() + "," + y.toString() + ");";
-            field = this.getField("pos" + x + "-" + y);
-            field.setAction("MouseDown", callbackName);
-            field.textSize = SCREEN_TEXT_WIDTH / FIELD_WIDTH;
-            field.alignment = "center";
+    % Each cell needs to be connected to an input function
+    var cell;
+    var funcName = "cellClicked";
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var callbackName = funcName + "(" + m.toString() + "," + n.toString() + ");";
+            cell = this.getField("cell" + m + "-" + n);
+            cell.setAction("MouseDown", callbackName);
+            cell.textSize = SCREEN_TEXT_SIZE / Math.max(BOARD_HEIGHT, BOARD_WIDTH);
         }
     }
 
@@ -344,16 +350,14 @@ function initialiseButtons() {
     this.getField("info").textFont = font.Times;
 
     % Tooltip setup
-    field = this.getField("tooltipbtn");
-    field.setAction("MouseDown", "tooltip(true);");
-    field.setAction("MouseUp", "tooltip(false);");
-    field.highlight="none";
+    this.getField("tooltipbtn").setAction("MouseDown", "tooltip(true);");
+    this.getField("tooltipbtn").setAction("MouseUp", "tooltip(false);");
 
-    printInfoText("Init");
+    printInfoText("Initialization finished.");
 }
 
 /**
- * Restart the game and clear everything
+ * Restart the game and clear everything.
  */
 function restart() {
     printInfoText("Restart");
@@ -366,30 +370,33 @@ function restart() {
 
     currentCell = null;
 
-    fieldIdx = this.getField("cmLayout").currentValueIndices;
-    currentMarbleCount = MARBLE_COUNTS[fieldIdx];
+    boardIdx = this.getField("cmLayout").currentValueIndices;
+    currentMarbleCount = MARBLE_COUNTS[boardIdx];
 
-    % Create the field choosing a random symbol for each field
+    % Reset the board
     var colorIdx = 0;
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            var cell = FIELDS[fieldIdx][row][column];
-            complField[row][column][0] = cell;
-            if (cell == FULL) {
-                complField[row][column][1] = colorIdx;
-                colorIdx++;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            var cell = NONE;
+            if (m < BOARDS[boardIdx].length && n < BOARDS[boardIdx][m].length) {
+                cell = BOARDS[boardIdx][m][n];
+                if (cell == FULL) {
+                    complBoard[m][n][C_IDX] = colorIdx;
+                    colorIdx++;
+                }
             }
+            complBoard[m][n][STATE] = cell;
         }
     }
 
     % Disable left over highlights
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            highlight(column, row, false);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            highlight(m, n, false);
         }
     }
 
-    % Hide all cells that are not part of the field
+    % Hide all cells that are not part of the board
     hideCells();
 
     colorEnabled = this.getField("cbColor").isBoxChecked(0);
@@ -403,9 +410,9 @@ function restart() {
 }
 
 /**
- * Enable or disable the tooltip
+ * Enable or disable the tooltip.
  *
- * @param {Boolean} on Enable or disable tooltip
+ * @param {Boolean} on Enable or disable tooltip.
  */
 function tooltip(on) {
     if (on) {
@@ -413,26 +420,23 @@ function tooltip(on) {
         % and adjust the size so the text can be displayed
         var field = this.getField("tooltiptxt");
         field.delay = true;
+        field.hidden = false;
         field.value = GAME_DESC;
 
         field.multiline = true;
         field.textSize = 16;
-        field.fillColor = color.gray;
-        % hight 842, width 596
+        % height 842, width 596
         % upper-left x, upper-left y, lower-right x and lower-right y
         field.rect = [128, 601, 468, 401];
+
+        this.getField("tooltiptxt").setFocus();
 
         field.delay = false;
     } else {
         % Remove the field such that it is not visible
         var field = this.getField("tooltiptxt");
         field.delay = true;
-        field.value = "";
-
-        field.multiline = false;
-        field.fillColor = color.gray;
-        field.rect = [0, 0, 0, 0];
-
+        field.hidden = true;
         field.delay = false;
     }
 }
@@ -441,13 +445,13 @@ function tooltip(on) {
 % Gamelogic %
 %%%%%%%%%%%%%
 /**
- * Save and highlight the last field the user clicked on.
- * Selection is only removed after clicking on the same field.
+ * Save and highlight the last cell the user clicked on.
+ * Selection is only removed after clicking on the same cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function fieldClicked(x, y, ignore=false) {
+function cellClicked(m, n, ignore=false) {
     this.getField("exporttxt").setFocus();
 
     if (timestep != 0.0) {
@@ -457,32 +461,32 @@ function fieldClicked(x, y, ignore=false) {
 
     % Select cell if none selected
     if (currentCell === null) {
-        if (complField[y][x][0] == FULL) {
-            currentCell = [x, y];
-            highlight(x, y, true);
+        if (complBoard[m][n][STATE] == FULL) {
+            currentCell = [m, n];
+            highlight(m, n, true);
         } else {
             printInfoText("Cell empty and not selectable.");
         }
     } % Deselect cell
-    else if (currentCell[0] == x && currentCell[1] == y) {
+    else if (currentCell[M] == m && currentCell[N] == n) {
         currentCell = null;
-        highlight(x, y, false);
+        highlight(m, n, false);
     } else {
         % If a cell if selected the new click is interpreted as the target cell
         % Calculate wether it is a valid target
-        var diffX = currentCell[0] - x;
-        var diffY = currentCell[1] - y;
-        var absX = Math.abs(diffX);
-        var absY = Math.abs(diffY);
+        var diffM = currentCell[M] - m;
+        var diffN = currentCell[N] - n;
+        var absM = Math.abs(diffM);
+        var absN = Math.abs(diffN);
 
-        if (absX == 2 && absY == 0 || absX == 0 && absY == 2) {
-            if (complField[y][x][0] == EMPTY) {
-                var x2 = x + diffX / 2;
-                var y2 = y + diffY / 2;
+        if (absM == 2 && absN == 0 || absM == 0 && absN == 2) {
+            if (complBoard[m][n][STATE] == EMPTY) {
+                var m2 = m + diffM / 2;
+                var n2 = n + diffN / 2;
                 % Actually do stuff
-                if (complField[y2][x2][0] == FULL) {
-                    highlight(currentCell[0], currentCell[1], false);
-                    jump(x, y);
+                if (complBoard[m2][n2][STATE] == FULL) {
+                    highlight(currentCell[M], currentCell[N], false);
+                    jump(m, n);
                     currentCell = null;
                 } else {
                     printInfoText("No cell to jump over.");
@@ -498,68 +502,68 @@ function fieldClicked(x, y, ignore=false) {
 
 /**
  * Place the currentCell content into the new cell
- * and remove the cell content inbetween.
+ * and remove the cell content in between.
  *
- * @param {Number} x1 The x position.
- * @param {Number} y1 The y position.
+ * @param {Number} m1 The m position.
+ * @param {Number} n1 The n position.
  */
-function jump(x1, y1) {
+function jump(m1, n1) {
     currentMarbleCount--;
 
-    var x2 = currentCell[0];
-    var y2 = currentCell[1];
+    var m2 = currentCell[M];
+    var n2 = currentCell[N];
 
     % Calculate cell in between
-    var diffX = x2 - x1;
-    var diffY = y2 - y1;
-    var x3 = x1 + diffX / 2;
-    var y3 = y1 + diffY / 2;
+    var diffM = m2 - m1;
+    var diffN = n2 - n1;
+    var m3 = m1 + diffM / 2;
+    var n3 = n1 + diffN / 2;
 
-    complField[y3][x3][0] = EMPTY;
-    complField[y2][x2][0] = EMPTY;
-    complField[y1][x1][0] = FULL;
+    complBoard[m3][n3][STATE] = EMPTY;
+    complBoard[m2][n2][STATE] = EMPTY;
+    complBoard[m1][n1][STATE] = FULL;
     % Rewrite color information
-    complField[y1][x1][1] = complField[y2][x2][1];
-    complField[y3][x3][1] = -1;
-    complField[y2][x2][1] = -1;
+    complBoard[m1][n1][C_IDX] = complBoard[m2][n2][C_IDX];
+    complBoard[m3][n3][C_IDX] = -1;
+    complBoard[m2][n2][C_IDX] = -1;
 
     % Prepare the animation cell
-    complField[ANIM_POS][ANIM_POS][0] = FULL;
-    complField[ANIM_POS][ANIM_POS][1] = complField[y1][x1][1];
+    complBoard[ANIM_POS][ANIM_POS][STATE] = FULL;
+    complBoard[ANIM_POS][ANIM_POS][C_IDX] = complBoard[m1][n1][C_IDX];
     draw(ANIM_POS, ANIM_POS);
 
     % Start animation
-    var callback = "jumpAnimation(" + x1 + "," + y1 + "," + x2 + "," + y2 + "," + x3 + "," + y3 + ")";
+    var callback = "jumpAnimation(" + m1 +","+ n1 +","+ m2 +","+ n2 +","+ m3 +","+ n3 + ")";
     run = app.setInterval(callback, ANIMATION_SPEED);
 }
 
 /**
  * Function for an animated cell. The cell is moved between two
  * given positions by linear interpolation.
- * The startposition and the center position are redrawn at
+ * The start position and the center position are redrawn at
  * appropriate times.
  *
- * @param {Number} x1 The target x position.
- * @param {Number} y1 The target y position.
- * @param {Number} x2 The source x position.
- * @param {Number} y2 The source y position.
- * @param {Number} x3 The center x position.
- * @param {Number} y3 The center y position.
+ * @param {Number} m1 The target m position.
+ * @param {Number} n1 The target n position.
+ * @param {Number} m2 The source m position.
+ * @param {Number} n2 The source n position.
+ * @param {Number} m3 The center m position.
+ * @param {Number} n3 The center n position.
  */
-function jumpAnimation(x1, y1, x2, y2, x3, y3) {
+function jumpAnimation(m1, n1, m2, n2, m3, n3) {
     % Get animation cell
-    var field = this.getField("pos" + ANIM_POS + "-" + ANIM_POS);
+    var cell = this.getField("cell" + ANIM_POS + "-" + ANIM_POS);
 
-    % Stop animation and reset if timelimit is reached
+    % Stop animation and reset if time limit is reached
     if (timestep >= 1.0) {
         timestep = 0.0;
-        draw(x1, y1);
-        field.hidden = true;
-        complField[ANIM_POS][ANIM_POS][0] = NONE;
+        draw(m1, n1);
+        cell.hidden = true;
+        complBoard[ANIM_POS][ANIM_POS][STATE] = NONE;
         if (getAllMoves().length > 0) {
             printInfoText("Jump successfull!");
         } else {
-            var lastPos = complField[W_POS_Y[fieldIdx]][W_POS_X[fieldIdx]][0] == FULL;
+            var lastPos = complBoard[W_POS_M[boardIdx]][W_POS_N[boardIdx]][STATE] == FULL;
             if (currentMarbleCount == 1 && lastPos) {
                 printInfoText("Game over, you won!");
             } else {
@@ -571,24 +575,24 @@ function jumpAnimation(x1, y1, x2, y2, x3, y3) {
     }
     % If precisely at the center of the line draw pos 3 (remove marble)
     if (timestep >= 0.5 && timestep <= 0.5 + ANIMATION_OFFSET) {
-        draw(x3, y3);
+        draw(m3, n3);
     } % Draw (remove) the start marble in the beginning
     else if (timestep >= 0.0 && timestep <= 0.0 + ANIMATION_OFFSET) {
-        draw(x2, y2);
+        draw(m2, n2);
     }
 
     % Show the animation cell
-    field.hidden = false;
+    cell.hidden = false;
 
     % Get the cells for the rectangle
-    var src = this.getField("pos" + x2 + "-" + y2);
-    var tgt = this.getField("pos" + x1 + "-" + y1);
+    var src = this.getField("cell" + m2 + "-" + n2);
+    var tgt = this.getField("cell" + m1 + "-" + n1);
     % Move the rectangle
     var rect = [0, 0, 0, 0];
     for (var i = 0; i < 4; i++) {
         rect[i] = tgt.rect[i] * timestep + src.rect[i] * (1.0 - timestep);
     }
-    field.rect = rect;
+    cell.rect = rect;
 
     timestep += ANIMATION_OFFSET;
 }
@@ -597,13 +601,13 @@ function jumpAnimation(x1, y1, x2, y2, x3, y3) {
 % Show Solution %
 %%%%%%%%%%%%%%%%%
 /**
- * Show a predefined solution for the start field.
+ * Show a predefined solution for the start board.
  * Checking all possible moves like here
  * https://ece.uwaterloo.ca/~dwharder/aads/Algorithms/Backtracking/Peg_solitaire/
  * does not work for performance reasons.
  */
 function showSolution() {
-    % Prevent double execution due to multiple clicks on the gui
+    % Prevent double execution due to multiple clicks on the GUI
     if (exeIndex != 0) {
         printInfoText("Solution already running!");
         return;
@@ -611,8 +615,15 @@ function showSolution() {
     % Restart to ensure all marbles being there
     restart();
 
-    var fieldIdx = this.getField("cmLayout").currentValueIndices;
-    exeMoves = solMoves[fieldIdx];
+    var boardIdx = this.getField("cmLayout").currentValueIndices;
+    if (BOARD_WIDTH < BOARDS[boardIdx].length || BOARD_HEIGHT < BOARDS[boardIdx][0].length) {
+        printInfoText("Can not show solution on sizes below [" +
+            BOARDS[boardIdx].length + ", " + BOARDS[boardIdx][0].length + "]!"
+        );
+        return;
+    }
+
+    exeMoves = solMoves[boardIdx];
     % Start animation
     var callback = "animateMoves()";
     runSol = app.setInterval(callback, ANIMATION_SPEED * (1.1 / ANIMATION_OFFSET));
@@ -621,15 +632,15 @@ function showSolution() {
 }
 
 /**
- * Apply a specified sequence of moves to the field.
+ * Apply a specified sequence of moves to the board.
  * The moves need to be given via the GUI and need to be
  * in character-notation or matrix-notation (m1:n1-m2:n2).
  * It is possible to give any number of moves.
  */
 function executeMoves() {
-    % Reset focus since the button would yield the txt window inoperative
+    % Reset focus since the button would yield the text window inoperative
     this.getField("exmovestxt").setFocus();
-    % Prevent double execution due to multiple clicks on the gui
+    % Prevent double execution due to multiple clicks on the GUI
     if (exeIndex != 0) {
         printInfoText("Moves are already executed!");
         return;
@@ -639,7 +650,7 @@ function executeMoves() {
     var moveSequence = this.getField("exmovestxt").value;
     exeMoves = stringToSolution(moveSequence);
     % Check for error
-    if (exeMoves[0][0] == 0) {
+    if (exeMoves[0][0] == NONE) {
         printInfoText("Moves not parseable!");
         return;
     }
@@ -653,7 +664,7 @@ function executeMoves() {
 /**
  * Animates the current move (exeIndex) from the exeMoves array.
  * The same function is called as if the cells are would be clicked on.
- * Clears the intervall after applying all steps.
+ * Clears the interval after applying all steps.
  */
 function animateMoves() {
     % Security measure to ensure no execution while move animation is running
@@ -667,8 +678,8 @@ function animateMoves() {
         return;
     }
     % Execute move by simulate a click on the cells
-    fieldClicked(exeMoves[exeIndex][0], exeMoves[exeIndex][1]);
-    fieldClicked(exeMoves[exeIndex][2], exeMoves[exeIndex][3]);
+    cellClicked(exeMoves[exeIndex][0], exeMoves[exeIndex][1]);
+    cellClicked(exeMoves[exeIndex][2], exeMoves[exeIndex][3]);
     % Reset the cell state if the move was not executable
     currentCell = null;
     highlight(exeMoves[exeIndex][0], exeMoves[exeIndex][1], false);
@@ -678,10 +689,10 @@ function animateMoves() {
 
 /**
  * Converts a given string into a sequence of array positions.
- * The string needs to refere to the cells via character notation.
- * Obacht: Does only work for english and european layout!
+ * The string needs to refer to the cells via character notation.
+ * Obacht: Does only work for English and European layout!
  * @param {String} moveSequence The sequence of moves to convert.
- * @return {Array} An array of fromTo positions or [[0]] if not parseable.
+ * @return {Array} An array of fromTo positions or [[0]] if not parse able.
  */
 function stringToSolution(moveSequence) {
     var toIdx = function toIdx(cell) {
@@ -699,15 +710,15 @@ function stringToSolution(moveSequence) {
         ];
         % Search for the currently wanted char in the table
         % and return its coordinates
-        for (var y = 0; y < charRep.length; y++) {
-            for (var x = 0; x < charRep[y].length; x++) {
-                if (cell == charRep[y][x]) {
-                    return [x, y];
+        for (var m = 0; m < charRep.length; m++) {
+            for (var n = 0; n < charRep[m].length; n++) {
+                if (cell == charRep[m][n]) {
+                    return [m, n];
                 }
             }
         }
         % Indicate error if not found
-        return [0];
+        return [NONE];
     }
 
     var result = [];
@@ -715,27 +726,26 @@ function stringToSolution(moveSequence) {
 
     % Check for notation type
     if (moves[0][0] >= '0' && moves[0][0] <= '9') {
-        for (var x = 0; x < moves.length; x++) {
+        for (var i = 0; i < moves.length; i++) {
             % Get both positions
-            var pos = moves[x].split("-");
+            var pos = moves[i].split("-");
             % Indicate error
             if (pos.length != 2) {
-                return [[0]];
+                return [[NONE]];
             }
             % Get coordinates
             var from = pos[0].split(":");
             var to = pos[1].split(":");
             % Indicate error
             if (from.length != 2 || to.length != 2) {
-                return [[0]];
+                return [[NONE]];
             }
 
-            % Care input x, y are swapped
             result.push([
-                parseInt(from[1], 10) + 1,
-                parseInt(from[0], 10) + 1,
-                parseInt(to[1], 10) + 1,
-                parseInt(to[0], 10) + 1
+                parseInt(from[M], 10),
+                parseInt(from[N], 10),
+                parseInt(to[M], 10),
+                parseInt(to[N], 10)
             ]);
         }
     } else {
@@ -743,11 +753,11 @@ function stringToSolution(moveSequence) {
             var from = toIdx(moves[i][0]);
             var to = toIdx(moves[i][1]);
             % Indicate error if not found
-            if (from[0] == 0 || to[0] == 0 || moves[i].length != 2) {
-                return [[0]];
+            if (from[M] == NONE || to[M] == NONE || moves[i].length != 2) {
+                return [[NONE]];
             }
             % Create a fromTo move array
-            result.push([from[0], from[1], to[0], to[1]]);
+            result.push([from[M], from[N], to[M], to[N]]);
         }
     }
 
@@ -762,10 +772,10 @@ function stringToSolution(moveSequence) {
 function getAllMoves() {
     % Get movesToTry for all marbles
     var movesToTry = [];
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (complField[y][x][0] == FULL) {
-                movesToTry = movesToTry.concat(getMoves([x, y]));
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n][STATE] == FULL) {
+                movesToTry = movesToTry.concat(getMoves([m, n]));
             }
         }
     }
@@ -780,22 +790,34 @@ function getAllMoves() {
  * @param {Array} marble The position to check.
  */
 function getMoves(marble) {
-    var x = marble[0];
-    var y = marble[1];
+    var m = marble[M];
+    var n = marble[N];
     var moves = [];
 
     % Check each of the four directions + out of bounds
-    if (x + 2 < FIELD_WIDTH && complField[y][x + 2][0] == EMPTY && complField[y][x + 1][0] == FULL) {
-        moves.push([x, y, x + 2, y]);
+    if (m + 2 < BOARD_HEIGHT &&
+        complBoard[m + 2][n][STATE] == EMPTY &&
+        complBoard[m + 1][n][STATE] == FULL
+    ) {
+        moves.push([m, n, m, m + 2]);
     }
-    if (x - 2 >= 0 && complField[y][x - 2][0] == EMPTY && complField[y][x - 1][0] == FULL) {
-        moves.push([x, y, x - 2, y]);
+    if (m - 2 >= 0 &&
+        complBoard[m - 2][n][STATE] == EMPTY &&
+        complBoard[m - 1][n][STATE] == FULL
+    ) {
+        moves.push([m, n, m, n - 2]);
     }
-    if (y + 2 < FIELD_HEIGHT && complField[y + 2][x][0] == EMPTY && complField[y + 1][x][0] == FULL) {
-        moves.push([x, y, x, y + 2]);
+    if (n + 2 < BOARD_WIDTH &&
+        complBoard[m][n + 2][STATE] == EMPTY &&
+        complBoard[m][n + 1][STATE] == FULL
+    ) {
+        moves.push([m, n, m + 2, n]);
     }
-    if (y - 2 >= 0 && complField[y - 2][x][0] == EMPTY && complField[y - 1][x][0] == FULL) {
-        moves.push([x, y, x, y - 2]);
+    if (n - 2 >= 0 &&
+        complBoard[m][n - 2][STATE] == EMPTY &&
+        complBoard[m][n - 1][STATE] == FULL
+    ) {
+        moves.push([m, n, m - 2, n]);
     }
     return moves;
 }
@@ -804,10 +826,10 @@ function getMoves(marble) {
 % Import and export %
 %%%%%%%%%%%%%%%%%%%%%
 /**
- * Print a unique number to the gui as field representation.
+ * Print a unique number to the GUI as board representation.
  */
-function exportField() {
-    % Reset focus since the button would yield the txt window inoperative
+function exportBoard() {
+    % Reset focus since the button would yield the text window inoperative
     this.getField("exporttxt").setFocus();
     if (timestep != 0.0) {
         printInfoText("Can not export while jumping!");
@@ -818,20 +840,20 @@ function exportField() {
 }
 
 /**
- * Get a number as unique field representation.
- * Each bit representing one cell of the field.
- * @return {Number} A representor for the field.
+ * Get a number as unique board representation.
+ * Each bit representing one cell of the board.
+ * @return {Number} A representative of the board.
  */
 function getUniqueCombination() {
     var arrayNum = 0;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            if (complField[y][x][0] == NONE) {
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            if (complBoard[m][n][STATE] == NONE) {
                 continue;
             }
             % Shift operation do not work - to many bits needed
             arrayNum *= 2;
-            if (complField[y][x][0] == FULL) {
+            if (complBoard[m][n][STATE] == FULL) {
                 arrayNum += 1;
             }
         }
@@ -840,11 +862,11 @@ function getUniqueCombination() {
 }
 
 /**
- * Read the input from the gui to generate a field from a
+ * Read the input from the GUI to generate a board from a
  * number representation.
  * OBACHT: Different layouts are not compatible.
  */
-function importField() {
+function importBoard() {
     % Stop showing solution if in process
     if (exeIndex != 0) {
         app.clearInterval(runSol);
@@ -853,36 +875,38 @@ function importField() {
 
     % Reset focus since the button would yield the txt window inoperative
     this.getField("importtxt").setFocus();
-    var fieldIdx = this.getField("cmLayout").currentValueIndices;
+    var boardIdx = this.getField("cmLayout").currentValueIndices;
     var combination = this.getField("importtxt").value;
-    if (MARBLE_COUNTS[fieldIdx] < cellCount(combination)) {
+    if (MARBLE_COUNTS[boardIdx] < cellCount(combination)) {
         printInfoText("Input not compatible with current selected layout.");
         return;
     }
-    toField(combination);
+    toBoard(combination);
     drawAll();
     printInfoText("Imported!");
 }
 
 /**
- * Uses the given field to set the cells of the displayed field.
- * @param {Number} combination A representation of the field.
+ * Uses the given board to set the cells of the displayed board.
+ * @param {Number} combination A representation of the board.
  */
-function toField(combination) {
+function toBoard(combination) {
     var res = combination;
+    var colorIdx = 0;
     % Iterate from back to front because of leading zeros
-    for (var x = FIELD_WIDTH - 1; x >= 0; x--) {
-        for (var y = FIELD_HEIGHT - 1; y >= 0 ; y--) {
-            if (complField[y][x][0] == NONE) {
+    for (var m = BOARD_HEIGHT - 1; m >= 0 ; m--) {
+        for (var n = BOARD_WIDTH - 1; n >= 0; n--) {
+            if (complBoard[m][n][STATE] == NONE) {
                 continue;
             }
 
             var val = res \% 2;
             if (val == 1) {
-                complField[y][x][0] = FULL;
+                complBoard[m][n][STATE] = FULL;
+                complBoard[m][n][C_IDX] = colorIdx++;
                 res -= 1;
             } else {
-                complField[y][x][0] = EMPTY;
+                complBoard[m][n][STATE] = EMPTY;
             }
             res = res / 2;
         }
@@ -890,9 +914,9 @@ function toField(combination) {
 }
 
 /**
- * Get the amount of used cells that are in this field.
+ * Get the amount of used cells that are in this board.
  * For this the amount of ones of the binary form are counted.
- * @param {Number} combination A number represenation of the field.
+ * @param {Number} combination A number representation of the board.
  * @return {Number} The amount of used cells.
  */
 function cellCount(combination) {
@@ -916,66 +940,66 @@ function cellCount(combination) {
  * Hide all cells that are of type NONE.
  */
 function hideCells() {
-    var field;
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            field = this.getField("pos" + x + "-" + y);
-            if (complField[y][x][0] == NONE) {
-                field.hidden = true;
+    var cell;
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            cell = this.getField("cell" + m + "-" + n);
+            if (complBoard[m][n][STATE] == NONE) {
+                cell.hidden = true;
             } else {
-                field.hidden = false;
+                cell.hidden = false;
             }
         }
     }
 }
 
 /**
- * Draw all fields.
+ * Draw all cells.
  */
 function drawAll() {
-    for (var x = 0; x < FIELD_WIDTH; x++) {
-        for (var y = 0; y < FIELD_HEIGHT; y++) {
-            draw(x, y);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            draw(m, n);
         }
     }
 }
 
 /**
- * Since only one field is updated with each input,
- * only this field needs to be redrawn.
+ * Since only one cell is updated with each input,
+ * only this cell needs to be redrawn.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  */
-function draw(x, y) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
+function draw(m, n) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
 
-    var val = complField[y][x][0];
+    var val = complBoard[m][n][STATE];
     if (val == FULL) {
-        field.value = MARBLE_SYMBOL;
+        cell.value = MARBLE_SYMBOL;
         if (colorEnabled) {
-            field.textColor = colors[complField[y][x][1]];
+            cell.textColor = colors[complBoard[m][n][C_IDX]];
         } else {
-            field.textColor = color.black;
+            cell.textColor = color.black;
         }
     } else {
-        field.value = EMPTY_SYMBOL;
-        field.textColor = color.black;
+        cell.value = EMPTY_SYMBOL;
+        cell.textColor = color.black;
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
  * Enables or disables the highlight for
- * all cells in the field.
+ * all cells on the board.
  *
  * @param {Boolean} enable Enables or disables highlight.
  */
 function highlightAll(enable) {
-    for (var row = 0; row < FIELD_HEIGHT; row++) {
-        for (var column = 0; column < FIELD_WIDTH; column++) {
-            highlight(column, row, enable);
+    for (var m = 0; m < BOARD_HEIGHT; m++) {
+        for (var n = 0; n < BOARD_WIDTH; n++) {
+            highlight(m, n, enable);
         }
     }
 }
@@ -983,21 +1007,20 @@ function highlightAll(enable) {
 /**
  * Enables or disables the highlight of the given cell.
  *
- * @param {Number} x The x position.
- * @param {Number} y The y position.
+ * @param {Number} m The m position.
+ * @param {Number} n The n position.
  * @param {Boolean} enable If true enables the highlight
- * @param {Boolean} bomb If true enables the bombhighlight
  */
-function highlight(x, y, enable) {
-    var field = this.getField("pos" + x + "-" + y);
-    field.delay = true;
+function highlight(m, n, enable) {
+    var cell = this.getField("cell" + m + "-" + n);
+    cell.delay = true;
     % Highlight the current taken move
     if (enable) {
-        field.borderColor = HIGHLIGHT_COLOR;
+        cell.borderColor = HIGHLIGHT_COLOR;
     } else {
-        field.borderColor = color.transparent;
+        cell.borderColor = color.transparent;
     }
-    field.delay = false;
+    cell.delay = false;
 }
 
 /**
@@ -1022,11 +1045,10 @@ function printInfoText(text) {
 
 \end{insDLJS}
 
-\OpenAction{/S /JavaScript /JS (initialise();)}
-\newdimen\longline
-\longline=\textwidth\advance\longline-6em
+\OpenAction{/S /JavaScript /JS (initialize();)}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Dokument
+% Document
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
@@ -1039,7 +1061,7 @@ function printInfoText(text) {
         \columnbreak
             % Tooltip object
             \begin{flushright}%
-                \PushButton[name=tooltipbtn, bordercolor=white]{%
+                \PushButton[name=tooltipbtn, bordercolor=, backgroundcolor=, borderwidth=0]{%
                     \begin{tcolorbox}[width=20pt, height=20pt, left=3pt, top=0pt]
                         \centering?\strut{}
                     \end{tcolorbox}%
@@ -1047,32 +1069,36 @@ function printInfoText(text) {
             \end{flushright}%
         \end{multicols}
 
-        % Calculate the max width and height of a block
-        \FPeval{\resultW}{(\fieldWidth * 4 + 3)}
-        \def\blocksizeW{\dimexpr (\linewidth-\resultW pt)/\fieldWidth \relax}
+        % Dynamically adjust the cell width and height to the number of cells
+        % Calculate the max width and height of a cell
+        \FPeval{\resultW}{\boardWidth * 3 - 2} % chktex 8
+        \def\cellWidth{\dimexpr (\linewidth-\resultW pt)/\boardWidth \relax}
 
-        \FPeval{\resultH}{(\fieldHeight * 4 + 3)}
-        \def\blocksizeH{\dimexpr (500 pt -\resultH pt)/\fieldHeight \relax}
+        \FPeval{\resultH}{\boardHeight * 3 + 3}
+        \def\cellHeight{\dimexpr (0.591\paperheight -\resultH pt)/\boardHeight \relax}
 
-        % Define the blocksize via the smaller amount
-        \ifnum\blocksizeW<\blocksizeH
-            \def\blocksize{\blocksizeW}
-        \else
-            \def\blocksize{\blocksizeH}
-        \fi
-
-        % The gamefield
+        % The game board
         \begin{tcolorbox}
-            \begin{flushright}
-                \xintFor* #2 in {\xintSeq{0}{\fieldHeight-1}} \do {%
-                    \xintFor* #1 in {\xintSeq{0}{\fieldWidth-1}} \do {%
+            % Define the cell size via the smaller amount
+            % Must be done here so the \linewidth has the correct value
+            \ifdim\cellWidth<\cellHeight
+                \def\cellsize{\cellWidth}
+            \else
+                \def\cellsize{\cellHeight}
+            \fi
+
+            \begin{center}
+                \tiny
+                \xintFor* #1 in {\xintSeq{0}{\boardHeight-1}} \do {%
+                    \xintFor* #2 in {\xintSeq{0}{\boardWidth-1}} \do {%
                         \TextField[%
-                            width=\blocksize, height=\blocksize,%
-                            bordercolor=, backgroundcolor=, name=pos#1-#2, readonly]{}\hspace{3pt}%
-                    }\vspace{3pt}
-                    \newline%
+                            name=cell#1-#2, width=\cellsize, height=\cellsize,%
+                            bordercolor=, backgroundcolor=, align=1, readonly%
+                        ]{}%
+                        \xintifForLast{}{\hspace{3pt}}%
+                    }\vspace{3pt}\\[-1pt]%
                 }%
-            \end{flushright}%
+            \end{center}%
         \end{tcolorbox}
 
         %%%%%%%%%%%%%%%%%%%%%%%
@@ -1098,69 +1124,66 @@ function printInfoText(text) {
         %%%%%%%%%%%%%%%%
         % GUI elements %
         %%%%%%%%%%%%%%%%
-        \begin{multicols}{2}
-
+        \begin{tabularx}{\textwidth}{@{} *{2}{X} @{}}%
             \PushButton[name=restart, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
                     Restart game\strut{}
                 \end{tcolorbox}
-            }\vspace{0.1cm}
-
-            \PushButton[name=exmoves, bordercolor=, backgroundcolor=, borderwidth=0]{
-                \begin{tcolorbox}
-                    \centering
-                    Execute moves: \strut{}
-                    \TextField[name=exmovestxt, bordercolor=gray, borderwidth=2pt,
-                        backgroundcolor=white]{\strut}
-                \end{tcolorbox}
-            }\vspace{0.1cm}
-
-            \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
-                \begin{tcolorbox}
-                    \centering
-                    Import field: \strut{}
-                    \TextField[name=importtxt, bordercolor=gray, borderwidth=2pt,
-                        backgroundcolor=white]{\strut}
-                \end{tcolorbox}
-            }%
-
-            \begin{tcolorbox}
-                \centering
-                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm, combo]{Layout: }{
-                    English (33), European (37), German (45), Asymmetrical (39), Hermary (39)
-                }
-            \end{tcolorbox}
-
-            \columnbreak%
-
+            }
+            &
             \PushButton[name=showSol, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
                     Restart and show full solution\strut{}
                 \end{tcolorbox}
             }
-
+            \\
+            \PushButton[name=exmoves, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Execute moves: \strut{}
+                    \TextField[name=exmovestxt,
+                        bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
+                \end{tcolorbox}
+            }
+            &
             \begin{tcolorbox}
-                \TextField[name=info, width=2\linewidth, bordercolor=, backgroundcolor=, readonly]
-                    {\strut}
+                \TextField[name=info, width=2\linewidth,
+                    bordercolor=, backgroundcolor=, readonly]{\strut}
             \end{tcolorbox}
-
+            \\[-0.3cm]
+            \PushButton[name=import, bordercolor=, backgroundcolor=, borderwidth=0]{
+                \begin{tcolorbox}
+                    \centering
+                    Import board: \strut{}
+                    \TextField[name=importtxt,
+                        bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
+                \end{tcolorbox}
+            }%
+            &
             \PushButton[name=export, bordercolor=, backgroundcolor=, borderwidth=0]{
                 \begin{tcolorbox}
                     \centering
-                    Export field: \strut{}
+                    Export board: \strut{}
                     \TextField[name=exporttxt,
                         bordercolor=gray, borderwidth=2pt, backgroundcolor=white]{\strut}
                 \end{tcolorbox}
             }
-
+            \\
+            \begin{tcolorbox}%
+                \centering%
+                \ChoiceMenu[name=cmLayout, bordercolor=gray, width=2cm,
+                    combo, edit=false]{Layout: }{%
+                    English (33), European (37), German (45), Asymmetrical (39), Hermary (39)%
+                }%
+            \end{tcolorbox}%
+            &
             \begin{tcolorbox}
                 \CheckBox[name=cbColor, bordercolor=gray, checkboxsymbol=5]{Color}
             \end{tcolorbox}
+        \end{tabularx}
 
-        \end{multicols}
-
-        \TextField[bordercolor=white, name=tooltiptxt, readonly]{}
+        \TextField[name=tooltiptxt, bordercolor=, backgroundcolor=gray, readonly, hidden]{}
     \end{Form}
 \end{document}
