@@ -150,7 +150,7 @@ jobs:
       - name: Zip files
         uses: montudor/action-zip@v1
         with:
-          args: zip -qq -r pdf/pdf.zip pdf
+          args: zip -qq -r pdf/pdfs.zip pdf
       # Upload
       - name: Upload
         uses: actions/upload-release-asset@v1.0.1
